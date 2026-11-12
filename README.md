@@ -61,6 +61,10 @@ On Linux or Mac the first run will generate a Wine prefix (stored at ``~/.qolbot
 
 Open the [web interface](http://127.0.0.1:8080/) from your browser.
 
+## Usage
+
+If you're intending to play with the bots, you simply host a TCP/IP game and instruct the bots from the web interface to ``Start``. If you're not intending to play, you can choose a bot leader and have multiple bots do farming or questing runs.
+
 ## Configuration
 
 No editing of files is required and everything is configured in the UI.  The program will ask you to locate the ``Game.exe`` file for Diablo II and will auto detect all your available characters.
