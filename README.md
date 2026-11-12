@@ -10,9 +10,7 @@ The beauty of running this on Linux is that I never even see the bot windows at 
 
 This program is built around D2LOD ``v1.13d`` and includes PlugY support.
 
-| | |
-|---|---|
-| ![Screenshot](https://i.imgur.com/FNm353J.png) | ![Screenshot](https://i.imgur.com/bPrhvVZ.png) |
+![Screenshot](https://i.imgur.com/xZGCeId.png)
 
 ## Vision
 

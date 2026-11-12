@@ -158,6 +158,8 @@ function chooseDifficulty(want) {
 	return false;
 }
 
+var lastUnhandledScreen = -1; // Qolbot: the last screen the host said it had no action for
+
 function locationAction(location) {
 	var i, control, string, text;
 	
@@ -196,6 +198,11 @@ function locationAction(location) {
 			// ControlAction.click(6, 421, 337, 96, 32); //Join
 		break;
 		default:
+			if (lastUnhandledScreen !== location) { // Qolbot: say once which screen is up (the difficulty screen may not be location 20 here)
+				lastUnhandledScreen = location;
+				print("Host: no action for screen " + location);
+			}
+
 			delay(5000);
 			/*
 			if (location !== undefined) {

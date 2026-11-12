@@ -45,11 +45,11 @@ var D2Bot = {
 		sendCopyData(null, this.handle, 0, JSON.stringify(obj));
 	},
 
-	zone: function (name) { // tells Qolbot which area this bot is in (the Status tab)
+	zone: function (name, diff) { // tells Qolbot which area this bot is in and on which difficulty (the Status tab)
 		var obj = {
 				profile: me.profile,
 				func: "zone",
-				args: [name]
+				args: [name, diff || ""]
 			};
 
 		sendCopyData(null, this.handle, 0, JSON.stringify(obj));

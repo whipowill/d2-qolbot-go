@@ -295,3 +295,9 @@ func TestLevelUpUpdatesTheCard(t *testing.T) {
 		t.Errorf("level must not drop: %d", m.states["Meir"].Char.Level)
 	}
 }
+
+func TestNoQuestsLeftStatus(t *testing.T) {
+	if got, ok := friendlyActivity("Questing: no quest is left to do on this difficulty. Waiting here; stop the bots when you like."); !ok || got != "No quests left on this difficulty" {
+		t.Errorf("got %q %v", got, ok)
+	}
+}

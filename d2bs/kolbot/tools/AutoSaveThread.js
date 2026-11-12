@@ -11,10 +11,15 @@ function main() {
 	include("common/Prototypes.js");
 	include("common/Misc.js");
 	Config.init();
+	print("AutoSaveThread: running, AutoSpec " + (typeof AutoSpec) + ".");
 
 	while (true) {
-		if (me.ingame && me.gameReady && typeof AutoSpec === "object") {
-			AutoSpec.autoSave();
+		try {
+			if (me.ingame && me.gameReady && typeof AutoSpec === "object") {
+				AutoSpec.autoSave();
+			}
+		} catch (e) {
+			print("AutoSaveThread: " + e); // it used to die silently: a leader that never autosaves loses its progress when a game ends without a save
 		}
 
 		delay(5000);

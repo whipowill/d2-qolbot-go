@@ -99,7 +99,8 @@ type State struct {
 	Profile
 	Status       string    `json:"status"` // stopped|starting|running|stopping
 	Pid          uint32    `json:"pid"`
-	Zone         string    `json:"zone,omitempty"` // the area the bot is in (reported by its ToolsThread)
+	Difficulty   string    `json:"difficulty,omitempty"` // the difficulty of the game the bot is in (reported with the zone)
+	Zone         string    `json:"zone,omitempty"`       // the area the bot is in (reported by its ToolsThread)
 	ZoneAt       time.Time `json:"-"`
 	Inv          string    `json:"-"` // what the bot carries, as the JSON its ToolsThread reports (shown when you click its card)
 	InvAt        time.Time `json:"-"`
@@ -614,7 +615,7 @@ func (m *Manager) onExit(msg wire.Msg) {
 	var restart bool
 	var quick bool
 	m.update(msg.Profile, func(s *State) {
-		s.Pid, s.Hwnd, s.Status, s.Doing, s.Activity, s.Zone = 0, 0, "stopped", "", "", ""
+		s.Pid, s.Hwnd, s.Status, s.Doing, s.Activity, s.Zone, s.Difficulty = 0, 0, "stopped", "", "", "", ""
 		restart = s.Wanted
 		quick = s.Wanted && time.Since(s.startedAt) < 90*time.Second
 		if quick {

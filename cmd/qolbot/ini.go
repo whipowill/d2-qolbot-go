@@ -24,6 +24,8 @@ func (m *Manager) writeD2BSIni() error {
 		names = append(names, n)
 	}
 	sort.Strings(names)
+	// D2BS's own login() clicks the difficulty screen (it never reaches the starter script) and reads it from this key: 0 Normal, 1 Nightmare, 2 Hell
+	diffIndex := map[string]int{"Normal": 0, "Nightmare": 1, "Hell": 2}[m.difficultyNow()]
 	for _, n := range names {
 		st, gs := starter, "default.dbj"
 		switch m.roleOf(m.states[n]) {
@@ -35,8 +37,8 @@ func (m *Manager) writeD2BSIni() error {
 		case "idle": // joins like a normal bot but runs the do-nothing script (crash isolation)
 			gs = hostGameScript
 		}
-		fmt.Fprintf(&b, "[%s]\r\nMode=Other Multiplayer\r\nUsername=\r\nPassword=\r\ngateway=East\r\nip=%s\r\ncharacter=%s\r\nScriptPath=%s\r\nDefaultGameScript=%s\r\nDefaultStarterScript=%s\r\n\r\n",
-			n, m.cfg.HostIP, m.states[n].Character, m.cfg.ScriptPath, gs, st)
+		fmt.Fprintf(&b, "[%s]\r\nMode=Other Multiplayer\r\nUsername=\r\nPassword=\r\ngateway=East\r\nip=%s\r\ncharacter=%s\r\nScriptPath=%s\r\nDefaultGameScript=%s\r\nDefaultStarterScript=%s\r\nSPDifficulty=%d\r\n\r\n",
+			n, m.cfg.HostIP, m.states[n].Character, m.cfg.ScriptPath, gs, st, diffIndex)
 	}
 	u := utf16.Encode([]rune(b.String()))
 	out := make([]byte, 2, 2+len(u)*2)

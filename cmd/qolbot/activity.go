@@ -93,6 +93,9 @@ func friendlyActivity(text string) (string, bool) {
 	if strings.HasPrefix(t, "the whole team is here") {
 		return "Team is here", true
 	}
+	if strings.HasPrefix(t, "Questing: no quest is left") { // the leader finished every quest of this difficulty and now waits
+		return "No quests left on this difficulty", true
+	}
 	if strings.HasPrefix(t, "I cannot reach you") { // the chat line a follower sends the leader (or the player)
 		return "Waiting for a portal", true
 	}

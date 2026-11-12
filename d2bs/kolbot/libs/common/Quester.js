@@ -1509,6 +1509,7 @@ var Quester = {
 	useItems: [[545, "Potion of Life"], [552, "Book of Skill"], [644, "Malah's Potion"], [646, "Scroll of Resistance"]],
 
 	questTries: {}, // quest id -> how many times this game the bot went to an NPC for it (no endless loops)
+	skipSaid: {}, // quest id -> the reason it was skipped is already in the log this game
 	manualSaid: {}, // quest id -> already written to the log (the bots do not say it in chat: only you can pick that reward)
 
 	// problem reports: hidden when the player switched them off (Settings tab)
@@ -1829,7 +1830,11 @@ var Quester = {
 			var quest_script = this.quests[i][4];
 
 			// check access to this act
-			if (!Pather.accessToAct(quest_act)) pass = false;
+			if (!Pather.accessToAct(quest_act))
+			{
+				pass = false;
+				if (!this.skipSaid[quest_id]) { this.skipSaid[quest_id] = true; print("AutoSpec: quest skipped: " + quest_title + " (act " + quest_act + " is not open)"); }
+			}
 
 			// if town chores only and not in right town, skip
 			// REFERENCE: var towns = [1, 40, 75, 103, 109];
@@ -1852,13 +1857,20 @@ var Quester = {
 				}
 
 				// if quest already complete, skip
-				if (progress >= 100) pass = false;
-
-				// if quests charsi, larzuk, or anya...
-				if (quest_id == 3 || quest_id == 35 || quest_id == 38)
+				if (progress >= 100)
 				{
-					// if quest partially complete, skip
-					if (progress >= 50) pass = false;
+					pass = false;
+					if (!this.skipSaid[quest_id]) { this.skipSaid[quest_id] = true; print("AutoSpec: quest skipped: " + quest_title + " (already complete)"); }
+				}
+
+				// The last step of three quests is a reward only the player can choose (an item): Charsi's imbue (3), Larzuk's socket (35),
+				// Anya's personalize (38). The quest is done and only that reward is left, and its "complete" bit stays clear until it is
+				// claimed, so without this the bot would redo the whole quest on every run. Skip while the reward is waiting; the log
+				// already says once that it is (see questNpcs). Claim it yourself whenever you like, or never.
+				if ((quest_id == 3 || quest_id == 35 || quest_id == 38) && this.questPending(quest_id))
+				{
+					pass = false;
+					if (!this.skipSaid[quest_id]) { this.skipSaid[quest_id] = true; print("AutoSpec: quest skipped: " + quest_title + " (only the reward is left, and you choose that)"); }
 				}
 			}
 
@@ -1890,6 +1902,11 @@ var Quester = {
 				if (this.getQuestProgress(quest_id) >= 100)
 				{
 					this.note('Act ' + quest_act + ' - #' + quest_num + ' - "' + quest_title + '" is complete.');
+
+					// save now: a finished quest must not be lost when the game ends without a save (a chicken quit, the crash as scripts end)
+					if (typeof AutoSpec === "object") {
+						AutoSpec.saveNow(false);
+					}
 				}
 			}
 		}

@@ -417,6 +417,32 @@ function Follower() {
 	};
 
 
+	// Qolbot: true when this bot is out in the field and the leader has gone to town. Pather.moveTo and Attack.clear ask it
+	// (Pather.interrupt) so a walk or a fight in progress ends at once and autoFollow runs, instead of the bot carrying on
+	// toward the spot where the leader was (leader teleports away, then opens a portal: the bot used to walk on, "searching").
+	this.leaderMoved = function () {
+		if (this.following || !leader || me.inTown || me.dead || !me.gameReady || Config.AutoTown === false || typeof AutoSpec !== "object") {
+			return false;
+		}
+
+		if (Date.now() < Math.max(this.followPausedUntil || 0, this.giveUpUntil || 0)) {
+			return false;
+		}
+
+		if ([1, 40, 75, 103, 109].indexOf(leader.area) === -1) {
+			return false; // area 0 (loading) or the leader is in the field: the normal follow logic handles it
+		}
+
+		AutoSpec.timers.follow = 0; // autoFollow runs on the very next pass of the main loop
+		return true;
+	};
+
+	var follower = this;
+
+	Pather.interrupt = function () {
+		return follower.leaderMoved();
+	};
+
 	// Get leader's Party Unit
 	this.getLeader = function (name) {
 		var player = getParty();
@@ -1312,6 +1338,8 @@ function Follower() {
 
 		// follow the leader between town and the field by itself
 		if (Config.AutoTown !== false && typeof AutoSpec === "object" && AutoSpec.due("follow", 2500)) {
+			this.following = true;
+
 			try {
 				this.autoFollow();
 			} catch (followError) {
@@ -1325,6 +1353,13 @@ function Follower() {
 				} catch (cancelError) {
 					// nothing more to do
 				}
+			}
+
+			this.following = false;
+
+			// still in the field with the leader in town: the trip failed (no portal, no scroll). Carry on as before for a bit, do not keep cutting walks short.
+			if (!me.inTown && me.gameReady && leader && [1, 40, 75, 103, 109].indexOf(leader.area) > -1) {
+				this.giveUpUntil = Date.now() + 15000;
 			}
 		}
 

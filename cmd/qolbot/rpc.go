@@ -148,6 +148,9 @@ func (m *Manager) handleCopyData(msg wire.Msg) {
 				s.Activity, s.ActivityAt = "Just arrived", time.Now()
 			}
 			s.Zone, s.ZoneAt = arg(0), time.Now()
+			if d := arg(1); d != "" {
+				s.Difficulty = d
+			}
 		})
 	case "saved":
 		m.markSaved(p)

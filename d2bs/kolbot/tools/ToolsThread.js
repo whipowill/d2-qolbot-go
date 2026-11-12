@@ -617,7 +617,7 @@ function main() {
 
 			if (me.gameReady && me.area !== lastZone) {
 				lastZone = me.area;
-				D2Bot.zone(typeof Pather !== "undefined" && Pather.getAreaName ? Pather.getAreaName(me.area) : "Area " + me.area);
+				D2Bot.zone(typeof Pather !== "undefined" && Pather.getAreaName ? Pather.getAreaName(me.area) : "Area " + me.area, ["Normal", "Nightmare", "Hell"][me.diff]);
 			}
 
 			if (me.gameReady) {

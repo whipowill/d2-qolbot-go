@@ -84,6 +84,10 @@ func (m *Manager) serveWeb() {
 			"hostIp": hostIP, "headless": m.headlessValue(), "wine": wineBin,
 			"gameExe": gameExe, "gameOK": gameProblem == "", "gameProblem": gameProblem})
 	})
+	// GET /api/partyquests?names=a,b,c: the quests those bots' saved characters have done (Party analysis on the Bots tab).
+	mux.HandleFunc("/api/partyquests", func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(m.partyQuests(splitNames(r.URL.Query().Get("names"))))
+	})
 	// POST /api/player?name=<character> sets who you are playing ("" = auto-detect).
 	mux.HandleFunc("/api/player", post(func(r *http.Request) error {
 		name := r.URL.Query().Get("name")

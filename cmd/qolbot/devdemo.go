@@ -81,7 +81,7 @@ func demoBots(cls func(string, int) map[string]any, ago func(int) time.Time) []m
 	}
 	var out []map[string]any
 	for n, r := range rows {
-		out = append(out, map[string]any{"name": r.name, "character": r.name, "status": r.status, "char": cls(r.class, r.level), "zone": r.zone, "activity": r.activity, "activityAt": ago(2 + n*3)})
+		out = append(out, map[string]any{"name": r.name, "character": r.name, "status": r.status, "char": cls(r.class, r.level), "zone": r.zone, "difficulty": []string{"Hell", "Hell", "Nightmare", "Normal"}[n%4], "activity": r.activity, "activityAt": ago(2 + n*3)})
 	}
 	return out
 }

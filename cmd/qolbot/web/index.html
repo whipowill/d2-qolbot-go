@@ -91,7 +91,7 @@ footer .credits{margin-bottom:6px;font-size:12px}footer{margin-top:40px;padding-
 <div class=wrap>
 <div class=hdr><h2>Qolbot for Diablo II</h2><div class=playtoggle>Are you playing? <span class=seg><button id=py onclick="setPlaying(1)">Yes</button><button id=pn onclick="setPlaying(0)">No</button></span></div></div>
 <p class=tagline id=tagline>Host a TCP/IP game, select the bots to join, and press <code>Start</code>.</p>
-<div class=tabs><button id=tb class=on onclick="tab('bots')">Bots</button><button id=ts onclick="tab('status')">Status</button><button id=tp onclick="tab('pickit')">Keeper</button><button id=tc onclick="tab('cfg')">Settings</button><button id=ta style="margin-left:auto" onclick="tab('about')">About</button><button id=tk onclick="tab('console')">Console</button></div>
+<div class=tabs><button id=tb class=on onclick="tab('bots')">Bots</button><button id=ts onclick="tab('status')">Activity</button><button id=tp onclick="tab('pickit')">Keeper</button><button id=tc onclick="tab('cfg')">Settings</button><button id=ta style="margin-left:auto" onclick="tab('about')">About</button><button id=tk onclick="tab('console')">Console</button></div>
 <div id=cfg style="display:none">
 <div class=sub id=subbar></div>
 <div class=pane id=p_game>
@@ -242,12 +242,15 @@ that <code>PlugY.ini</code> and <code>BaseMod.ini</code> have the World Event of
 <div id=bots>
 <div id=gbanner><b>Bots cannot start.</b> <span id=gwhy></span></div>
 <p style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px"><label><b>Who is going to be leader?</b> <select id=player onchange="setPlayer(this.value)"></select></label>
-<span id=goalwrap style="display:none;align-items:center;gap:8px"><label><b>Objective</b> <select id=goal onchange="goalChanged()"><option>Farm</option><option>Quest</option></select></label> <label><b>Difficulty</b> <select id=diff onchange="saveGoal(true)"><option>Normal</option><option>Nightmare</option><option selected>Hell</option></select></label> <button id=farmbtn onclick="toggleFarm()" style="display:none">Pick Farm Locations</button> <span class=dim id=goalmsg></span></span></p>
+<span id=goalwrap style="display:none;align-items:center;flex-wrap:wrap;gap:8px 18px"><label><b>Objective</b> <select id=goal onchange="goalChanged()"><option>Farm</option><option>Quest</option></select></label> <label><b>Difficulty</b> <select id=diff onchange="saveGoal(true)"><option>Normal</option><option>Nightmare</option><option selected>Hell</option></select></label> <button id=farmbtn onclick="toggleFarm()" style="display:none">Pick Farm Locations</button> <span class=dim id=goalmsg></span></span></p>
 <dialog id=farmbox style="max-width:900px" onclick="outsideClose(event,this)"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px"><b>Farm Locations</b><button onclick="farmbox.close()">Close</button></div><div id=farmlist style="font-size:12.5px;margin:8px 0 18px"></div><button class=primary onclick="saveGoal()">Save</button> <span class=dim id=farmmsg></span></dialog>
 <p class=toolbar><button class=primary onclick="each('start')">Start selected</button><button onclick="each('stop')">Stop selected</button><button class=danger onclick="stopAll()">Stop all bots</button>
 <button onclick="rescan()">Rescan characters</button> <button onclick="clearLogs()">Clear logs</button> <a href="/log" target=_blank>Full log file</a></p>
 <div class=card><table id=t></table></div>
-<p style="margin-top:16px"><label><input type=checkbox id=safe onchange="setSafe(this.checked)"> <b>Safe Mode:</b> <span id=safetxt>Bots are prohibited from AutoEquip, AutoStat, and AutoSkill.</span></label></p></div>
+<dialog id=pabox style="max-width:900px" onclick="outsideClose(event,this)"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px"><b>Quest Progress</b><button onclick="pabox.close()">Close</button></div>
+<p style="margin:8px 0"><label>Difficulty <select id=padiff onchange="paRender()"><option value=0>Normal</option><option value=1>Nightmare</option><option value=2>Hell</option></select></label> &nbsp; <label><input type=checkbox id=padiffonly checked onchange="paRender()"> Only quests where the bots differ</label></p>
+<div id=pabody style="font-size:12.5px"></div><p class=dim style="font-size:12px;margin-top:10px">Read from each character's save file, so it shows what was last saved, not a game in progress. A check means the quest is complete, the same test the Quester uses to skip it.</p></dialog>
+<p style="margin-top:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px 12px"><label><input type=checkbox id=safe onchange="setSafe(this.checked)"> <b>Safe Mode:</b> <span id=safetxt>Bots are prohibited from AutoEquip, AutoStat, and AutoSkill.</span></label><button id=pabtn style="visibility:hidden" onclick="partyAnalysis()">Quest Progress</button></p></div>
 <div id=consoleEl style="display:none"><pre id=c></pre></div>
 <footer><div class=credits>Runs on <b>Kolbot</b> by Kolton and <b>D2BS</b> by Noah.</div>Made with &#10084;&#65039; by Will Scarlet &middot; <a class=gh href="https://github.com/whipowill/d2-qolbot-go" target=_blank rel=noopener title="Qolbot on GitHub" aria-label="Qolbot on GitHub"><svg viewBox="0 0 16 16" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg></a></footer>
 </div>
@@ -278,12 +281,12 @@ let cfgLoaded=false;
 let tabAuto=false,gameOK=false;
 const subs=[['p_game','Game'],['p_conn','Connection'],['p_inv','Inventory'],['p_gear','Equipment'],['p_auto','Automation'],['p_quests','Quests'],['p_beh','Behavior'],['p_save','Saving']];
 let curTab='bots';
-const tabSlug={bots:'',status:'status',pickit:'keeper',cfg:'settings',about:'about',console:'console'};
+const tabSlug={bots:'',status:'activity',pickit:'keeper',cfg:'settings',about:'about',console:'console'};
 const cfgSlug={p_game:'game',p_conn:'connection',p_inv:'inventory',p_gear:'equipment',p_auto:'automation',p_quests:'quests',p_beh:'behavior',p_save:'saving'};
 const pkSlug={pk_rg:'gems-runes',pk_us:'uniques-sets',pk_mr:'magic-rares',pk_bs:'base-items',pk_ms:'miscellaneous'};
 function setUrl(replace){let p='/'+(tabSlug[curTab]||'');if(curTab=='cfg')p+='/'+cfgSlug[subNow];if(curTab=='pickit')p+='/'+pkSlug[pkNow];if(location.pathname!==p){try{history[replace?'replaceState':'pushState'](null,'',p)}catch(e){}}}
 function route(){const seg=location.pathname.split('/').filter(Boolean);if(seg[0]=='pickit')seg[0]='keeper';if(seg[0]=='config')seg[0]='settings'; // the old address still works
-let t=Object.keys(tabSlug).find(k=>tabSlug[k]==(seg[0]||''))||'bots';
+let t=Object.keys(tabSlug).find(k=>tabSlug[k]==(seg[0]=='status'?'activity':(seg[0]||'')))||'bots'; // /status is the old address of the Activity tab
 if(t=='cfg'){const s=Object.keys(cfgSlug).find(k=>cfgSlug[k]==seg[1]);if(s)subNow=s;sub(subNow)}
 if(t=='pickit'){const s=Object.keys(pkSlug).find(k=>pkSlug[k]==seg[1]);if(s)pkNow=s}
 tab(t,true)}
@@ -354,7 +357,7 @@ function tab(n,noUrl){curTab=n;bots.style.display=n=='bots'?'':'none';stpane.sty
 async function saveSettings(){const r=await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({hostIp:hostip.value,headless:!showwin.checked})});
 setmsg.textContent=r.ok?'saved: applies to bots after you restart Qolbot':'not saved: '+await r.text();setmsg.style.color=r.ok?'#2e7d32':'#c62828'}
 let farmCat=[],farmSel=[],goalNow='Follow';
-function goalChanged(){farmbtn.style.display=goal.value=='Farm'?'':'none';if(goal.value!='Farm')showFarm(false);saveGoal(true)}
+function goalChanged(){updPA();farmbtn.style.display=goal.value=='Farm'?'':'none';if(goal.value!='Farm')showFarm(false);saveGoal(true)}
 farmlist.addEventListener('change',()=>farmHint());
 function farmHint(){const n=farmlist.querySelectorAll('input:checked').length;if(goal.value=='Farm'&&!n){goalmsg.textContent='no farm runs chosen yet';goalmsg.style.color='var(--warn)'}else if(goal.value=='Farm'){goalmsg.innerHTML='<a href="#" style="color:var(--ok)" onclick="toggleFarm();return false">'+n+(n==1?' location':' locations')+'</a>';goalmsg.style.color='var(--ok)'}else goalmsg.textContent=''}
 function showFarm(open){if(open&&!farmbox.open)farmbox.showModal();else if(!open&&farmbox.open)farmbox.close()}
@@ -387,14 +390,24 @@ async function setSafe(on){if(!await req('/api/safemode?on='+(on?1:0)))lastHtml=
 async function clearLogs(){if(!confirm("Delete all log files (Qolbot, Wine and D2BS logs)? Your loot history is kept."))return;if(await req('/api/clearlogs'))load()}
 async function stopAll(){if(await req('/api/stopall'))load()}
 async function rescan(){await req('/api/rescan');load()}
-function pick(n,on){on?picked.add(n):picked.delete(n);lastHtml=''}
+function pick(n,on){on?picked.add(n):picked.delete(n);lastHtml='';updPA()}
+function updPA(){pabtn.style.visibility=!playingNow&&goal.value=='Quest'&&[...picked].filter(n=>profs[n]).length>1?'visible':'hidden'}
+let paData=null;
+async function partyAnalysis(){const names=[...picked].filter(n=>profs[n]);const r=await fetch('/api/partyquests?names='+encodeURIComponent(names.join(',')));if(!r.ok){alert(await r.text());return}paData=await r.json();padiff.value=Math.max(0,['Normal','Nightmare','Hell'].indexOf(diff.value));paRender();pabox.showModal()}
+function paRender(){const D=paData,df=+padiff.value,bots=D.bots,only=padiffonly.checked;let rows='',act=0,shown=0;const miss=bots.map(()=>0);
+D.quests.forEach(q=>{const has=bots.map(b=>b.done[df].indexOf(q.id)>-1),n=has.filter(x=>x).length;has.forEach((h,i)=>{if(!h&&!bots[i].problem)miss[i]++});if(only&&(n==0||n==bots.length))return;shown++;if(q.act!=act){act=q.act;rows+='<tr><td colspan='+(bots.length+1)+' class=dim style="padding-top:8px"><b>Act '+act+'</b>'}
+rows+='<tr><td>'+esc(q.title)+has.map((h,i)=>'<td style="text-align:center;'+(h?'':'color:var(--bad)')+'">'+(bots[i].problem?'?':(h?'&#10003;':'&mdash;'))).join('')});
+const head='<tr><th>'+bots.map(b=>'<th style="text-align:center">'+esc(b.char)+'<div class=dim style="font-weight:normal">'+(b.level?'level '+b.level:'')+'</div>').join('');
+const foot='<tr><td style="padding-top:8px"><b>Quests not done</b>'+miss.map(m=>'<td style="text-align:center;padding-top:8px"><b>'+m+'</b>').join('');
+const probs=bots.filter(b=>b.problem).map(b=>'<div style="color:var(--bad)">'+esc(b.char)+': '+esc(b.problem)+'</div>').join('');
+pabody.innerHTML=probs+'<table style="width:100%">'+head+rows+foot+'</table>'+(shown?'':'<p class=dim>'+(only?'No differences: every checked bot has done the same quests on this difficulty.':'Nothing to show.')+'</p>')}
 function pickAll(on){Object.keys(profs).forEach(n=>on?picked.add(n):picked.delete(n));lastHtml='';load()}
 function clsPill(c){return '<span class="pill cls c-'+esc((c.class||'').toLowerCase())+'"><b>'+c.level+'</b> '+esc(c.class)+(c.hardcore?' (HC)':'')+'</span>'}
 function ago(t){if(!t)return '';const s=Math.max(0,Math.round((Date.now()-new Date(t))/1000));return s<60?s+'s ago':s<3600?Math.floor(s/60)+'m ago':Math.floor(s/3600)+'h ago'}
 let invStorage=null,invDemo=false;
 function renderStatus(d0){invStorage=d0.storage||invStorage;const real=d0.profiles.some(p=>p.status!='stopped')||(d0.events||[]).length>0||location.search.indexOf('real')>-1;const d=d0.demo&&!real?Object.assign({},d0,d0.demo):d0;invDemo=!!(d0.demo&&!real);const on=d.profiles.filter(p=>p.status!='stopped');
 cpubox.style.display=d.cpu&&on.length?'':'none';if(d.cpu)cpubox.innerHTML='Bots are using <b>'+Math.round(d.cpu.percent)+'%</b> of this machine&#39;s CPU';
-stbots.innerHTML=on.length?on.map(p=>{const lead=d.player&&p.character==d.player&&d.playing===false,role=lead?'Leading '+(d.goal||'Farm'):(d.player?'Following '+d.player:'');return '<div class=pod style="cursor:pointer" title="Click to see what '+esc(p.name)+' is carrying" onclick="showInv(\''+esc(p.name)+'\')"><div class=top><span class=nm>'+esc(p.name)+'</span>'+(lead?' <span title="Leader">&#128681;</span>':'')+(p.char?' '+clsPill(p.char):'')+(role?' <span class=role>'+esc(role)+'</span>':'')+'<span class="pill '+p.status+'" style="margin-left:auto">'+(p.status=='starting'?'connecting':p.status)+'</span></div><div class="act actrow"><span><b>'+esc(p.zone||'Unknown')+'</b>: '+actIcon(p.activity)+esc(cap(p.activity||'Waiting for first report'))+'</span>'+(p.activity?'<span class=ago>'+ago(p.activityAt)+'</span>':'')+'</div></div>'}).join(''):'<div class="pod dim">No bots are running.</div>';
+stbots.innerHTML=on.length?on.map(p=>{const lead=d.player&&p.character==d.player&&d.playing===false,role=lead?'Leading '+(d.goal||'Farm'):(d.player?'Following '+d.player:'');return '<div class=pod style="cursor:pointer" title="Click to see what '+esc(p.name)+' is carrying" onclick="showInv(\''+esc(p.name)+'\')"><div class=top><span class=nm>'+esc(p.name)+'</span>'+(lead?' <span title="Leader">&#128681;</span>':'')+(p.char?' '+clsPill(p.char):'')+(role?' <span class=role>'+esc(role)+'</span>':'')+'<span class="pill '+p.status+'" style="margin-left:auto">'+(p.status=='starting'?'connecting':p.status)+'</span></div><div class="act actrow"><span><b>'+(p.difficulty?esc(p.difficulty)+' &bull; ':'')+esc(p.zone||'Unknown')+'</b>: '+actIcon(p.activity)+esc(cap(p.activity||'Waiting for first report'))+'</span>'+(p.activity?'<span class=ago>'+ago(p.activityAt)+'</span>':'')+'</div></div>'}).join(''):'<div class="pod dim">No bots are running.</div>';
 evs=d.events||[];stitems.innerHTML=evs.length?evs.map((i,n)=>{const who=esc(i.bot),det=i.detail?esc(i.detail):'';
 const row=(title,left,click)=>'<div class="arow'+(click?' click':'')+' k-'+i.kind+'"'+(click?' onclick="showItem('+n+')"':'')+'>'+title+'<div class=meta><span>'+left+'</span><span class=ago>'+ago(i.time)+'</span></div></div>';
 if(i.kind=='level')return row('<b>&#127881; Leveled Up!</b>',who+' &middot; Reached level '+esc(i.name));
@@ -458,7 +471,7 @@ const html='<tr><th><input type=checkbox title="select all" onchange="pickAll(th
 return '<tr class="'+(p.status=='running'?'run':(p.status=='starting'||p.status=='stopping'?'wait':''))+'"><td><input type=checkbox '+(me?'disabled ':'')+(picked.has(p.name)&&!me?'checked ':'')+'onchange="pick(\''+n+'\',this.checked)"><td>'+n+(me?' <span title="You">&#129781;</span>':(lead?' <span title="Leader">&#128681;</span>':''))+'<td>'+(p.char?clsPill(p.char):'-')+'<td title="'+esc(p.specAuto?'Detected: '+p.specAuto+(p.specWhy&&!p.forced?'. '+p.specWhy:''):p.specWhy)+'"><select onchange="setSpec(\''+n+'\',this.value)"><option value="">Auto: '+esc(p.specAuto||p.spec||'detect')+'</option>'+(p.specOptions||[]).map(o=>'<option'+(o==p.forced?' selected':'')+'>'+esc(o)+'</option>').join('')+'</select>'+
 '<td><span class="pill '+p.status+'">'+p.status+'</span>'+'<td class=r>'+p.runs+'<td class=r>'+p.chickens+'<td class=r>'+p.deaths+
 '<td><button class=primary '+(off&&d.gameOK?'':'disabled')+' onclick="act(\'start\',\''+n+'\')">Start</button><button '+(off?'disabled':'')+' onclick="act(\'stop\',\''+n+'\')">Stop</button></tr>'}).join('');
-if(html!==lastHtml){t.innerHTML=html;lastHtml=html}t.className=playingNow?'noruns':''
+if(html!==lastHtml){t.innerHTML=html;lastHtml=html};updPA();t.className=playingNow?'noruns':''
 const atEnd=c.scrollTop+c.clientHeight>=c.scrollHeight-24;c.innerHTML=d.logs.map(l=>'<div style="color:'+(isDark()?colD:colL)[l.color%12]+'">'+new Date(l.time).toLocaleTimeString()+' ['+esc(l.profile)+'] '+esc(l.msg)+'</div>').join('');if(atEnd)c.scrollTop=c.scrollHeight;}finally{busy=0}}
 route();setUrl(true);
 load();setInterval(load,2000);

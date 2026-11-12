@@ -395,6 +395,10 @@ var Attack = {
 				return false;
 			}
 
+			if (Pather.interrupt && Pather.interrupt()) { // Qolbot: a follower whose leader went to town stops fighting
+				return false;
+			}
+
 			//monsterList.sort(Sort.units);
 			monsterList.sort(sortfunc);
 
@@ -556,6 +560,10 @@ var Attack = {
 			}
 
 			if (me.dead) {
+				return false;
+			}
+
+			if (Pather.interrupt && Pather.interrupt()) { // Qolbot: a follower whose leader went to town stops fighting
 				return false;
 			}
 

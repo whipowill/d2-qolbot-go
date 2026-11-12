@@ -111,6 +111,9 @@ var PathDebug = {
 
 var Pather = {
 	// Qolbot: a long walk is "Traveling" on the Status tab (at most one line every 4 seconds)
+	// Qolbot: Follower sets this; when it returns true a walk or fight in progress is cut short (see Follower.js leaderMoved)
+	interrupt: null,
+
 	noteTravel: function () {
 		var now = getTickCount();
 
@@ -217,6 +220,10 @@ var Pather = {
 
 		while (path.length > 0) {
 			if (me.dead) { // Abort if dead
+				return false;
+			}
+
+			if (this.interrupt && this.interrupt()) { // Qolbot: a follower whose leader went to town stops walking at once
 				return false;
 			}
 
