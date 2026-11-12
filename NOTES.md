@@ -32,7 +32,7 @@ toggle (`Config.NotPlaying`):
 | `logfile.go` | logging, preflight (Wine / Xvfb / game path, with install hints), `clearLogs` |
 | `web.go`, `web/index.html` | API and the single embedded page (`go:embed`). `QOLBOT_DEV=1 ./qolbot` serves the page from the file on every request |
 | `prefixcmd.go` | private Wine prefix `~/.qolbot_wine_prefix` (`ownsPrefix` guards: only that or one inside the app folder is touched) |
-| `botgame.go` | read-only checks of PlugY.ini / BaseMod.ini (World Event warnings); repoints an old `botgame/` config |
+| `botgame.go` | read-only checks of PlugY.ini / BaseMod.ini (World Event warnings); `plugyProblem`: bots REFUSE to start (via `gameProblem`, so web banner + every launch path) when PlugY is active (`ActivePlugin=1`) and either `ActiveSharedStashInMultiPlayer=1`, or `ActiveWorldEvent=1` together with `ActiveAutoSell=1` (AutoSell alone is harmless); repoints an old `botgame/` config |
 | `joinwatch.go` | warns when a bot sits on Join Game 50 s, quoting the game's own `D2YYMMDD.txt` load errors |
 | `d2bs/kolbot/libs/common/AutoSpec.js` | applies the plan (`apply()`): scripts, goal, farm, pickit lists, noPickup, PublicMode, auto-save, storage, report switches |
 | `libs/bots/Follower.js`, `Questing.js`, `common/Quester.js` | following, quest NPC logic (talk only when a reward is pending, repeat talks, consume handed-over items) |

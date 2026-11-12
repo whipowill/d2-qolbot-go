@@ -48,7 +48,7 @@ label{cursor:pointer}
 .sub button:hover{background:none;color:var(--ink)}
 .sub button.on{background:var(--card);color:var(--ink);font-weight:600;box-shadow:var(--shadow)}
 .pane{display:none;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px 24px;box-shadow:var(--shadow)}
-#gbanner{display:none;background:var(--bad-soft);border:1px solid var(--bad);border-radius:10px;padding:10px 14px;margin:0 0 16px}
+#gbanner{display:none;background:var(--bad-soft);border:1px solid var(--bad);border-radius:10px;padding:10px 14px;margin:0 0 16px}#gbanner code{background:rgba(128,128,128,.22);background:color-mix(in srgb,var(--bad) 20%,transparent);color:var(--ink)}
 .bar{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;margin:0 0 14px}
 .bar p{margin:0}
 .toolbar{margin:14px 0 14px}.toolbar button{padding:3px 11px}
@@ -240,7 +240,7 @@ that <code>PlugY.ini</code> and <code>BaseMod.ini</code> have the World Event of
 <code>logs/</code> and can be cleared from the Bots tab.</p>
 </div>
 <div id=bots>
-<div id=gbanner><b>Bots cannot start yet.</b> Set the path to Game.exe on the <a href="#" onclick="tab('cfg');return false"><b>Settings tab</b></a> first.</div>
+<div id=gbanner><b>Bots cannot start.</b> <span id=gwhy></span></div>
 <p style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px"><label><b>Who is going to be leader?</b> <select id=player onchange="setPlayer(this.value)"></select></label>
 <span id=goalwrap style="display:none;align-items:center;gap:8px"><label><b>Objective</b> <select id=goal onchange="goalChanged()"><option>Farm</option><option>Quest</option></select></label> <label><b>Difficulty</b> <select id=diff onchange="saveGoal(true)"><option>Normal</option><option>Nightmare</option><option selected>Hell</option></select></label> <button id=farmbtn onclick="toggleFarm()" style="display:none">Pick Farm Locations</button> <span class=dim id=goalmsg></span></span></p>
 <dialog id=farmbox style="max-width:900px" onclick="outsideClose(event,this)"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px"><b>Farm Locations</b><button onclick="farmbox.close()">Close</button></div><div id=farmlist style="font-size:12.5px;margin:8px 0 18px"></div><button class=primary onclick="saveGoal()">Save</button> <span class=dim id=farmmsg></span></dialog>
@@ -452,7 +452,7 @@ const d=await (await fetch('/api/state')).json();clearErr();profs={};d.profiles.
 fillPlaying(d);renderStatus(d);
 const opts=d.profiles.map(p=>'<option value="'+esc(p.character)+'">'+esc(p.character)+'</option>').join('');
 if(opts!==playerOpts){player.innerHTML=opts;playerOpts=opts}
-if(document.activeElement!==safe)safe.checked=!!d.safeMode;gameOK=!!d.gameOK;gbanner.style.display=d.gameOK?'none':'block';if(!d.gameOK&&!tabAuto){tabAuto=true;tab('cfg')}fillCfg(d);fillGoal(d);
+if(document.activeElement!==safe)safe.checked=!!d.safeMode;gameOK=!!d.gameOK;gbanner.style.display=d.gameOK?'none':'block';gwhy.innerHTML=d.gameOK?'':esc(d.gameProblem).replace(/\bActive\w+(=\d+)?|\b(?:PlugY\.ini|Game\.exe)\b|( (?:in|at) )(.+?\.(?:ini|exe))(?=[. ]*(?:Fix|$))|(\bto )0\b/g,(m,a,pre,path,to)=>path?pre+'<code>'+path+'</code>':to?to+'<code>0</code>':'<code>'+m+'</code>');if(!d.gameOK&&!tabAuto&&/^Game\.exe was not found|^The path to Diablo II/.test(d.gameProblem||'')){tabAuto=true;subNow='p_game';tab('cfg');sub('p_game')}fillCfg(d);fillGoal(d);
 playerNow=d.player||'';if(document.activeElement!==player)player.value=playerNow;
 const html='<tr><th><input type=checkbox title="select all" onchange="pickAll(this.checked)"><th>Profile<th>Class<th>Spec<th>Status<th class=r>Runs<th class=r>Chickens<th class=r>Deaths<th></tr>'+d.profiles.map(p=>{const n=esc(p.name),lead=d.player&&p.character==d.player,me=lead&&playingNow,off=p.status=='stopped'&&!me;
 return '<tr class="'+(p.status=='running'?'run':(p.status=='starting'||p.status=='stopping'?'wait':''))+'"><td><input type=checkbox '+(me?'disabled ':'')+(picked.has(p.name)&&!me?'checked ':'')+'onchange="pick(\''+n+'\',this.checked)"><td>'+n+(me?' <span title="You">&#129781;</span>':(lead?' <span title="Leader">&#128681;</span>':''))+'<td>'+(p.char?clsPill(p.char):'-')+'<td title="'+esc(p.specAuto?'Detected: '+p.specAuto+(p.specWhy&&!p.forced?'. '+p.specWhy:''):p.specWhy)+'"><select onchange="setSpec(\''+n+'\',this.value)"><option value="">Auto: '+esc(p.specAuto||p.spec||'detect')+'</option>'+(p.specOptions||[]).map(o=>'<option'+(o==p.forced?' selected':'')+'>'+esc(o)+'</option>').join('')+'</select>'+

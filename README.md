@@ -23,9 +23,9 @@ The goal was to create an experience where bots will join your games and play wi
 - Gallows humor remarks as they play
 - Capture waypoints as they play
 - Pickup quest items as they play
-- AutoEquip items as they play
-- AutoStat assign stats as they play
-- AutoSkill assign skills as they play
+- Auto equip items as they play
+- Auto assign stats as they play
+- Auto assign skills as they play
 - Complete quests as they are able in town
 - Infinite stash support for PlugY
 
@@ -75,7 +75,11 @@ The attempt was to make something really complicated become really simple.
 
 ## Known Issues
 
-- PlugY ``World Event`` auto-selling sequence crashes Qolbot
+- PlugY
+  - Shared stash will cause major file overwrite problems (must have ``ActiveSharedStashInMultiPlayer=0``)
+  - World Event auto-selling sequence will crash the bots (must have ``ActiveAutoSell=0``)
+
+The program will prevent you from running it if these issues are detected.
 
 ## Credits
 

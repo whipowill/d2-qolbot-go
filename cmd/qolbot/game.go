@@ -20,7 +20,7 @@ func (m *Manager) gameProblem() string {
 	if st, err := os.Stat(exe); err != nil || st.IsDir() {
 		return fmt.Sprintf("Game.exe was not found at %s. Fix the path on the web page's Settings tab.", exe)
 	}
-	return ""
+	return plugyProblem(filepath.Dir(exe))
 }
 
 // setGameExe validates and stores a new Game.exe path (from the web page), rebuilds the bot game folder and
