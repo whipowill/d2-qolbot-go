@@ -6,17 +6,19 @@ This program focuses on botting on your local machine, allowing you to create LA
 
 What began as an old version of Kolbot was eventually rewritten in Go to make it run on Linux and Mac in addition to Windows. The UI has been completely redesigned and strips out all the complexity of the old botting system.
 
+The beauty of running this on Linux is that I never even see the bot windows at all. It all happens completely in the background on my machine using minimal resources. Each bot I run consumes about 5% of my total CPU.
+
 This program is built around D2LOD ``v1.13d`` and includes PlugY support.
 
 | | |
 |---|---|
 | ![Screenshot](https://i.imgur.com/FNm353J.png) | ![Screenshot](https://i.imgur.com/bPrhvVZ.png) |
 
-The beauty of running this on Linux is that I never even see the bot windows at all. It all happens completely in the background on my machine using minimal resources. Each bot I run consumes about 5% of my total CPU.
-
 ## Vision
 
 The goal was to create an experience where bots will join your games and play with you and automatically do the things a normal person would do. They crack jokes, gather waypoints, complete quests, gear up, choose skills, gamble, etc.
+
+![Screenshot](https://i.imgur.com/xJqNewn.png)
 
 - Gallows humor remarks as they play
 - Capture waypoints as they play
@@ -26,8 +28,6 @@ The goal was to create an experience where bots will join your games and play wi
 - AutoSkill assign skills as they play
 - Complete quests as they are able in town
 - Infinite stash support for PlugY
-
-![Screenshot](https://i.imgur.com/xJqNewn.png)
 
 ## Install
 
