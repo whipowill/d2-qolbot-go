@@ -18,7 +18,7 @@ func (m *Manager) libsDir() string { return filepath.Join(m.root, "d2bs", m.cfg.
 
 // planFor reads a character's save and decides what it is and what it should keep doing.
 func (m *Manager) planFor(character string) (spec.Plan, *spec.Save, error) {
-	sv, err := spec.ReadSave(filepath.Join(m.saveDir(), character+".d2s"))
+	sv, err := spec.ReadSave(m.savePath(character))
 	if err != nil {
 		return spec.Plan{}, nil, err
 	}
@@ -49,8 +49,9 @@ func (m *Manager) writeSpec(profile, character, force string) {
 	p.Protect = m.protectLocked()
 	p.Storage = m.storageLocked()
 	p.Plugy = m.usesPlugy()
-	p.AutoTown = m.cfg.AutoTown == nil || *m.cfg.AutoTown
-	p.Gamble = m.cfg.Gamble == nil || *m.cfg.Gamble
+	eff := m.cfg.Effective()
+	p.AutoTown = eff.AutoTown
+	p.Gamble = eff.Gamble
 	if st := m.states[profile]; st != nil && m.roleOf(st) == "host" && st.Role == "" { // the leader bot farms: its own lists
 		p.Pickit = m.leaderLists(p.Class)
 		if m.pickitRules().any() {
@@ -69,24 +70,25 @@ func (m *Manager) writeSpec(profile, character, force string) {
 		p.Farm = m.farmSelection()
 	}
 	p.ReportTasks = m.reportTasks()
-	p.ReportProblems = m.cfg.ReportProblems == nil || *m.cfg.ReportProblems
+	p.ReportProblems = eff.ReportProblems
 	if _, every, available := m.saveSettingsLocked(); available && m.usesPlugy() { // the lock is held here: the Locked variant must be used
 		p.AutoSaveMinutes = every
 	}
 	if !m.usesPlugy() || !m.plugyCommands {
 		p.Storage.AddStashPages = false // cannot be done: the bot will stop with an error instead of trying /insertpage
 	}
-	p.Banter = m.cfg.Banter == nil || *m.cfg.Banter
+	p.Banter = eff.Banter
 	p.BanterBubble = m.cfg.BanterBubble
 	// The three automation switches (Automation tab); Safe mode (Bots page) overrides all of them.
-	p.AutoEquip = !p.SafeMode && (m.cfg.AutoEquip == nil || *m.cfg.AutoEquip)
-	p.AutoStat = !p.SafeMode && (m.cfg.AutoStat == nil || *m.cfg.AutoStat)
-	p.AutoSkill = !p.SafeMode && (m.cfg.AutoSkill == nil || *m.cfg.AutoSkill)
+	p.AutoEquip = !p.SafeMode && eff.AutoEquip
+	p.AutoStat = !p.SafeMode && eff.AutoStat
+	p.AutoSkill = !p.SafeMode && eff.AutoSkill
 	if m.cfg.MercWear != nil {
 		p.MercWear = *m.cfg.MercWear
 	}
-	p.QuestClearAll = m.cfg.QuestClearAll == nil || *m.cfg.QuestClearAll
-	p.WatchKills = m.cfg.WatchKills == nil || *m.cfg.WatchKills
+	p.QuestClearAll = eff.QuestClearAll
+	p.TeleportTeam = eff.TeleportTeam
+	p.WatchKills = eff.WatchKills
 	m.mu.Unlock()
 	if err := p.WriteFile(filepath.Join(m.root, "d2bs", m.cfg.ScriptPath, "data"), profile); err != nil {
 		m.logf(9, profile, "auto-spec: cannot write plan: %v", err)
@@ -153,7 +155,7 @@ func (m *Manager) loadSkillNames() {
 
 // specLabel is the short build name shown in the web page, cached until the save file changes.
 func (m *Manager) specLabel(character, force string) (label, why string) {
-	path := filepath.Join(m.saveDir(), character+".d2s")
+	path := m.savePath(character)
 	st, err := os.Stat(path)
 	if err != nil {
 		return "", ""

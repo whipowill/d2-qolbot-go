@@ -5,6 +5,8 @@
 *
 */
 
+include("common/Plan.js");
+
 const AutoSkill = new function () {
 	this.skillBuildOrder = [];
 	this.save = 0;
@@ -76,7 +78,7 @@ const AutoSkill = new function () {
 	this.points = function (id) {
 		if (this.hardPoints === null) { // not handed over by AutoSpec.apply: read the plan file ourselves, once
 			try {
-				let plan = typeof AutoSpec === "object" ? (AutoSpec.plan || AutoSpec.read()) : null;
+				let plan = typeof Plan === "object" ? Plan.get() : null;
 
 				this.hardPoints = plan && plan.skillPoints ? plan.skillPoints : false;
 				print("AutoSkill: skill points come from " + (this.hardPoints ? "the save (" + JSON.stringify(this.hardPoints) + ")" : "the game (the plan has none)"));

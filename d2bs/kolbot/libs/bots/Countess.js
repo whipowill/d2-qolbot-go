@@ -5,9 +5,15 @@
 */
 
 function Countess() {
-	var i, poi;
-
 	Town.doChores();
+
+	// a Sorceress in the party (Quests tab) puts the team at the way into Tower Cellar Level 5: no walk from the waypoint
+	if (typeof QuickTravel === "object" && QuickTravel.portal("countess", 25)) {
+		Precast.doPrecast(true);
+
+		return Countess.kill();
+	}
+
 	Pather.useWaypoint(6);
 	Precast.doPrecast(true);
 
@@ -15,7 +21,12 @@ function Countess() {
 		throw new Error("Failed to move to Countess");
 	}
 
-	poi = getPresetUnit(me.area, 2, 580);
+	return Countess.kill();
+}
+
+// Kill her from the way into Tower Cellar Level 5, wherever the bot came from (the walk above, or a Sorceress's portal: Quester.js).
+Countess.kill = function () {
+	var poi = getPresetUnit(me.area, 2, 580);
 
 	if (!poi) {
 		throw new Error("Failed to move to Countess (preset not found)");
@@ -37,4 +48,4 @@ function Countess() {
 	}
 
 	return true;
-}
+};

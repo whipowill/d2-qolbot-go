@@ -4,6 +4,9 @@
 *	@desc		handle item pickup
 */
 
+include("common/Report.js");
+include("common/QuestItems.js");
+
 var Pickit = {
 	gidList: [],
 	beltSize: 1,
@@ -11,6 +14,9 @@ var Pickit = {
 	// Safe mode (Bots page): pick up nothing but consumables and quest items: gold, tomes, scrolls, missile potions, keys, potions,
 	// and the quest items the bots keep (the item codes below are Quest.nip's list, the same as the "never throw away" list in Town.clearInventory)
 	safeOnly: false,
+	// A follower of a leader bot picks up nothing except the quest consumables (the Book of Skill, the Potion of Life, ...): every character has to
+	// take and use its own, the leader cannot do it for them. Set by AutoSpec.apply for a bot that has plan.noPickup.
+	questOnly: false,
 	safeKinds: [4, 18, 22, 38, 39, 41, 76, 77, 78, 79, 80, 81],
 	safeQuestIds: [87, 89, 90, 91, 92, 173, 174, 521, 524, 525, 545, 546, 547, 548, 549, 551, 552, 553, 554, 555, 644, 646],
 	safeQuestCodes: ["pk1", "pk2", "pk3", "dhn", "bey", "mbr", "toa", "tes", "ceh", "bet", "fed"],
@@ -102,7 +108,7 @@ var Pickit = {
 	},
 
 	pickItems: function () {
-		var status, status_tiers, item, canFit, profit, gidNow, name,
+		var status, status_tiers, item, canFit, profit, gidNow, name, consumable,
 			needMule = false,
 			pickList = [];
 
@@ -120,7 +126,7 @@ var Pickit = {
 
 		if (item) {
 			do {
-				if ((item.mode === 3 || item.mode === 5) && getDistance(me, item) <= Config.PickRange) {
+				if ((item.mode === 3 || item.mode === 5) && getDistance(me, item) <= Config.PickRange && (!this.questOnly || QuestItems.isConsumable(item))) {
 					pickList.push(copyUnit(item));
 				}
 			} while (item.getNext());
@@ -158,6 +164,11 @@ var Pickit = {
 						canFit = Storage.Inventory.CanFit(pickList[0]) || [4, 22, 76, 77, 78].indexOf(pickList[0].itemType) > -1;
 					}
 
+					// A quest consumable is never left behind for want of room: make room (town chores, spare potions, junk) and look again
+					if (!canFit && QuestItems.isConsumable(pickList[0]) && QuestItems.makeRoom(pickList[0].sizex, pickList[0].sizey)) {
+						return this.pickItems();
+					}
+
 					// Try to make room by selling items in town
 					if (!canFit) {
 						// Check if any of the current inventory items can be stashed or need to be identified and eventually sold to make room
@@ -192,11 +203,16 @@ var Pickit = {
 							name = pickList[0].name;
 							this.pickItem(pickList[0], 4, null);
 
-							if (me.getItem(-1, -1, gidNow) && typeof AutoSpec === "object") {
-								AutoSpec.note("This might bring a little profit: " + name);
+							if (me.getItem(-1, -1, gidNow)) {
+								Report.note("Pickit", "This might bring a little profit: " + name);
 							}
 						} else {
+							consumable = QuestItems.isConsumable(pickList[0]);
 							this.pickItem(pickList[0], status.result, status.line);
+
+							if (consumable) {
+								QuestItems.useAll(); // read it at once: a chicken before the next town visit must not take the points with it
+							}
 						}
 					}
 				}
@@ -259,6 +275,10 @@ var Pickit = {
 
 	pickItem: function (unit, status, keptLine) {
 		if (this.safeOnly && !this.safeKind(unit)) { // safe mode
+			return false;
+		}
+
+		if (this.questOnly && !QuestItems.isConsumable(unit)) {
 			return false;
 		}
 
@@ -470,6 +490,10 @@ MainLoop:
 			return false;
 		}
 
+		if (this.questOnly && !QuestItems.isConsumable(unit)) {
+			return false;
+		}
+
 		switch (unit.classid) {
 		case 92: // Staff of Kings
 		case 173: // Khalim's Flail
@@ -675,7 +699,7 @@ MainLoop:
 			gid = this.gidList.shift();
 			item = getUnit(4, -1, -1, gid);
 
-			if (item && (item.mode === 3 || item.mode === 5) && Town.ignoredItemTypes.indexOf(item.itemType) === -1 && getDistance(me, item) <= Config.PickRange) {
+			if (item && (item.mode === 3 || item.mode === 5) && Town.ignoredItemTypes.indexOf(item.itemType) === -1 && getDistance(me, item) <= Config.PickRange && (!this.questOnly || QuestItems.isConsumable(item))) {
 				itemList.push(copyUnit(item));
 			}
 		}

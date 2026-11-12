@@ -55,12 +55,7 @@ func (m *Manager) detectPlugyCommands() {
 func (m *Manager) saveSettings() (onStop bool, everyMin int, available bool) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	onStop = m.cfg.SaveOnStop == nil || *m.cfg.SaveOnStop
-	everyMin = 5
-	if m.cfg.AutoSaveMinutes != nil {
-		everyMin = *m.cfg.AutoSaveMinutes
-	}
-	return onStop, everyMin, m.plugyCommands
+	return m.saveSettingsLocked()
 }
 
 // inGame reports whether the profile's starter script has reported a running game in the last few seconds.
@@ -215,16 +210,11 @@ var _ = strings.TrimSpace
 
 // saveSettingsLocked is saveSettings for callers that already hold m.mu.
 func (m *Manager) saveSettingsLocked() (onStop bool, everyMin int, available bool) {
-	onStop = m.cfg.SaveOnStop == nil || *m.cfg.SaveOnStop
-	everyMin = 5
-	if m.cfg.AutoSaveMinutes != nil {
-		everyMin = *m.cfg.AutoSaveMinutes
-	}
-	return onStop, everyMin, m.plugyCommands
+	return m.cfg.Effective().SaveOnStop, intOr(m.cfg.AutoSaveMinutes, 5), m.plugyCommands
 }
 
 // usesPlugy is the "my game uses PlugY" setting (default true).
-func (m *Manager) usesPlugy() bool { return m.cfg.Plugy == nil || *m.cfg.Plugy }
+func (m *Manager) usesPlugy() bool { return m.cfg.Effective().Plugy }
 
 // plugyReport describes what is known about PlugY: what the user said, and what the bots' PlugY.ini says.
 type plugyReport struct {

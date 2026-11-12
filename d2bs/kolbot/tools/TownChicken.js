@@ -24,6 +24,9 @@ include("common/Prototypes.js");
 include("common/Runewords.js");
 include("common/Storage.js");
 include("common/Town.js");
+include("common/Plan.js");
+include("common/Throttle.js");
+include("common/Team.js");
 
 function main() {
 	var townCheck = false;
@@ -108,6 +111,27 @@ function main() {
 				Pather.makePortal(); // stays open for the teammate
 			} catch (portalError) {
 				print("Could not open a portal for a teammate: " + portalError);
+			} finally {
+				this.togglePause();
+			}
+		}
+
+		// THE TEAM STAYS TOGETHER, in Farm and in Quest mode, with or without Quick Travel (this rule is above all the others): when a teammate has
+		// not been in my area for a minute (time to repair or sell in town, or to make its way to a waypoint or a portal), and this did not happen in the
+		// last 3 minutes, the leader goes to town, everybody gathers there, and they all go back out together. A Sorceress that leaves on a Quick
+		// Travel errand only places the portal and comes back. Only the leader bot does this (it has no leader), and only while it has an objective.
+		if (!Config.Leader && !me.inTown && me.gameReady && Throttle.due("regroup", 5000) && Date.now() - Team.lastRegroup > 180000 &&
+				(Plan.get() || {}).goal && Team.separated(60000).length) {
+			this.togglePause();
+
+			while (!me.gameReady) {
+				delay(100);
+			}
+
+			try {
+				Team.regroup();
+			} catch (regroupError) {
+				Misc.errorReport(regroupError, "TownChicken.js");
 			} finally {
 				this.togglePause();
 			}

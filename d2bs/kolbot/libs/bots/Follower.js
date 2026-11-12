@@ -46,6 +46,15 @@
 *	quit - exit game
 */
 
+include("common/Report.js");
+include("common/Throttle.js");
+include("common/Chores.js");
+include("common/Pack.js");
+include("common/Saver.js");
+include("common/QuestItems.js");
+include("common/Quester.js");
+include("common/Team.js");
+
 function Follower() {
 	var i, j, stop, leader, leaderUnit, charClass, piece, skill, result, unit, player,
 		commanders = Config.LeaderOptions,
@@ -58,23 +67,7 @@ function Follower() {
 	// the quest sweep); later visits do only what is needed (heal, repair, potions, scrolls, identify, stash, revive,
 	// equip, spend points), and say which. Nothing needed = no walking and no chat.
 	this.choresRun = false;
-	// problem reports: hidden when the player switched them off (Settings tab)
-	this.problem = function (message) {
-		if (typeof AutoSpec === "object") {
-			AutoSpec.problem(message);
-		} else {
-			say(message);
-		}
-	};
-
-	// routine chatter: hidden when the player switched task reports off (Settings tab)
-	this.note = function (message) {
-		if (typeof AutoSpec === "object") {
-			AutoSpec.note(message);
-		} else {
-			say(message);
-		}
-	};
+	Report.mixin(this, "Follower"); // this.log / this.note / this.problem, written under the Follower's own name
 
 	// Druids summon their minions in town too, so they walk out with them.
 	this.townSummon = function () {
@@ -85,7 +78,7 @@ function Follower() {
 		try {
 			Precast.summonDruid();
 		} catch (summonError) {
-			print("AutoSpec: town summon: " + summonError);
+			print("Follower: town summon: " + summonError);
 		}
 	};
 
@@ -93,10 +86,10 @@ function Follower() {
 		this.townSummon();
 
 		var first = !this.choresRun,
-			reasons = typeof AutoSpec === "object" ? AutoSpec.choresNeeded(first) : null;
+			reasons = Chores.needed(first);
 
 		if (!force && reasons && reasons.length === 0) {
-			print("AutoSpec: nothing to do in town.");
+			print("Follower: nothing to do in town.");
 
 			return true;
 		}
@@ -111,7 +104,7 @@ function Follower() {
 		try {
 			Quester.questNpcs();
 		} catch (questError) {
-			print("AutoSpec: quest NPCs: " + questError);
+			print("Follower: quest NPCs: " + questError);
 			me.cancel();
 		}
 
@@ -167,7 +160,7 @@ function Follower() {
 		if (!open && !this.actSaid[act]) {
 			this.actSaid[act] = true;
 			this.problem("I cannot follow you to act " + act + ": I have not unlocked it yet.");
-			print("AutoSpec: act " + act + " is not open for " + me.name);
+			print("Follower: act " + act + " is not open for " + me.name);
 		}
 
 		return open;
@@ -179,7 +172,7 @@ function Follower() {
 		try {
 			Town.goToTown(act);
 		} catch (wpError) {
-			print("AutoSpec: waypoint to act " + act + " failed (" + wpError + ")");
+			print("Follower: waypoint to act " + act + " failed (" + wpError + ")");
 			me.cancel();
 			me.cancel();
 
@@ -193,7 +186,7 @@ function Follower() {
 		}
 
 		if (me.act !== act) {
-			print("AutoSpec: still in act " + me.act + " after trying to reach act " + act);
+			print("Follower: still in act " + me.act + " after trying to reach act " + act);
 		}
 
 		return me.act === act;
@@ -219,7 +212,7 @@ function Follower() {
 			try {
 				this.doChores();
 			} catch (choreError) {
-				print("AutoSpec: chores after travel: " + choreError);
+				print("Follower: chores after travel: " + choreError);
 			}
 		}
 
@@ -259,7 +252,7 @@ function Follower() {
 
 		this.followTrips = (this.followTrips || []).filter(function (t) { return now - t < 40000; });
 		this.followTrips.push(now);
-		print("AutoSpec: follow " + how + ": area " + fromArea + " -> " + me.area + " (leader in " + (leader ? leader.area : "?") + "), trip " + this.followTrips.length + " in 40s");
+		print("Follower: follow " + how + ": area " + fromArea + " -> " + me.area + " (leader in " + (leader ? leader.area : "?") + "), trip " + this.followTrips.length + " in 40s");
 
 		if (this.followTrips.length >= 4) {
 			this.followPausedUntil = now + 60000;
@@ -353,8 +346,9 @@ function Follower() {
 			}
 
 			// only the leader's portal that leads to where the leader is now: an old portal of the leader's (from an earlier trip) leads somewhere else
-			if (Pather.usePortal(leader.area, leader.name)) {
-				this.lastFollowAt = Date.now(); this.note("Going outside (your portal).");
+			// (a portal of the leader's, else any portal of a party member that leads there: a Sorceress's portal that the leader took)
+			if (Pather.getPortal(leader.area, leader.name) ? Pather.usePortal(leader.area, leader.name) : Pather.usePortal(leader.area, null)) {
+				this.lastFollowAt = Date.now(); this.note("Going outside (a portal of the party's).");
 				this.noteFollow("through your portal", fromArea);
 
 				return true;
@@ -421,7 +415,7 @@ function Follower() {
 	// (Pather.interrupt) so a walk or a fight in progress ends at once and autoFollow runs, instead of the bot carrying on
 	// toward the spot where the leader was (leader teleports away, then opens a portal: the bot used to walk on, "searching").
 	this.leaderMoved = function () {
-		if (this.following || !leader || me.inTown || me.dead || !me.gameReady || Config.AutoTown === false || typeof AutoSpec !== "object") {
+		if (this.following || this.errand || !leader || me.inTown || me.dead || !me.gameReady || Config.AutoTown === false) {
 			return false;
 		}
 
@@ -433,7 +427,7 @@ function Follower() {
 			return false; // area 0 (loading) or the leader is in the field: the normal follow logic handles it
 		}
 
-		AutoSpec.timers.follow = 0; // autoFollow runs on the very next pass of the main loop
+		Throttle.reset("follow"); // autoFollow runs on the very next pass of the main loop
 		return true;
 	};
 
@@ -979,6 +973,15 @@ function Follower() {
 					break;
 				}
 
+				// "portal <place>" with no name: the Sorceress that Team.chosenSorc names goes (every bot works out the same one), the others stay quiet
+				if (msg.split(" ")[0] === "portal" && msg.split(" ").length === 2) {
+					if (this.canWormhole() && Team.chosenSorc() === me.name) {
+						this.openWormhole(msg.split(" ")[1]);
+					}
+
+					break;
+				}
+
 				// if command is includes "portal"
 				if (msg.indexOf("portal ") > -1) {
 					piece = msg.split(" ")[0];
@@ -1117,7 +1120,23 @@ function Follower() {
 		return false;
 	};
 
+	// where each place's portal must be opened (Duriel's depends on which tomb is the real one: not checked)
+	this.wormholeAreas = {countess: 25, mausoleum: 19, pit: 12, andy: 37, andariel: 37, at: 65, tunnels: 65, summoner: 74, ft: 94, kt: 94, temple: 94,
+		meph: 102, mephisto: 102, diablo: 108, halls: 124, nihlathak: 124, baal: 131};
+
+	// She leaves the leader on purpose, only to place the portal: the "leader is in town, follow" hook must not pull her back (this.errand).
 	this.openWormhole = function (destination)
+	{
+		this.errand = true;
+
+		try {
+			this.travelWormhole(destination);
+		} finally {
+			this.errand = false;
+		}
+	};
+
+	this.travelWormhole = function (destination)
 	{
 		// I need to add a check in here for hasWaypoint
 		// so she doesn't run off into the wild and get killed.
@@ -1208,6 +1227,13 @@ function Follower() {
 				break;
 		}
 
+		// a portal anywhere but at the place is no use to the team: say so instead (the leader walks)
+		if (is_portal && this.wormholeAreas[destination] && me.area !== this.wormholeAreas[destination])
+		{
+			say("I could not get there.");
+			is_portal = false;
+		}
+
 		if (is_portal)
 		{
 			// go back to town
@@ -1295,11 +1321,11 @@ function Follower() {
 	//say("Partied.");
 
 	// make sure the pickup area of the inventory is free (moves what is in it to the stash, and says so in chat)
-	if (me.inTown && typeof AutoSpec === "object") {
+	if (me.inTown) {
 		try {
-			AutoSpec.freePickupArea();
+			Pack.freePickupArea();
 		} catch (areaError) {
-			print("AutoSpec: freePickupArea error: " + areaError);
+			print("Follower: freePickupArea error: " + areaError);
 		}
 	}
 
@@ -1311,8 +1337,11 @@ function Follower() {
 	while (Misc.inMyParty(Config.Leader)) {
 
 		// save the character now and then (PlugY /save)
-		if (typeof AutoSpec === "object") {
-			AutoSpec.autoSave();
+		Saver.auto();
+
+		// a quest reward the game put into the pack by itself (or one that dropped and was picked up) is used at once, not at the next town visit
+		if (Throttle.due("questitems", 10000)) {
+			QuestItems.useAll();
 		}
 
 		// say quote
@@ -1332,18 +1361,16 @@ function Follower() {
 			delay(500);
 		}
 
-		if (typeof AutoSpec === "object") {
-			AutoSpec.questReport(false);
-		}
+		Quester.logState(false);
 
 		// follow the leader between town and the field by itself
-		if (Config.AutoTown !== false && typeof AutoSpec === "object" && AutoSpec.due("follow", 2500)) {
+		if (Config.AutoTown !== false && Throttle.due("follow", 2500)) {
 			this.following = true;
 
 			try {
 				this.autoFollow();
 			} catch (followError) {
-				print("AutoSpec: autoFollow error: " + followError);
+				print("Follower: autoFollow error: " + followError);
 
 				// whatever went wrong, leave no menu open and no half-finished trip behind: the next pass starts clean
 				try {
@@ -1388,33 +1415,33 @@ function Follower() {
 			}
 
 			// badly hurt: go to town and see the healer instead of staying in the field on the last few points of life
-			if (!me.dead && me.hp * 100 / me.hpmax < (Config.HealTripHP || 40) && typeof AutoSpec === "object" && AutoSpec.due("healtrip", 45000)) {
+			if (!me.dead && me.hp * 100 / me.hpmax < (Config.HealTripHP || 40) && Throttle.due("healtrip", 45000)) {
 				this.problem("I am badly hurt. Going to town to heal.");
 
 				try {
 					Misc.unShift(); // out of bear form for the trip (the town portal scroll)
 					Town.visitTown();
 				} catch (healError) {
-					print("AutoSpec: heal trip: " + healError);
+					print("Follower: heal trip: " + healError);
 					me.cancel();
 				}
 			}
 
 			// a summoner that does not fight never gets the after-fight buffs: every minute summon whatever has died (summons work in bear form too)
-			if (Config.FollowNoFight && me.classid === 5 && typeof AutoSpec === "object" && AutoSpec.due("resummon", 60000)) {
+			if (Config.FollowNoFight && me.classid === 5 && Throttle.due("resummon", 60000)) {
 				try {
 					Precast.summonDruid();
 				} catch (summonError) {
-					print("AutoSpec: summon: " + summonError);
+					print("Follower: summon: " + summonError);
 				}
 			}
 
 			// a character that must stay out of the way (Config.FollowDistance, e.g. a summoner) keeps that far from the leader
-			if (Config.FollowNoFight && Config.Wereform && typeof AutoSpec === "object" && AutoSpec.due("shift", 5000)) {
+			if (Config.FollowNoFight && Config.Wereform && Throttle.due("shift", 5000)) {
 				try {
 					Misc.shapeShift(Config.Wereform); // stay in bear/wolf form: far more life, and nothing to do in it but survive
 				} catch (shiftError) {
-					print("AutoSpec: shapeshift: " + shiftError);
+					print("Follower: shapeshift: " + shiftError);
 				}
 			}
 
@@ -1494,7 +1521,7 @@ function Follower() {
 			this.gatherWaypoint();
 
 			// autoequip any items if you can (not on every pass of this loop: every 30 seconds is plenty)
-			if (typeof AutoSpec !== "object" || AutoSpec.due("equip", 30000)) {
+			if (Throttle.due("equip", 30000)) {
 				if (me.inTown) { // gear another bot dropped in town may be an upgrade for this one
 					Pickit.pickItems();
 				}

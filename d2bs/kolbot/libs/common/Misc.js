@@ -1294,7 +1294,7 @@ var Item = {
 			}
 		}
 
-		var report = typeof AutoSpec === "object" ? AutoSpec.due("mercreport", 120000) : true;
+		var report = typeof Throttle === "object" ? Throttle.due("mercreport", 120000) : true;
 
 		if (report) print("autoMercEquip: merc " + (me.getMerc() ? me.getMerc().name + " (class " + me.getMerc().classid + ")" : "none") + ", " + items.length + " item(s) with a merc tier");
 

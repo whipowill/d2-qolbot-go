@@ -28,6 +28,7 @@ type Save struct {
 	Dex, Vit      int
 	UnspentStats  int
 	UnspentSkills int
+	MaxLifeRaw    int         // base maximum life, in 1/256 points (stat 7); gear is not in it
 	Skills        map[int]int // skill id -> hard points (only skills with points)
 }
 
@@ -123,6 +124,8 @@ func ParseSave(b []byte) (*Save, error) {
 			s.UnspentStats = v
 		case 5:
 			s.UnspentSkills = v
+		case 7:
+			s.MaxLifeRaw = v
 		case 12:
 			if v > 0 {
 				s.Level = v

@@ -6,11 +6,17 @@
 
 function Nihlathak() {
 	Town.doChores();
-	Pather.useWaypoint(123);
-	Precast.doPrecast(false);
 
-	if (!Pather.moveToExit(124, true)) {
-		throw new Error("Failed to go to Nihlathak");
+	// a Sorceress in the party puts the team at the way into the Halls of Vaught (Quick Travel)
+	if (typeof QuickTravel === "object" && QuickTravel.portal("halls", 124)) {
+		Precast.doPrecast(false);
+	} else {
+		Pather.useWaypoint(123);
+		Precast.doPrecast(false);
+
+		if (!Pather.moveToExit(124, true)) {
+			throw new Error("Failed to go to Nihlathak");
+		}
 	}
 
 	Pather.moveToPreset(me.area, 2, 462, 0, 0, false, true);

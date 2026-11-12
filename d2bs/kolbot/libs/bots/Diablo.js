@@ -418,38 +418,46 @@ function Diablo() {
 
 	// start
 	Town.doChores();
-	Pather.useWaypoint(Config.RandomPrecast ? "random" : 107);
-	Precast.doPrecast(true);
 
-	if (me.area !== 107) {
-		Pather.useWaypoint(107);
-	}
+	// a Sorceress in the party puts the team at the star of the Chaos Sanctuary (Quick Travel): the walk from the waypoint and the entrance are skipped
+	if (typeof QuickTravel === "object" && QuickTravel.portal("diablo", 108)) {
+		Precast.doPrecast(true);
+		this.initLayout();
+		Pather.moveTo(7791, 5293);
+	} else {
+		Pather.useWaypoint(Config.RandomPrecast ? "random" : 107);
+		Precast.doPrecast(true);
 
-	if (!Pather.moveTo(7790, 5544)) {
-		throw new Error("Failed to move to Chaos Sanctuary");
-	}
-
-	this.initLayout();
-
-	if (Config.Diablo.Entrance) {
-		Attack.clear(30, 0, false, this.sort);
-		Pather.moveTo(7790, 5544);
-
-		if (Config.PublicMode) {
-			Pather.makePortal();
-			say(Config.Diablo.EntranceTP);
+		if (me.area !== 107) {
+			Pather.useWaypoint(107);
 		}
 
-		Pather.moveTo(7790, 5544);
-		Precast.doPrecast(true);
-		Attack.clear(30, 0, false, this.sort);
-		this.followPath(this.entranceToStar);
-	} else {
-		Pather.moveTo(7774, 5305);
-		Attack.clear(15, 0, false, this.sort);
-	}
+		if (!Pather.moveTo(7790, 5544)) {
+			throw new Error("Failed to move to Chaos Sanctuary");
+		}
 
-	Pather.moveTo(7791, 5293);
+		this.initLayout();
+
+		if (Config.Diablo.Entrance) {
+			Attack.clear(30, 0, false, this.sort);
+			Pather.moveTo(7790, 5544);
+
+			if (Config.PublicMode) {
+				Pather.makePortal();
+				say(Config.Diablo.EntranceTP);
+			}
+
+			Pather.moveTo(7790, 5544);
+			Precast.doPrecast(true);
+			Attack.clear(30, 0, false, this.sort);
+			this.followPath(this.entranceToStar);
+		} else {
+			Pather.moveTo(7774, 5305);
+			Attack.clear(15, 0, false, this.sort);
+		}
+
+		Pather.moveTo(7791, 5293);
+	}
 
 	if (Config.PublicMode) {
 		Pather.makePortal();

@@ -1,0 +1,36 @@
+	// Quest state for the log: what the game says about "Sisters to the Slaughter" (6) and the Act 2 travel flag (7), before and
+	// after asking the server for a fresh copy (packet 0x40). Added to find out why a bot was not credited for a boss kill.
+	questReport: function (force) {
+		var every = me.area === 37 ? 3000 : 300000, read, before, after, extra = "", a, p;
+
+		if (!force && !this.due("questreport", every)) {
+			return;
+		}
+
+		try {
+			read = function () { return "q6=" + me.getQuest(6, 0) + "/" + me.getQuest(6, 1) + "/" + me.getQuest(6, 2) + " q7=" + me.getQuest(7, 0) + "/" + me.getQuest(7, 1); };
+
+			if (me.area === 37) { // Andariel's lair: log what is going on around the kill (distance, her state, mine)
+				a = getUnit(1, 156);
+				extra = a ? " andariel mode " + a.mode + " hp " + a.hp + " dist " + Math.round(getDistance(me, a)) : " andariel not in view";
+				p = Config.Leader ? getUnit(0, Config.Leader) : null;
+				extra += p ? " leader dist " + Math.round(getDistance(me, p)) : " leader not in view";
+				extra += " myhp " + me.hp + " mymode " + me.mode;
+			}
+
+			before = read();
+
+			if (me.area !== 37 || this.due("questrefresh", 15000)) {
+				sendPacket(1, 0x40);
+				delay(400);
+				after = read();
+			} else {
+				after = before;
+			}
+
+			print("AutoSpec: quests: area " + me.area + " diff " + me.diff + " " + before + (after !== before ? " -> after refresh " + after : "") + extra);
+		} catch (e) {
+			print("AutoSpec: quests: " + e);
+		}
+	},
+

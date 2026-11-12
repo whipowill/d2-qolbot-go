@@ -10,9 +10,11 @@ import (
 // items picked up, bosses killed and quests completed.
 
 var (
-	reTeamWait  = regexp.MustCompile(`^Waiting for my team: \d+ of \d+ in the game(?: \(not yet: (.+)\))?\.?$`)
-	reKilled    = regexp.MustCompile(`^Killed (.+?)(?: \((.+?)\))?(?: \[(\d+)\])?$`)
-	reQuestDone = regexp.MustCompile(`Act (\d) - #\d+ - "(.+)" is complete\.?`)
+	reTeamWait    = regexp.MustCompile(`^Waiting for my team: \d+ of \d+ in the game(?: \(not yet: (.+)\))?\.?$`)
+	reKilled      = regexp.MustCompile(`^Killed (.+?)(?: \((.+?)\))?(?: \[(\d+)\])?$`)
+	reQuestDone   = regexp.MustCompile(`Act (\d) - #\d+ - "(.+)" is complete\.?`)
+	reQuestItem   = regexp.MustCompile(`^used the (.+?) \(unspent skill points (\d+) -> (\d+), stat points (\d+) -> (\d+)\)`)
+	reQuestItemNo = regexp.MustCompile(`^the (.+?) would not be used`)
 	// the lines a bot prints about what it is doing right now (Pather, Attack and Town print them as they happen)
 	reDirect   = regexp.MustCompile(`^(Going back to town|Traveling( to .+)?|Taking waypoint to .+|Taking portal|Engaging .+|Talking to .+|Opening the stash|Fighting demons|Waiting for leader)$`)
 	reEquipped = regexp.MustCompile(`^Equipped (.+?) \(gear upgrade\)$|^Equipped (.+) on the mercenary$`)
@@ -27,13 +29,20 @@ var (
 )
 
 // stripPrefixes removes the logging prefixes the scripts add.
+// logSources are the scripts that write their own log lines under their own name (libs/common/Report.js: "Quester: ...", "Team: ...").
+// "AutoSpec (quiet): " is how older logs show a routine chat line the player had switched off.
+var logSources = []string{"AutoSpec", "Quester", "QuestItems", "Follower", "Team", "Chores", "Pack", "Town", "Pickit", "Saver", "QuickTravel"}
+
 func stripPrefixes(text string) string {
-	for _, p := range []string{"AutoSpec (quiet): ", "AutoSpec: ", "SAY: "} {
-		if strings.HasPrefix(text, p) {
+	if strings.HasPrefix(text, "AutoSpec (quiet): ") {
+		return strings.TrimPrefix(text, "AutoSpec (quiet): ")
+	}
+	for _, src := range logSources {
+		if p := src + ": "; strings.HasPrefix(text, p) {
 			return strings.TrimPrefix(text, p)
 		}
 	}
-	return text
+	return strings.TrimPrefix(text, "SAY: ")
 }
 
 // townZones are the five towns (the area names the bots report).
@@ -171,6 +180,19 @@ func parseEvent(text string) (ActivityEvent, bool) {
 	if mm := reQuestDone.FindStringSubmatch(t); mm != nil {
 		return ActivityEvent{Kind: "quest", Name: mm[2], Detail: "Act " + mm[1]}, true
 	}
+	if mm := reQuestItem.FindStringSubmatch(t); mm != nil { // a Book of Skill, Potion of Life, Scroll of Resistance used up: what it gave
+		var gave []string
+		if a, b := atoiSafe(mm[2]), atoiSafe(mm[3]); b != a {
+			gave = append(gave, "skill points "+mm[2]+" to "+mm[3])
+		}
+		if a, b := atoiSafe(mm[4]), atoiSafe(mm[5]); b != a {
+			gave = append(gave, "stat points "+mm[4]+" to "+mm[5])
+		}
+		return ActivityEvent{Kind: "questitem", Name: mm[1], Detail: strings.Join(gave, ", ")}, true
+	}
+	if mm := reQuestItemNo.FindStringSubmatch(t); mm != nil {
+		return ActivityEvent{Kind: "questitem", Name: mm[1], Detail: "could not be used"}, true
+	}
 	if mm := reEquipped.FindStringSubmatch(t); mm != nil {
 		if mm[1] != "" {
 			return ActivityEvent{Kind: "equip", Name: mm[1], Detail: "Upgrade"}, true
@@ -178,6 +200,17 @@ func parseEvent(text string) (ActivityEvent, bool) {
 		return ActivityEvent{Kind: "equip", Name: mm[2], Detail: "Upgrade"}, true
 	}
 	return ActivityEvent{}, false
+}
+
+func atoiSafe(s string) int {
+	n := 0
+	for _, c := range s {
+		if c < '0' || c > '9' {
+			return 0
+		}
+		n = n*10 + int(c-'0')
+	}
+	return n
 }
 
 func itoa(n int) string {

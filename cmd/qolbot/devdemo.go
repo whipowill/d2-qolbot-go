@@ -30,6 +30,8 @@ func devDemo() map[string]any {
 			{"time": ago(38), "bot": "Darius", "kind": "item", "name": "Mage Plate", "zone": "Black Marsh", "ilvl": 84, "quality": "rare", "detail": "Upgrade",
 				"title": "Kept Mage Plate", "desc": "\\xffc9Mage Plate\n\\xffc0Defense: 124\n\\xffc3+3 To Sorceress Skill Levels"},
 			{"time": ago(47), "bot": "Darius", "kind": "skill", "name": "Zeal"},
+			{"time": ago(45), "bot": "Nyx", "kind": "notready", "name": "Stopped: may not be ready", "detail": "Nyx stopped: 4 chickens in 17 minutes in Hell (Tal Rashas Tomb #1). Last: Life Chicken (164/811) to Champion Apparition in Tal Rashas Tomb #1. This character may not be ready for these monsters: level it up or give it better gear, then start it again."},
+			{"time": ago(50), "bot": "Xena", "kind": "questitem", "name": "Book of Skill", "detail": "skill points 0 to 1"},
 			{"time": ago(58), "bot": "Xena", "kind": "quest", "name": "Sisters' Burial Grounds", "detail": "Act 1"},
 			{"time": ago(70), "bot": "Meir", "kind": "item", "name": "Ist Rune", "zone": "Throne Of Destruction", "quality": "rune", "detail": "Keeper"},
 			{"time": ago(82), "bot": "Meir", "kind": "item", "name": "Key of Terror", "zone": "Throne Of Destruction", "quality": "normal", "detail": "Keeper"},

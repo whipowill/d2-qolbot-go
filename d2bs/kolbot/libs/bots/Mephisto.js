@@ -131,11 +131,17 @@ function Mephisto() {
 	};
 
 	Town.doChores();
-	Pather.useWaypoint(101);
-	Precast.doPrecast(true);
 
-	if (!Pather.moveToExit(102, true)) {
-		throw new Error("Failed to move to Durance Level 3");
+	// a Sorceress in the party puts the team at the way into Durance of Hate Level 3 (Quick Travel)
+	if (typeof QuickTravel === "object" && QuickTravel.portal("meph", 102)) {
+		Precast.doPrecast(true);
+	} else {
+		Pather.useWaypoint(101);
+		Precast.doPrecast(true);
+
+		if (!Pather.moveToExit(102, true)) {
+			throw new Error("Failed to move to Durance Level 3");
+		}
 	}
 
 	if (Config.Mephisto.KillCouncil) {

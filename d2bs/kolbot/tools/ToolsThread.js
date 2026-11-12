@@ -27,6 +27,7 @@ include("common/Prototypes.js");
 include("common/Runewords.js");
 include("common/Storage.js");
 include("common/Town.js");
+include("common/Saver.js");
 
 function main() {
 	var i, mercHP, ironGolem, tick, merc,
@@ -610,6 +611,8 @@ function main() {
 			if (me.gameReady && me.charlvl !== lastLevel) {
 				if (lastLevel > 0 && me.charlvl > lastLevel) {
 					print("Leveled up to level " + me.charlvl); // read by Qolbot's Activity list
+
+					Saver.soon("level up");
 				}
 
 				lastLevel = me.charlvl;

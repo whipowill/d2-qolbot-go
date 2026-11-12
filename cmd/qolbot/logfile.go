@@ -54,6 +54,7 @@ func (m *Manager) recycleLogs() {
 
 // clearLogs empties every log file qolbot writes (the web page's Clear logs button). Open files are truncated in
 // place, so the running bots and the bridge keep writing to them. The loot history (ItemLog.txt) is left alone.
+// It also deletes the copies of character files that a point restore keeps in <qolbot folder>/backups (audit.go).
 func (m *Manager) clearLogs() int {
 	dir := filepath.Join(m.root, "logs")
 	n := 0
@@ -65,6 +66,13 @@ func (m *Manager) clearLogs() int {
 			}
 		}
 	}
+	backups, _ := filepath.Glob(filepath.Join(m.root, "backups", "*.d2s"))
+	for _, f := range backups {
+		if os.Remove(f) == nil {
+			n++
+		}
+	}
+	os.Remove(filepath.Join(m.root, "backups")) // only when it is empty now
 	for _, f := range []string{filepath.Join(dir, "qolbot.log"), filepath.Join(dir, "wine.log"), filepath.Join(m.root, "d2bs", "d2bs.log")} {
 		if os.Truncate(f, 0) == nil {
 			n++

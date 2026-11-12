@@ -23,6 +23,9 @@ include("common/Prototypes.js");
 include("common/Runewords.js");
 include("common/Storage.js");
 include("common/Town.js");
+include("common/Saver.js");
+include("common/Team.js");
+include("common/QuickTravel.js");
 include("common/Quester.js");
 include("common/Banter.js");
 
@@ -105,11 +108,7 @@ function main() {
 		}
 
 		if (mode === 0 && msg === "save") { // qolbot is about to stop this bot: save the character first
-			if (typeof AutoSpec === "object") {
-				AutoSpec.saveNow(true);
-			} else {
-				D2Bot.saved();
-			}
+			Saver.now(true);
 
 			return;
 		}
@@ -224,8 +223,8 @@ function main() {
 	}
 
 	// a leader bot waits for the whole team before it starts its run
-	if (Config.WaitForTeam && typeof AutoSpec === "object") {
-		AutoSpec.waitForTeam();
+	if (Config.WaitForTeam) {
+		Team.wait();
 	}
 
 	// Go

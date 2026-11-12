@@ -22,7 +22,7 @@ p{margin:8px 0}a{color:var(--accent)}code{background:var(--hover);padding:1px 5p
 .arow{padding:9px 2px;border-bottom:1px solid var(--line)}.arow .meta{display:flex;justify-content:space-between;gap:12px;font-size:12.5px;color:var(--dim)}.actrow{display:flex;justify-content:space-between;gap:12px}.arow .ago{white-space:nowrap;margin-left:auto;text-align:right}.arow.click{cursor:pointer;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:9px 14px;margin:4px 0 10px;box-shadow:var(--shadow)}.arow.click:hover{border-color:var(--dim)}
 .sth{font-size:11.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--dim);margin:0 0 10px}
 .cpubox{text-align:center;color:var(--dim);padding:4px 16px 10px;margin-bottom:10px;font-size:13px}.cpubox b{font-size:15px;font-weight:600}.mgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:12px}@media(max-width:1000px){.mgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:640px){.mgrid{grid-template-columns:1fr}}.mcol{padding:10px 12px;overflow:visible}.mcol h4{margin:0 0 4px}.mrow{display:flex;gap:4px;margin:3px 0}.mrow .mc{flex:1;min-width:0;width:0}.mrow .mv{width:64px}.mrow .mx{flex:none;position:relative;box-sizing:border-box;width:22px;height:22px;min-width:22px;max-width:22px;min-height:22px;max-height:22px;padding:0;margin:0 2px;border:0;border-radius:50%;background:var(--accent);font-size:0;line-height:0;align-self:center;cursor:pointer}.mrow .mx::before,.mrow .mx::after{content:'';position:absolute;left:50%;top:50%;width:10px;height:2px;margin:-1px 0 0 -5px;border-radius:1px;background:#fff}.mrow .mx::before{transform:rotate(45deg)}.mrow .mx::after{transform:rotate(-45deg)}.mrow .mx:hover{filter:brightness(1.15)}.mlink{color:var(--accent);font-size:13px;text-decoration:none;cursor:pointer}.mlink:hover{text-decoration:underline}.mbad{border-color:var(--bad)!important;background:var(--bad-soft)}.mpool{margin-top:10px;font-size:13px}.mpool b{font-size:13px}.pod{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 16px;box-shadow:var(--shadow);margin-bottom:10px}
-.pod .top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.pod .nm{font-weight:600}.pod .role{font-size:12px;color:var(--dim);opacity:.65}.pod .act{margin-top:6px;font-size:13px;color:var(--dim);overflow-wrap:anywhere}
+.pod{min-width:0}.pod .top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.pod .nm{font-weight:600}.pod .role{font-size:12px;color:var(--dim);opacity:.65}.pod .act{margin-top:6px;font-size:13px;color:var(--dim)}.pod .actrow>span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pod .actrow .ago{flex:none;white-space:nowrap}
 :root{--k-kill:rgba(196,60,50,.14);--k-killb:#c43c32;--k-quest:rgba(124,92,196,.14);--k-questb:#7c5cc4;--k-equip:rgba(56,132,196,.14);--k-equipb:#3884c4;--k-stat:rgba(36,150,140,.14);--k-statb:#24968c;--k-skill:rgba(196,120,40,.14);--k-skillb:#c47828;--k-level:rgba(230,180,40,.24);--k-levelb:#b08410;--k-item:rgba(120,120,120,.07);--k-itemb:#9a9a9a}
 @media (prefers-color-scheme:dark){:root{--k-kill:rgba(224,100,90,.18);--k-killb:#e0645a;--k-quest:rgba(160,130,230,.18);--k-questb:#a082e6;--k-equip:rgba(100,170,230,.18);--k-equipb:#64aae6;--k-stat:rgba(70,190,180,.18);--k-statb:#46beb4;--k-skill:rgba(230,150,70,.18);--k-skillb:#e69646;--k-level:rgba(240,200,70,.26);--k-levelb:#f0c846;--k-item:rgba(200,200,200,.06);--k-itemb:#777}}
 :root{--q-rejuv:#8a4fc7;--q-unique:#a9770f;--q-set:#2f8f47;--q-rare:#9a7d00;--q-magic:#3b6fc4;--q-crafted:#c0651a;--q-rune:#c0651a;--q-potion:#b0453f}
@@ -56,9 +56,11 @@ label{cursor:pointer}
 table{border-collapse:collapse;width:100%}
 th{font-size:11.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--dim);text-align:left;padding:10px 12px;border-bottom:1px solid var(--line)}
 td{padding:9px 12px;border-bottom:1px solid var(--line);text-align:left}
+#t th:last-child,#t td:last-child{text-align:right;white-space:nowrap}
 tr:last-child td{border-bottom:none}
 tr.run td{background:var(--ok-soft)}
 tr.wait td{background:var(--warn-soft)}
+tr.audit td{background:var(--bad-soft)}
 tr:hover td{box-shadow:inset 0 0 0 999px var(--hover)}
 td select{width:150px}
 .pill{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;padding:2px 10px 2px 8px;border-radius:99px;background:var(--hover);color:var(--dim)}
@@ -127,33 +129,36 @@ footer .credits{margin-bottom:6px;font-size:12px}footer{margin-top:40px;padding-
 <h3>Town</h3>
 <p><label><input type=checkbox id=autotown> Bots follow you between town and the field by themselves</label></p>
 <p><label><input type=checkbox id=gamble> Bots may gamble rings and amulets when they hold a million gold</label></p>
+<h3>Safety</h3>
+<p><label><input type=checkbox id=chon onchange="chickenChanged()"> Stop a bot that chickens or dies <input id=chlimit type=number min=1 max=99 style="width:56px"> times within <input id=chwin type=number min=1 max=240 style="width:56px"> minutes</label></p>
+<h3>Quests</h3>
+<p><label><input type=checkbox id=qclear> <b>Full Clear:</b> Bots clear every monster in every zone</label></p>
+<h3>Teleport</h3>
+<p><label><input type=checkbox id=qtele> <b>Quick Travel:</b> Bot parties including a Sorceress will make use of Teleport</label></p>
+<p class=dim style="margin-top:0">This setting won't apply to Quest Mode if Full Clear is on.</p>
 <h3>Chat</h3>
 <p><label><input type=checkbox id=reptask> Bots report when they engage in tasks</label></p>
 <p><label><input type=checkbox id=repprob> Bots report when they have a problem</label></p>
 <p><label><input type=checkbox id=banter> Bots banter with gallows humor comments</label></p>
 <p><label><input type=checkbox id=bubble> Bots banter appears as a bubble over their head</label></p>
-<p><button onclick="savePlay('behmsg')">Save</button> <span class=dim id=behmsg>applies to bots started after you save</span></p>
+<p><button onclick="saveBehavior()">Save</button> <span class=dim id=behmsg>applies to bots started after you save</span></p>
 </div>
 <div class=pane id=p_auto>
 <h3>Automation</h3>
-<p><label><input type=checkbox id=ae> Bots can auto-equip items they deem to be an upgrade</label></p>
-<p><label><input type=checkbox id=autostat> Bots can auto spend stat points</label></p>
-<p><label><input type=checkbox id=autoskill> Bots can auto spend skill points</label></p>
+<p><label><input type=checkbox id=ae> <b>AutoEquip:</b> Bots can auto-equip items they deem to be an upgrade</label></p>
+<p><label><input type=checkbox id=autostat> <b>AutoStat:</b> Bots can auto spend stat points</label></p>
+<p><label><input type=checkbox id=autoskill> <b>AutoSkill:</b> Bots can auto spend skill points</label></p>
 <p class=dim>Safe Mode on the Bots page switches all three off, regardless of what is checked here.</p>
-<p style="margin-top:16px">Mercenaries can wear these items:</p>
-<p><label><input type=checkbox id=mw_rings> Rings</label> &nbsp; <label><input type=checkbox id=mw_amulets> Amulets</label> &nbsp; <label><input type=checkbox id=mw_belts> Belts</label> &nbsp; <label><input type=checkbox id=mw_gloves> Gloves</label> &nbsp; <label><input type=checkbox id=mw_boots> Boots</label></p>
 <p><button onclick="saveAuto()">Save</button> <span class=dim id=automsg>applies to bots started after you save</span></p>
-</div>
-<div class=pane id=p_quests>
-<h3>Quests</h3>
-<p><label><input type=checkbox id=qclear> Bots clear every monster in every zone</label></p>
-<p><button onclick="saveQuests()">Save</button> <span class=dim id=questmsg>applies to bots started after you save</span></p>
 </div>
 <div class=pane id=p_gear>
 <h3>Equipment</h3>
 <p><b>Bots never auto-equip, replace, identify or sell items that are:</b></p>
 <p id=pflags></p>
 <p class=dim style="margin-top:0">The above list protects these items from potential mishandling by the bots. They will never try to put these on, or take these off, or sell these items. If a bot ever wears these items it's because you put them there. If a bot ever picks up these items it's because they're going into the stash.</p>
+<p style="margin-top:16px"><b>Mercenaries can wear these items:</b></p>
+<p class=dim style="margin-top:0">Qolbot just needs to know if you've modded the game to allow these items types so the AutoEquip can make use of them.</p>
+<p><label><input type=checkbox id=mw_rings> Rings</label> &nbsp; <label><input type=checkbox id=mw_amulets> Amulets</label> &nbsp; <label><input type=checkbox id=mw_belts> Belts</label> &nbsp; <label><input type=checkbox id=mw_gloves> Gloves</label> &nbsp; <label><input type=checkbox id=mw_boots> Boots</label></p>
 <p><button onclick="saveGear()">Save</button> <span class=dim id=cfgmsg>applies to bots started after you save</span></p>
 </div>
 </div>
@@ -218,6 +223,8 @@ footer .credits{margin-bottom:6px;font-size:12px}footer{margin-top:40px;padding-
 <button class=primary onclick="savePickFile()">Save list</button> <button onclick="pickedit.style.display='none'">Close</button> <span class=dim id=pickeditmsg></span></div>
 </div>
 <div id=about class=pane style="display:none">
+<div class=sub id=aboutbar></div>
+<div id=ab_hist>
 <h3>What this is</h3>
 <p>Qolbot runs Diablo II characters as helpers, two ways. <b>You play</b>: you host a TCP/IP game, check the bots that should join, press
 <code>Start</code>, and they walk in and follow you, fight beside you and look after their own characters. <b>You do not play</b>: you
@@ -239,6 +246,28 @@ and on Linux they use a hidden display so no windows appear. The bots launch fro
 that <code>PlugY.ini</code> and <code>BaseMod.ini</code> have the World Event off (it crashes bots) and warns if not. Logs are in
 <code>logs/</code> and can be cleared from the Bots tab.</p>
 </div>
+<div id=ab_auto style="display:none">
+<h3>Automations</h3>
+<p><b>AutoEquip</b> puts on better gear for a bot and its mercenary: in town, and every half minute while a follower waits for you. It never touches items on your protected list.</p>
+<p><b>AutoStat</b> spends a bot's stat points on its build, so a levelled bot is never left with points to spare.</p>
+<p><b>AutoSkill</b> spends its skill points, in the order its build calls for.</p>
+<p class=dim>Each can be switched off under Settings, Automation. Safe Mode on the Bots page switches all three off, and the bots then pick up only potions, scrolls, keys and quest items.</p>
+</div>
+<div id=ab_prot style="display:none">
+<h3>Protections</h3>
+<p><b>Protected kinds.</b> Under Settings, Equipment, you tick the kinds of items (uniques, sets, and so on) the bots must never put on, replace, identify or sell. Those items stay exactly as you left them, in the pack, on the character or in the stash.</p>
+<p><b>Your pack.</b> You do not need to set aside a working area in the inventory. A bot knows which charms it picked up itself and which were already there (a charm you move, or take out of the stash, becomes yours), and it never touches tomes, keys or the Horadric Cube. Anything else left in a bot's pack counts as the bot's own: kept in the stash, or sold if it is junk, unless its kind is protected.</p>
+<p><b>Quest rewards.</b> The bots take and use the items that give stat points, skill points or life, and make room for them first. They never throw away a quest item.</p>
+</div>
+<div id=ab_assume style="display:none">
+<h3>Assumptions</h3>
+<p><b>They follow you.</b> When you or the leader leave town, change area, take a waypoint or a portal, the bots follow by exit, waypoint or portal, and come back to town when you do.</p>
+<p><b>They stay together.</b> If a teammate has been in another area for a minute (a short trip to repair or sell, or time to find a waypoint, is fine), the leader goes to town, everybody gathers there, and they go back out together.</p>
+<p><b>They never go alone.</b> A bot that cannot reach you waits in town and asks for a portal. It does not walk out looking for you.</p>
+<p><b>The leader waits.</b> A leader bot starts a run only when the team it started is in the game.</p>
+<p><b>Quick Travel.</b> With it on, a Sorceress in the party may place a portal at a boss so the team does not walk. She only places the portal and comes straight back.</p>
+</div>
+</div>
 <div id=bots>
 <div id=gbanner><b>Bots cannot start.</b> <span id=gwhy></span></div>
 <p style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px"><label><b>Who is going to be leader?</b> <select id=player onchange="setPlayer(this.value)"></select></label>
@@ -247,6 +276,8 @@ that <code>PlugY.ini</code> and <code>BaseMod.ini</code> have the World Event of
 <p class=toolbar><button class=primary onclick="each('start')">Start selected</button><button onclick="each('stop')">Stop selected</button><button class=danger onclick="stopAll()">Stop all bots</button>
 <button onclick="rescan()">Rescan characters</button> <button onclick="clearLogs()">Clear logs</button> <a href="/log" target=_blank>Full log file</a></p>
 <div class=card><table id=t></table></div>
+<dialog id=auditbox style="max-width:720px" onclick="outsideClose(event,this)"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px"><b id=audittitle>Missing points</b><button onclick="auditbox.close()">Close</button></div><div id=auditbody style="font-size:13px;margin:10px 0;white-space:pre-wrap"></div><p style="margin:12px 0"><button id=auditfix class=primary onclick="restorePoints()">Restore the missing points</button> <span class=dim id=auditmsg></span></p>
+<p class=dim style="font-size:12px;margin:0">Worked out from the character's save file, once, when the page first loaded (Rescan characters checks again). Checked: skill points (one per level after the first, plus Den of Evil, Radament and Fallen Angel), stat points (the class's start, five per level, plus Lam Esen's Tome) and life (level, Vitality and Alkor's Potion of Life). A save cannot show the Scroll of Resistance or the choose-an-item rewards (Charsi, Larzuk, Anya).</p></dialog>
 <dialog id=pabox style="max-width:900px" onclick="outsideClose(event,this)"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px"><b>Quest Progress</b><button onclick="pabox.close()">Close</button></div>
 <p style="margin:8px 0"><label>Difficulty <select id=padiff onchange="paRender()"><option value=0>Normal</option><option value=1>Nightmare</option><option value=2>Hell</option></select></label> &nbsp; <label><input type=checkbox id=padiffonly checked onchange="paRender()"> Only quests where the bots differ</label></p>
 <div id=pabody style="font-size:12.5px"></div><p class=dim style="font-size:12px;margin-top:10px">Read from each character's save file, so it shows what was last saved, not a game in progress. A check means the quest is complete, the same test the Quester uses to skip it.</p></dialog>
@@ -279,19 +310,24 @@ const pf=[['unique','Unique'],['set','Set'],['crafted','Crafted'],['rare','Rare'
 pflags.innerHTML=pf.map(f=>'<label style="margin-right:16px"><input type=checkbox id=pf_'+f[0]+'> '+f[1]+'</label>').join('');
 let cfgLoaded=false;
 let tabAuto=false,gameOK=false;
-const subs=[['p_game','Game'],['p_conn','Connection'],['p_inv','Inventory'],['p_gear','Equipment'],['p_auto','Automation'],['p_quests','Quests'],['p_beh','Behavior'],['p_save','Saving']];
+const subs=[['p_game','Game'],['p_conn','Connection'],['p_inv','Inventory'],['p_gear','Equipment'],['p_auto','Automation'],['p_beh','Behavior'],['p_save','Saving']];
+const aboutSubs=[['ab_hist','History'],['ab_auto','Automations'],['ab_prot','Protections'],['ab_assume','Assumptions']],aboutSlug={ab_hist:'history',ab_auto:'automations',ab_prot:'protections',ab_assume:'assumptions'};
+let aboutNow=(function(){try{return localStorage.getItem('aboutsub')||'ab_hist'}catch(e){return 'ab_hist'}})();
+function aboutSub(n){aboutNow=n;if(curTab=='about')setUrl();try{localStorage.setItem('aboutsub',n)}catch(e){}aboutSubs.forEach(a=>{document.getElementById(a[0]).style.display=a[0]==n?'block':'none'});aboutbar.innerHTML=aboutSubs.map(a=>'<button class="'+(a[0]==n?'on':'')+'" onclick="aboutSub(\''+a[0]+'\')">'+a[1]+'</button>').join('')}
 let curTab='bots';
 const tabSlug={bots:'',status:'activity',pickit:'keeper',cfg:'settings',about:'about',console:'console'};
-const cfgSlug={p_game:'game',p_conn:'connection',p_inv:'inventory',p_gear:'equipment',p_auto:'automation',p_quests:'quests',p_beh:'behavior',p_save:'saving'};
+const cfgSlug={p_game:'game',p_conn:'connection',p_inv:'inventory',p_gear:'equipment',p_auto:'automation',p_beh:'behavior',p_save:'saving'};
 const pkSlug={pk_rg:'gems-runes',pk_us:'uniques-sets',pk_mr:'magic-rares',pk_bs:'base-items',pk_ms:'miscellaneous'};
-function setUrl(replace){let p='/'+(tabSlug[curTab]||'');if(curTab=='cfg')p+='/'+cfgSlug[subNow];if(curTab=='pickit')p+='/'+pkSlug[pkNow];if(location.pathname!==p){try{history[replace?'replaceState':'pushState'](null,'',p)}catch(e){}}}
+function setUrl(replace){let p='/'+(tabSlug[curTab]||'');if(curTab=='cfg')p+='/'+cfgSlug[subNow];if(curTab=='pickit')p+='/'+pkSlug[pkNow];if(curTab=='about')p+='/'+aboutSlug[aboutNow];if(location.pathname!==p){try{history[replace?'replaceState':'pushState'](null,'',p)}catch(e){}}}
 function route(){const seg=location.pathname.split('/').filter(Boolean);if(seg[0]=='pickit')seg[0]='keeper';if(seg[0]=='config')seg[0]='settings'; // the old address still works
 let t=Object.keys(tabSlug).find(k=>tabSlug[k]==(seg[0]=='status'?'activity':(seg[0]||'')))||'bots'; // /status is the old address of the Activity tab
+if(seg[0]=='settings'&&seg[1]=='quests')seg[1]='behavior'; // the Quests tab is part of Behavior now
+if(t=='about'){const s=Object.keys(aboutSlug).find(k=>aboutSlug[k]==seg[1]);if(s)aboutNow=s;aboutSub(aboutNow)}
 if(t=='cfg'){const s=Object.keys(cfgSlug).find(k=>cfgSlug[k]==seg[1]);if(s)subNow=s;sub(subNow)}
 if(t=='pickit'){const s=Object.keys(pkSlug).find(k=>pkSlug[k]==seg[1]);if(s)pkNow=s}
 tab(t,true)}
 window.addEventListener('popstate',route);
-let subNow=(function(){try{return localStorage.getItem('sub')||'p_game'}catch(e){return 'p_game'}})();
+let subNow=(function(){try{const v=localStorage.getItem('sub')||'p_game';return v=='p_quests'?'p_beh':v}catch(e){return 'p_game'}})(); // the Quests tab is part of Behavior now
 const pksubs=[['pk_rg','Gems & Runes'],['pk_us','Uniques & Sets'],['pk_mr','Magic & Rares'],['pk_bs','Base Items'],['pk_ms','Miscellaneous']];
 let pkNow=(function(){try{return localStorage.getItem('pksub')||'pk_rg'}catch(e){return 'pk_rg'}})();
 function pksub(n){pkNow=n;if(curTab=='pickit')setUrl();try{localStorage.setItem('pksub',n)}catch(e){}pksubs.forEach(x=>{document.getElementById(x[0]).style.display=x[0]==n?'block':'none'});pksubbar.innerHTML=pksubs.map(x=>'<button class="'+(x[0]==n?'on':'')+'" onclick="pksub(\''+x[0]+'\')">'+x[1]+'</button>').join('')}
@@ -352,7 +388,7 @@ async function editPickit(p){const r=await fetch('/api/pickitfile?path='+encodeU
 async function savePickFile(){const r=await fetch('/api/pickitfile',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:pickname.textContent,text:picktext.value})});
 pickeditmsg.textContent=r.ok?'saved':'not saved: '+await r.text();pickeditmsg.style.color=r.ok?'var(--ok)':'var(--bad)';if(r.ok)loadPickit()}
 function sub(n){subNow=n;if(curTab=='cfg')setUrl();try{localStorage.setItem('sub',n)}catch(e){}subs.forEach(s=>{document.getElementById(s[0]).style.display=s[0]==n?'block':'none'});subbar.innerHTML=subs.map(s=>'<button class="'+(s[0]==n?'on':'')+'" onclick="sub(\''+s[0]+'\')">'+s[1]+'</button>').join('')}
-sub(subNow);
+sub(subNow);aboutSub(aboutNow);
 function tab(n,noUrl){curTab=n;bots.style.display=n=='bots'?'':'none';stpane.style.display=n=='status'?'block':'none';ts.className=n=='status'?'on':'';cfg.style.display=n=='cfg'?'':'none';about.style.display=n=='about'?'block':'none';pickit.style.display=n=='pickit'?'block':'none';tp.className=n=='pickit'?'on':'';if(n=='pickit'){loadPickit();pksub(pkNow)}consoleEl.style.display=n=='console'?'block':'none';tk.className=n=='console'?'on':'';tb.className=n=='bots'?'on':'';tc.className=n=='cfg'?'on':'';ta.className=n=='about'?'on':'';if(n=='cfg')cfgLoaded=false;if(!noUrl)setUrl()}
 async function saveSettings(){const r=await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({hostIp:hostip.value,headless:!showwin.checked})});
 setmsg.textContent=r.ok?'saved: applies to bots after you restart Qolbot':'not saved: '+await r.text();setmsg.style.color=r.ok?'#2e7d32':'#c62828'}
@@ -368,29 +404,34 @@ const t=r.ok?'saved':'not saved: '+await r.text();(quiet?goalmsg:farmmsg).textCo
 function fillGoal(d){if(document.activeElement===goal||document.activeElement===diff||farmbox.contains(document.activeElement))return;goal.value=d.goal||'Farm';diff.value=d.difficulty||'Hell';farmbtn.style.display=goal.value=='Farm'?'':'none';
 const cat=d.farmCatalog||[],sel=d.farmRuns||[],key=JSON.stringify([cat,sel]);if(key!==fillGoal.key){fillGoal.key=key;farmlist.innerHTML=[1,2,3,4,5].map(a=>{const rows=cat.filter(f=>(f.act||0)==a);return rows.length?'<div class=farmact><div class=acth>Act '+a+'</div>'+rows.map(f=>'<label style="display:block;padding:1px 0"><input type=checkbox value="'+esc(f.name)+'"'+(sel.indexOf(f.name)>-1?' checked':'')+'> '+esc(f.label)+'</label>').join('')+'</div>':''}).join('')}farmHint()}
 async function setSpec(n,v){if(!await req('/api/spec'+q(n)+'&spec='+encodeURIComponent(v)))lastHtml='';load()}
+function chickenChanged(){if(chon.checked&&!(parseInt(chlimit.value)>0))chlimit.value=3;chlimit.disabled=chwin.disabled=!chon.checked}
 function autosaveChanged(){if(autosave.checked&&!(parseInt(saveEvery.value)>0))saveEvery.value=5;saveEvery.disabled=!autosave.checked||autosave.disabled}
 function plugyChanged(){const on=plugy.checked;autosave.disabled=!on;if(!on){autosave.checked=false}autosaveChanged()}
 async function savePlay(msgId){msgId=typeof msgId=='string'?msgId:'behmsg';const playmsg=document.getElementById(msgId);const n=id=>parseInt(document.getElementById(id).value);
-const body={storage:{inventory:[n('inv_w'),n('inv_h')],stash:[n('st_w'),n('st_h')],cube:[n('cu_w'),n('cu_h')],addStashPages:plugy.checked},banter:banter.checked,banterBubble:bubble.checked,autoSaveMinutes:autosave.checked?(parseInt(saveEvery.value)||5):0,plugy:plugy.checked,autoTown:autotown.checked,gamble:gamble.checked,reportTasks:reptask.checked,reportProblems:repprob.checked};
+const body={storage:{inventory:[n('inv_w'),n('inv_h')],stash:[n('st_w'),n('st_h')],cube:[n('cu_w'),n('cu_h')],addStashPages:plugy.checked},banter:banter.checked,banterBubble:bubble.checked,autoSaveMinutes:autosave.checked?(parseInt(saveEvery.value)||5):0,plugy:plugy.checked,autoTown:autotown.checked,gamble:gamble.checked,reportTasks:reptask.checked,reportProblems:repprob.checked,chickenLimit:chon.checked?(parseInt(chlimit.value)>0?parseInt(chlimit.value):3):0,chickenWindowMinutes:parseInt(chwin.value)>0?parseInt(chwin.value):30};
 const r=await fetch('/api/play',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
 playmsg.textContent=r.ok?'saved':'not saved: '+await r.text();playmsg.style.color=r.ok?'#2e7d32':'#c62828'}
 async function saveGameTab(){await savePlay('gamemsg');await saveGame()}
 async function saveGame(){const r=await fetch('/api/game',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({gameExe:gpath.value})});
 gmsg.textContent=r.ok?'saved':'not saved: '+await r.text();gmsg.style.color=r.ok?'#2e7d32':'#c62828';cfgLoaded=false;lastHtml='';load()}
-function fillCfg(d){if(cfgLoaded||cfg.style.display=='none')return;cfgLoaded=true;gpath.value=d.gameExe||'';const sg=d.storage||{inventory:[10,6],stash:[10,10],cube:[3,4]};inv_w.value=sg.inventory[0];inv_h.value=sg.inventory[1];st_w.value=sg.stash[0];st_h.value=sg.stash[1];cu_w.value=sg.cube[0];cu_h.value=sg.cube[1];banter.checked=d.banter!==false;plugy.checked=d.plugy.says;autotown.checked=d.autoTown!==false;gamble.checked=d.gamble!==false;reptask.checked=d.reportTasks!==false;repprob.checked=d.reportProblems!==false;(function(){const pl=d.plugy;if(pl.installed&&pl.commands){plugyInfo.textContent='PlugY detected';plugyInfo.style.color='var(--ok)'}else if(pl.installed){plugyInfo.textContent='PlugY detected, but its chat commands are off (set ActiveCommands=1 in PlugY.ini)';plugyInfo.style.color='var(--warn)'}else{plugyInfo.textContent='PlugY not detected';plugyInfo.style.color='var(--bad)'}})();plugyChanged();autosave.checked=d.autoSaveMinutes>0;saveEvery.value=d.autoSaveMinutes>0?d.autoSaveMinutes:5;plugyChanged();saveWarn.style.display=d.saveAvailable?'none':'block';bubble.checked=!!d.banterBubble;hostip.value=d.hostIp||'localhost';showwin.checked=d.headless===false;if(!gmsg.textContent||gmsg.textContent=='saved'||gmsg.textContent.startsWith('not'))gmsg.textContent='';gmsg.textContent=gmsg.textContent||(d.gameOK?'Game detected':d.gameProblem);gmsg.style.color=d.gameOK?'var(--ok)':'var(--bad)';ae.checked=!!d.autoEquip;const mw=d.mercWear||{};mw_rings.checked=!!mw.rings;mw_amulets.checked=!!mw.amulets;mw_belts.checked=!!mw.belts;mw_gloves.checked=!!mw.gloves;mw_boots.checked=!!mw.boots;autostat.checked=d.autoStat!==false;qclear.checked=d.questClearAll!==false;autoskill.checked=d.autoSkill!==false;pf.forEach(f=>document.getElementById('pf_'+f[0]).checked=!!d.protect[f[0]])}
-async function saveQuests(){const r=await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({questClearAll:qclear.checked})});
-questmsg.textContent=r.ok?'saved':'error: '+await r.text();questmsg.style.color=r.ok?'var(--ok)':'var(--bad)'}
-async function saveAuto(){const r=await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({autoEquip:ae.checked,autoStat:autostat.checked,autoSkill:autoskill.checked,mercWear:{rings:mw_rings.checked,amulets:mw_amulets.checked,belts:mw_belts.checked,gloves:mw_gloves.checked,boots:mw_boots.checked}})});
+function fillCfg(d){if(cfgLoaded||cfg.style.display=='none')return;cfgLoaded=true;gpath.value=d.gameExe||'';const sg=d.storage||{inventory:[10,6],stash:[10,10],cube:[3,4]};inv_w.value=sg.inventory[0];inv_h.value=sg.inventory[1];st_w.value=sg.stash[0];st_h.value=sg.stash[1];cu_w.value=sg.cube[0];cu_h.value=sg.cube[1];banter.checked=d.banter!==false;plugy.checked=d.plugy.says;autotown.checked=d.autoTown!==false;gamble.checked=d.gamble!==false;reptask.checked=d.reportTasks!==false;repprob.checked=d.reportProblems!==false;chon.checked=d.chickenLimit>0;chlimit.value=d.chickenLimit>0?d.chickenLimit:3;chwin.value=d.chickenWindowMinutes||30;chickenChanged();(function(){const pl=d.plugy;if(pl.installed&&pl.commands){plugyInfo.textContent='PlugY detected';plugyInfo.style.color='var(--ok)'}else if(pl.installed){plugyInfo.textContent='PlugY detected, but its chat commands are off (set ActiveCommands=1 in PlugY.ini)';plugyInfo.style.color='var(--warn)'}else{plugyInfo.textContent='PlugY not detected';plugyInfo.style.color='var(--bad)'}})();plugyChanged();autosave.checked=d.autoSaveMinutes>0;saveEvery.value=d.autoSaveMinutes>0?d.autoSaveMinutes:5;plugyChanged();saveWarn.style.display=d.saveAvailable?'none':'block';bubble.checked=!!d.banterBubble;hostip.value=d.hostIp||'localhost';showwin.checked=d.headless===false;if(!gmsg.textContent||gmsg.textContent=='saved'||gmsg.textContent.startsWith('not'))gmsg.textContent='';gmsg.textContent=gmsg.textContent||(d.gameOK?'Game detected':d.gameProblem);gmsg.style.color=d.gameOK?'var(--ok)':'var(--bad)';ae.checked=!!d.autoEquip;const mw=d.mercWear||{};mw_rings.checked=!!mw.rings;mw_amulets.checked=!!mw.amulets;mw_belts.checked=!!mw.belts;mw_gloves.checked=!!mw.gloves;mw_boots.checked=!!mw.boots;autostat.checked=d.autoStat!==false;qclear.checked=d.questClearAll!==false;qtele.checked=!!d.teleportTeam;autoskill.checked=d.autoSkill!==false;pf.forEach(f=>document.getElementById('pf_'+f[0]).checked=!!d.protect[f[0]])}
+async function saveBehavior(){await savePlay('behmsg');const r=await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({questClearAll:qclear.checked,teleportTeam:qtele.checked})});if(!r.ok){behmsg.textContent='error: '+await r.text();behmsg.style.color='var(--bad)'}}
+async function saveAuto(){const r=await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({autoEquip:ae.checked,autoStat:autostat.checked,autoSkill:autoskill.checked})});
 automsg.textContent=r.ok?'saved':'error: '+await r.text();automsg.style.color=r.ok?'var(--ok)':'var(--bad)'}
 async function saveGear(){await savePlay('cfgmsg');await saveCfg()}
 async function saveCfg(){const p={};pf.forEach(f=>p[f[0]]=document.getElementById('pf_'+f[0]).checked);
-const r=await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({protect:p})});
+const r=await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({protect:p,mercWear:{rings:mw_rings.checked,amulets:mw_amulets.checked,belts:mw_belts.checked,gloves:mw_gloves.checked,boots:mw_boots.checked}})});
 cfgmsg.textContent=r.ok?'saved':'error: '+await r.text()}
 async function setSafe(on){if(!await req('/api/safemode?on='+(on?1:0)))lastHtml='';load()}
-async function clearLogs(){if(!confirm("Delete all log files (Qolbot, Wine and D2BS logs)? Your loot history is kept."))return;if(await req('/api/clearlogs'))load()}
+async function clearLogs(){if(!confirm("Delete all log files (Qolbot, Wine and D2BS logs) and the copies of character files kept by the point restore (the backups folder)? Your loot history is kept."))return;if(await req('/api/clearlogs'))load()}
 async function stopAll(){if(await req('/api/stopall'))load()}
 async function rescan(){await req('/api/rescan');load()}
 function pick(n,on){on?picked.add(n):picked.delete(n);lastHtml='';updPA()}
+let auditFor='';
+function showAudit(n){const p=profs[n];if(!p||!p.audit)return;auditFor=n;audittitle.textContent=(p.character||n)+': missing from the character';auditbody.innerHTML=p.audit.lines.map(l=>'<div'+(/^ /.test(l)?' style="margin-left:18px" class=dim':'')+'>'+esc(l.trim())+'</div>').join('');const stopped=p.status=='stopped';auditfix.disabled=!stopped;auditmsg.textContent=stopped?'':'Stop this bot first, and close the game if you are playing this character.';auditbox.showModal()}
+async function restorePoints(){const p=profs[auditFor];if(!p||!p.audit)return;const a=p.audit,bits=[];if(a.skill.missing)bits.push(a.skill.missing+' skill point(s)');if(a.stat.missing)bits.push(a.stat.missing+' stat point(s)');if(a.life.missing)bits.push(a.life.missing+' life');
+if(!confirm('Add '+bits.join(', ')+' to '+(p.character||auditFor)+"'s save file?\n\nThe old file is kept in Qolbot's backups folder. Make sure the game is not running for this character."))return;
+const r=await fetch('/api/restorepoints'+q(auditFor),{method:'POST'});const t=await r.text();if(!r.ok){alert(t);return}auditbox.close();lastHtml='';alert(t);load()}
 function updPA(){pabtn.style.visibility=!playingNow&&goal.value=='Quest'&&[...picked].filter(n=>profs[n]).length>1?'visible':'hidden'}
 let paData=null;
 async function partyAnalysis(){const names=[...picked].filter(n=>profs[n]);const r=await fetch('/api/partyquests?names='+encodeURIComponent(names.join(',')));if(!r.ok){alert(await r.text());return}paData=await r.json();padiff.value=Math.max(0,['Normal','Nightmare','Hell'].indexOf(diff.value));paRender();pabox.showModal()}
@@ -407,17 +448,19 @@ function ago(t){if(!t)return '';const s=Math.max(0,Math.round((Date.now()-new Da
 let invStorage=null,invDemo=false;
 function renderStatus(d0){invStorage=d0.storage||invStorage;const real=d0.profiles.some(p=>p.status!='stopped')||(d0.events||[]).length>0||location.search.indexOf('real')>-1;const d=d0.demo&&!real?Object.assign({},d0,d0.demo):d0;invDemo=!!(d0.demo&&!real);const on=d.profiles.filter(p=>p.status!='stopped');
 cpubox.style.display=d.cpu&&on.length?'':'none';if(d.cpu)cpubox.innerHTML='Bots are using <b>'+Math.round(d.cpu.percent)+'%</b> of this machine&#39;s CPU';
-stbots.innerHTML=on.length?on.map(p=>{const lead=d.player&&p.character==d.player&&d.playing===false,role=lead?'Leading '+(d.goal||'Farm'):(d.player?'Following '+d.player:'');return '<div class=pod style="cursor:pointer" title="Click to see what '+esc(p.name)+' is carrying" onclick="showInv(\''+esc(p.name)+'\')"><div class=top><span class=nm>'+esc(p.name)+'</span>'+(lead?' <span title="Leader">&#128681;</span>':'')+(p.char?' '+clsPill(p.char):'')+(role?' <span class=role>'+esc(role)+'</span>':'')+'<span class="pill '+p.status+'" style="margin-left:auto">'+(p.status=='starting'?'connecting':p.status)+'</span></div><div class="act actrow"><span><b>'+(p.difficulty?esc(p.difficulty)+' &bull; ':'')+esc(p.zone||'Unknown')+'</b>: '+actIcon(p.activity)+esc(cap(p.activity||'Waiting for first report'))+'</span>'+(p.activity?'<span class=ago>'+ago(p.activityAt)+'</span>':'')+'</div></div>'}).join(''):'<div class="pod dim">No bots are running.</div>';
+stbots.innerHTML=on.length?on.map(p=>{const lead=d.player&&p.character==d.player&&d.playing===false,role=lead?'Leading '+(d.goal||'Farm'):(d.player?'Following '+d.player:'');return '<div class=pod style="cursor:pointer" title="Click to see what '+esc(p.name)+' is carrying" onclick="showInv(\''+esc(p.name)+'\')"><div class=top><span class=nm>'+esc(p.name)+'</span>'+(lead?' <span title="Leader">&#128681;</span>':'')+(p.char?' '+clsPill(p.char):'')+(role?' <span class=role>'+esc(role)+'</span>':'')+'<span class="pill '+p.status+'" style="margin-left:auto">'+(p.status=='starting'?'connecting':p.status)+'</span></div><div class="act actrow"><span title="'+esc((p.difficulty?p.difficulty+' - ':'')+(p.zone||'Unknown')+': '+(p.activity||''))+'"><b>'+(p.difficulty?esc(p.difficulty)+' &bull; ':'')+esc(p.zone||'Unknown')+'</b>: '+actIcon(p.activity)+esc(cap(p.activity||'Waiting for first report'))+'</span>'+(p.activity?'<span class=ago>'+ago(p.activityAt)+'</span>':'')+'</div></div>'}).join(''):'<div class="pod dim">No bots are running.</div>';
 evs=d.events||[];stitems.innerHTML=evs.length?evs.map((i,n)=>{const who=esc(i.bot),det=i.detail?esc(i.detail):'';
 const row=(title,left,click)=>'<div class="arow'+(click?' click':'')+' k-'+i.kind+'"'+(click?' onclick="showItem('+n+')"':'')+'>'+title+'<div class=meta><span>'+left+'</span><span class=ago>'+ago(i.time)+'</span></div></div>';
 if(i.kind=='level')return row('<b>&#127881; Leveled Up!</b>',who+' &middot; Reached level '+esc(i.name));
 if(i.kind=='stat')return row('<b>'+({Strength:'&#128170; ',Dexterity:'&#128400;&#65039; ',Vitality:'&#129728; ',Energy:'&#129504; '}[i.name]||'&#128200; ')+'Auto Stat</b>',who+' &middot; '+esc(i.name)+' &middot; '+esc(i.detail)+(i.detail=='1'?' point':' points'));
 if(i.kind=='skill')return row('<b>&#128293; Auto Skill</b>',who+' &middot; '+esc(i.name)+' &middot; '+(i.count>1?i.count+' points':'1 point'));
 if(i.kind=='kill')return row('<b>&#9760;&#65039; '+esc(i.name)+' Defeated</b>',who+(det?' &middot; '+det:''));
-if(i.kind=='quest')return row('<b>&#9989; Quest Complete</b>',who+' &middot; '+esc(i.name));
+if(i.kind=='quest')return row('<b>&#9989; Quest Complete</b>'+(i.verified=='saved'?' <span class=dim>&middot; in the save</span>':(i.verified=='notsaved'?' <span style="color:var(--bad)">&middot; NOT in the save</span>':'')),who+' &middot; '+esc(i.name));
+if(i.kind=='questitem')return row('<b>&#128220; '+(i.detail=='could not be used'?'Quest Item Not Used':'Quest Item Used')+'</b>',who+' &middot; '+esc(i.name)+(det?' &middot; '+det:''));
 if(i.kind=='problem')return row('<b>&#128680; Errored</b>',who+' &middot; '+esc(i.name)+(det?' &middot; '+det:''));
 if(i.kind=='restart')return row('<b>&#128276; '+esc(i.name)+'</b>',who+(det?' &middot; '+det:''));
 if(i.kind=='death')return row('<b>&#9904;&#65039; Died</b>',who+(det?' &middot; '+det:''));
+if(i.kind=='notready')return row('<b>&#128721; '+esc(i.name)+'</b>',who+' &middot; '+det);
 if(i.kind=='stash')return row('<b class="'+(/rejuvenation/i.test(i.name||'')?'q-rejuv':'q-'+esc(i.quality||''))+'">&#128452;&#65039; '+esc(i.name)+'</b>',who+(i.zone?' &middot; '+esc(i.zone):'')+qualityWord(i)+' &middot; Stashed');
 if(i.kind=='connect')return row('<b>&#128279; Connected</b>',who);
 if(i.kind=='disconnect')return row('<b>&#128268; Disconnected</b>',who+(i.zone?' &middot; '+esc(i.zone):''));
@@ -468,7 +511,7 @@ if(opts!==playerOpts){player.innerHTML=opts;playerOpts=opts}
 if(document.activeElement!==safe)safe.checked=!!d.safeMode;gameOK=!!d.gameOK;gbanner.style.display=d.gameOK?'none':'block';gwhy.innerHTML=d.gameOK?'':esc(d.gameProblem).replace(/\bActive\w+(=\d+)?|\b(?:PlugY\.ini|Game\.exe)\b|( (?:in|at) )(.+?\.(?:ini|exe))(?=[. ]*(?:Fix|$))|(\bto )0\b/g,(m,a,pre,path,to)=>path?pre+'<code>'+path+'</code>':to?to+'<code>0</code>':'<code>'+m+'</code>');if(!d.gameOK&&!tabAuto&&/^Game\.exe was not found|^The path to Diablo II/.test(d.gameProblem||'')){tabAuto=true;subNow='p_game';tab('cfg');sub('p_game')}fillCfg(d);fillGoal(d);
 playerNow=d.player||'';if(document.activeElement!==player)player.value=playerNow;
 const html='<tr><th><input type=checkbox title="select all" onchange="pickAll(this.checked)"><th>Profile<th>Class<th>Spec<th>Status<th class=r>Runs<th class=r>Chickens<th class=r>Deaths<th></tr>'+d.profiles.map(p=>{const n=esc(p.name),lead=d.player&&p.character==d.player,me=lead&&playingNow,off=p.status=='stopped'&&!me;
-return '<tr class="'+(p.status=='running'?'run':(p.status=='starting'||p.status=='stopping'?'wait':''))+'"><td><input type=checkbox '+(me?'disabled ':'')+(picked.has(p.name)&&!me?'checked ':'')+'onchange="pick(\''+n+'\',this.checked)"><td>'+n+(me?' <span title="You">&#129781;</span>':(lead?' <span title="Leader">&#128681;</span>':''))+'<td>'+(p.char?clsPill(p.char):'-')+'<td title="'+esc(p.specAuto?'Detected: '+p.specAuto+(p.specWhy&&!p.forced?'. '+p.specWhy:''):p.specWhy)+'"><select onchange="setSpec(\''+n+'\',this.value)"><option value="">Auto: '+esc(p.specAuto||p.spec||'detect')+'</option>'+(p.specOptions||[]).map(o=>'<option'+(o==p.forced?' selected':'')+'>'+esc(o)+'</option>').join('')+'</select>'+
+return '<tr class="'+(p.audit?'audit':(p.status=='running'?'run':(p.status=='starting'||p.status=='stopping'?'wait':'')))+'"><td><input type=checkbox '+(me?'disabled ':'')+(picked.has(p.name)&&!me?'checked ':'')+'onchange="pick(\''+n+'\',this.checked)"><td>'+n+(me?' <span title="You">&#129781;</span>':(lead?' <span title="Leader">&#128681;</span>':''))+(p.audit?' <span style="cursor:pointer" title="Points are missing from this character: click to see what" onclick="showAudit(\''+n+'\')">&#9888;&#65039;</span>':'')+'<td>'+(p.char?clsPill(p.char):'-')+'<td title="'+esc(p.specAuto?'Detected: '+p.specAuto+(p.specWhy&&!p.forced?'. '+p.specWhy:''):p.specWhy)+'"><select onchange="setSpec(\''+n+'\',this.value)"><option value="">Auto: '+esc(p.specAuto||p.spec||'detect')+'</option>'+(p.specOptions||[]).map(o=>'<option'+(o==p.forced?' selected':'')+'>'+esc(o)+'</option>').join('')+'</select>'+
 '<td><span class="pill '+p.status+'">'+p.status+'</span>'+'<td class=r>'+p.runs+'<td class=r>'+p.chickens+'<td class=r>'+p.deaths+
 '<td><button class=primary '+(off&&d.gameOK?'':'disabled')+' onclick="act(\'start\',\''+n+'\')">Start</button><button '+(off?'disabled':'')+' onclick="act(\'stop\',\''+n+'\')">Stop</button></tr>'}).join('');
 if(html!==lastHtml){t.innerHTML=html;lastHtml=html};updPA();t.className=playingNow?'noruns':''

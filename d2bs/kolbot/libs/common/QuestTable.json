@@ -1,0 +1,345 @@
+{
+ "_about": "The quests of Diablo II, one row each. Read by libs/common/QuestTable.js (the Quester and its NPC visits) and by Qolbot (cmd/qolbot/quests.go: the Quest Progress sheet, the point audit, the Activity tab). id = the quest's number in the game (me.getQuest(id, ...)); num = its place in the act's list, which the bot prints in 'Act 2 - #1 - ...'; script = the Quester function that plays it; play false = in the table but not played; npcs = who hands the reward out, tried in order; manual = the last step is a reward only the player can choose (Charsi, Larzuk, Anya); reward = what the quest gives for good (skill, stat, life) and what the character has to do; aliases = other spellings of the title in older logs.",
+ "quests": [
+  {
+   "act": 1,
+   "num": 1,
+   "id": 1,
+   "title": "Den of Evil",
+   "script": "act1_den_of_evil",
+   "npcs": [
+    "akara"
+   ],
+   "reward": {
+    "skill": 1,
+    "how": "talk to Akara after clearing the Den"
+   }
+  },
+  {
+   "act": 1,
+   "num": 2,
+   "id": 2,
+   "title": "Sisters' Burial Grounds",
+   "script": "act1_sisters_burial_grounds",
+   "npcs": [
+    "kashya"
+   ],
+   "aliases": [
+    "Sister's Burial Grounds"
+   ]
+  },
+  {
+   "act": 1,
+   "num": 3,
+   "id": 4,
+   "title": "Search for Cain",
+   "script": "act1_search_for_cain",
+   "npcs": [
+    "akara",
+    "cain"
+   ]
+  },
+  {
+   "act": 1,
+   "num": 4,
+   "id": 5,
+   "title": "Forgotten Tower",
+   "script": "act1_forgotten_tower",
+   "npcs": [
+    "akara"
+   ],
+   "aliases": [
+    "The Forgotten Tower"
+   ]
+  },
+  {
+   "act": 1,
+   "num": 5,
+   "id": 3,
+   "title": "Tools of the Trade",
+   "script": "act1_tools_of_the_trade",
+   "npcs": [
+    "charsi"
+   ],
+   "manual": true
+  },
+  {
+   "act": 1,
+   "num": 6,
+   "id": 6,
+   "title": "Sisters to the Slaughter",
+   "script": "act1_sisters_to_the_slaughter",
+   "npcs": []
+  },
+  {
+   "act": 2,
+   "num": 1,
+   "id": 9,
+   "title": "Radament's Lair",
+   "script": "act2_radaments_lair",
+   "npcs": [
+    "atma"
+   ],
+   "reward": {
+    "skill": 1,
+    "how": "pick up the Book of Skill Radament drops and read it"
+   }
+  },
+  {
+   "act": 2,
+   "num": 2,
+   "id": 10,
+   "title": "Horadric Staff",
+   "script": "act2_horadric_staff",
+   "npcs": [
+    "cain"
+   ],
+   "aliases": [
+    "The Horadric Staff"
+   ]
+  },
+  {
+   "act": 2,
+   "num": 3,
+   "id": 11,
+   "title": "Tainted Sun",
+   "script": "act2_tainted_sun",
+   "npcs": [
+    "atma",
+    "drognan"
+   ],
+   "aliases": [
+    "The Tainted Sun"
+   ]
+  },
+  {
+   "act": 2,
+   "num": 4,
+   "id": 12,
+   "title": "Arcane Sanctuary",
+   "script": "act2_arcane_sanctuary",
+   "npcs": [
+    "drognan"
+   ],
+   "aliases": [
+    "The Arcane Sanctuary"
+   ]
+  },
+  {
+   "act": 2,
+   "num": 5,
+   "id": 13,
+   "title": "Summoner",
+   "script": "act2_summoner",
+   "npcs": [
+    "drognan",
+    "atma"
+   ],
+   "aliases": [
+    "The Summoner"
+   ]
+  },
+  {
+   "act": 2,
+   "num": 6,
+   "id": 14,
+   "title": "Seven Tombs",
+   "script": "act2_seven_tombs",
+   "npcs": [
+    "jerhyn",
+    "meshif"
+   ],
+   "aliases": [
+    "The Seven Tombs"
+   ]
+  },
+  {
+   "act": 3,
+   "num": 1,
+   "id": 20,
+   "title": "The Golden Bird",
+   "script": "act3_golden_bird",
+   "play": false,
+   "npcs": [
+    "meshif",
+    "alkor"
+   ],
+   "reward": {
+    "life": 20,
+    "how": "drink the Potion of Life Alkor brews"
+   }
+  },
+  {
+   "act": 3,
+   "num": 2,
+   "id": 19,
+   "title": "Blade of the Old Religion",
+   "script": "act3_blade_of_the_old_religion",
+   "npcs": [
+    "ormus",
+    "asheara"
+   ],
+   "aliases": [
+    "The Blade of the Old Religion"
+   ]
+  },
+  {
+   "act": 3,
+   "num": 3,
+   "id": 18,
+   "title": "Khalim's Will",
+   "script": "act3_khalims_will",
+   "npcs": [
+    "cain",
+    "ormus"
+   ]
+  },
+  {
+   "act": 3,
+   "num": 4,
+   "id": 17,
+   "title": "Lam Esen's Tome",
+   "script": "act3_lam_esens_tome",
+   "npcs": [
+    "alkor"
+   ],
+   "aliases": [
+    "Lam Essen's Tome"
+   ],
+   "reward": {
+    "stat": 5,
+    "how": "hand the tome to Alkor"
+   }
+  },
+  {
+   "act": 3,
+   "num": 5,
+   "id": 21,
+   "title": "Blackened Temple",
+   "script": "act3_blackened_temple",
+   "play": false,
+   "npcs": []
+  },
+  {
+   "act": 3,
+   "num": 6,
+   "id": 22,
+   "title": "The Guardian",
+   "script": "act3_guardian",
+   "npcs": [
+    "hratli"
+   ]
+  },
+  {
+   "act": 4,
+   "num": 1,
+   "id": 25,
+   "title": "Fallen Angel",
+   "script": "act4_fallen_angel",
+   "npcs": [
+    "tyrael"
+   ],
+   "aliases": [
+    "The Fallen Angel"
+   ],
+   "reward": {
+    "skill": 2,
+    "how": "talk to Tyrael after killing Izual"
+   }
+  },
+  {
+   "act": 4,
+   "num": 2,
+   "id": 27,
+   "title": "Hell's Forge",
+   "script": "act4_hells_forge",
+   "npcs": [
+    "cain",
+    "tyrael"
+   ]
+  },
+  {
+   "act": 4,
+   "num": 3,
+   "id": 26,
+   "title": "Terror's End",
+   "script": "act4_terrors_end",
+   "npcs": [
+    "tyrael"
+   ],
+   "aliases": [
+    "Terrors End"
+   ]
+  },
+  {
+   "act": 5,
+   "num": 1,
+   "id": 35,
+   "title": "Siege on Harrogath",
+   "script": "act5_seige_on_haggorath",
+   "npcs": [
+    "larzuk"
+   ],
+   "manual": true,
+   "aliases": [
+    "Seige on Harrogath"
+   ]
+  },
+  {
+   "act": 5,
+   "num": 2,
+   "id": 36,
+   "title": "Rescue on Mount Arreat",
+   "script": "act5_rescue_on_mount_arreat",
+   "npcs": [
+    "qual-kehk"
+   ],
+   "aliases": [
+    "Rescue On Mount Arreat"
+   ]
+  },
+  {
+   "act": 5,
+   "num": 3,
+   "id": 37,
+   "title": "Prison of Ice",
+   "script": "act5_prison_of_ice",
+   "npcs": [
+    "malah",
+    "anya"
+   ]
+  },
+  {
+   "act": 5,
+   "num": 4,
+   "id": 38,
+   "title": "Betrayal of Harrogath",
+   "script": "act5_betrayal_of_haggorath",
+   "npcs": [
+    "anya"
+   ],
+   "manual": true,
+   "aliases": [
+    "Betrayal of Haggorath"
+   ]
+  },
+  {
+   "act": 5,
+   "num": 5,
+   "id": 39,
+   "title": "Rite of Passage",
+   "script": "act5_rite_of_passage",
+   "npcs": [
+    "qual-kehk"
+   ]
+  },
+  {
+   "act": 5,
+   "num": 6,
+   "id": 40,
+   "title": "Eve of Destruction",
+   "script": "act5_eve_of_destruction",
+   "npcs": []
+  }
+ ]
+}

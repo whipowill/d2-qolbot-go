@@ -154,16 +154,21 @@ func (m *Manager) saveConfig() error {
 func (m *Manager) writeBotNames() {
 	m.mu.Lock()
 	names := []string{}
+	sorcs := []string{} // the running Sorceresses: Teleport is theirs (Quester.teleportReady)
 	for _, s := range m.states {
 		if s.Wanted {
 			names = append(names, s.Character)
+			if s.Char != nil && s.Char.Class == "Sorceress" {
+				sorcs = append(sorcs, s.Character)
+			}
 		}
 	}
 	player := m.cfg.Player
 	team := append([]string{}, m.expectTeam...)
 	m.mu.Unlock()
 	sort.Strings(names)
-	b, _ := json.Marshal(map[string]any{"leader": player, "bots": names, "team": team})
+	sort.Strings(sorcs)
+	b, _ := json.Marshal(map[string]any{"leader": player, "bots": names, "team": team, "sorcs": sorcs})
 	path := filepath.Join(m.root, "d2bs", m.cfg.ScriptPath, "data", "bots.json")
 	os.MkdirAll(filepath.Dir(path), 0o755)
 	if err := os.WriteFile(path, b, 0o660); err != nil {

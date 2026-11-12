@@ -130,6 +130,9 @@ func (m *Manager) handleCopyData(msg wire.Msg) {
 		}
 		json.Unmarshal([]byte(arg(0)), &o)
 		m.logf(o.Color, p, "%s", o.Msg)
+		if strings.HasPrefix(o.Msg, "Life Chicken") || strings.HasPrefix(o.Msg, "Mana Chicken") { // what the next chicken count is about
+			m.update(p, func(s *State) { s.lastChicken = o.Msg })
+		}
 	case "printToItemLog", "saveItem":
 		m.appendFile("logs/items-"+p+".log", arg(0))
 		if r.Func == "printToItemLog" {
@@ -160,10 +163,12 @@ func (m *Manager) handleCopyData(msg wire.Msg) {
 		zone := ""
 		m.update(p, func(s *State) { s.Chickens++; zone = s.Zone })
 		m.addEvent(ActivityEvent{Time: time.Now(), Bot: p, Kind: "chicken", Name: "Chickened", Detail: zone})
+		m.noteSetback(p, "chicken")
 	case "updateDeaths":
 		dzone := ""
 		m.update(p, func(s *State) { s.Deaths++; dzone = s.Zone })
 		m.addEvent(ActivityEvent{Time: time.Now(), Bot: p, Kind: "death", Name: "Died", Detail: dzone})
+		m.noteSetback(p, "death")
 	case "setTag":
 		m.update(p, func(s *State) { s.Tag = arg(0) })
 	case "getProfile":

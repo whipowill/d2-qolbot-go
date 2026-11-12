@@ -51,81 +51,87 @@ const (
 )
 
 type Config struct {
-	GameExe         string         `json:"gameExe"`               // path to Game.exe; set it on the web page (Settings tab) or here (unix path ok under Wine)
-	GameDir         string         `json:"gameDir"`               // working dir (defaults to Game.exe's dir)
-	D2BSDll         string         `json:"d2bsDll"`               // default: ./d2bs/D2BS.dll
-	ScriptPath      string         `json:"scriptPath"`            // kolbot folder name relative to d2bs/
-	SafeMode        bool           `json:"safeMode"`              // Bots page checkbox: bots are prohibited from AutoEquip, AutoStat and AutoSkill (whatever the Automation tab says) and pick up only consumables and quest items
-	Plugy           *bool          `json:"plugy"`                 // the game uses PlugY (default true): turns on the features that need it
-	QuietChat       bool           `json:"quietChat,omitempty"`   // old setting: same as reportTasks=false
-	ReportTasks     *bool          `json:"reportTasks"`           // bots say what task they are starting ("Ready", "Running town chores", ...) (default true)
-	ReportProblems  *bool          `json:"reportProblems"`        // bots say when they have a problem or cannot do something (default true)
-	Goal            string         `json:"goal,omitempty"`        // what a bot given the script "From goal" does: "Quest", "Farm" ("" = Follow)
-	FarmRuns        []string       `json:"farmRuns,omitempty"`    // the farm runs chosen for the goal Farm (kolbot script names)
-	Difficulty      string         `json:"difficulty,omitempty"`  // difficulty the leader bot hosts in: Normal, Nightmare or Hell (Hell when empty; the highest it has unlocked below that)
-	Pickit          *PickitSel     `json:"pickit,omitempty"`      // which .nip lists followers and the leader bot load (defaults when absent)
-	PickitRules     *PickitRules   `json:"pickitRules,omitempty"` // the simple choices on the Keeper tab (turned into Generated.nip)
-	Gamble          *bool          `json:"gamble"`                // bots may gamble when rich (default true; they say so in chat first)
-	AutoTown        *bool          `json:"autoTown"`              // bots follow the leader between town and the field by themselves (default true)
-	SaveOnStop      *bool          `json:"saveOnStop"`            // save a bot's character before stopping it (default true; needs PlugY commands)
-	AutoSaveMinutes *int           `json:"autoSaveMinutes"`       // bots also save every N minutes while running (default 5, 0 = off)
-	Storage         *spec.Storage  `json:"storage"`               // inventory/stash/cube sizes and the full-stash policy (default: a 10x6 inventory, a 10x10 stash and a 3x4 cube)
-	Banter          *bool          `json:"banter"`                // bots speak their quotes (default true)
-	BanterBubble    bool           `json:"banterBubble"`          // speak with a leading "!" so the quote shows over the bot's head
-	Protect         *spec.Protect  `json:"protect"`               // equipped items auto-equip must never replace (default: unique, set, crafted, socketed/runeword, Khalim's Will)
-	AutoEquip       *bool          `json:"autoEquip"`             // Automation tab: let bots equip better gear (default true; never touches the protected kinds)
-	AutoStat        *bool          `json:"autoStat"`              // Automation tab: let bots spend their stat points (default true)
-	WatchKills      *bool          `json:"watchKills"`            // bots report the bosses, uniques and champions they see die (default true; set false if it costs too much CPU)
-	MercWear        *spec.MercWear `json:"mercWear"`              // Automation tab: extra slots the mercenary can wear in this game (default none, as in the base game)
-	QuestClearAll   *bool          `json:"questClearAll"`         // Quests tab: clear every area a quest passes through (default true: slower, but levels the bots)
-	AutoSkill       *bool          `json:"autoSkill"`             // Automation tab: let bots spend their skill points (default true)
-	Wine            string         `json:"wine"`                  // wine binary; ignored on Windows
-	WinVersion      string         `json:"winVersion"`            // Windows version for a new private Wine prefix (default win7)
-	GameArgs        string         `json:"gameArgs"`              // extra Game.exe arguments (default "-direct -txt", as the QOL launcher uses)
-	HostIP          string         `json:"hostIp"`                // address of the TCP/IP game to join (default localhost)
-	Player          string         `json:"player"`                // character you are playing; bots follow this one ("" = auto-detect)
-	NotPlaying      bool           `json:"notPlaying,omitempty"`  // true: you are not playing, the leader is a bot that hosts the game and the others join it
-	SaveDir         string         `json:"saveDir"`               // character saves (default: <Game.exe dir>/Save)
-	WinePrefix      string         `json:"winePrefix"`            // WINEPREFIX (default ~/.qolbot_wine_prefix, kept apart from other Wine apps)
-	Web             string         `json:"web"`                   // web UI listen addr
-	BridgeAddr      string         `json:"bridgeAddr"`            // TCP addr for d2bridge
-	HeartbeatTO     int            `json:"heartbeatTimeoutSec"`
-	Headless        *bool          `json:"headless"`  // no visible game windows (default true)
-	AutoStart       []string       `json:"autoStart"` // profiles started by `run`
-	Profiles        []Profile      `json:"profiles"`
+	GameExe          string         `json:"gameExe"`               // path to Game.exe; set it on the web page (Settings tab) or here (unix path ok under Wine)
+	GameDir          string         `json:"gameDir"`               // working dir (defaults to Game.exe's dir)
+	D2BSDll          string         `json:"d2bsDll"`               // default: ./d2bs/D2BS.dll
+	ScriptPath       string         `json:"scriptPath"`            // kolbot folder name relative to d2bs/
+	SafeMode         bool           `json:"safeMode"`              // Bots page checkbox: bots are prohibited from AutoEquip, AutoStat and AutoSkill (whatever the Automation tab says) and pick up only consumables and quest items
+	Plugy            *bool          `json:"plugy"`                 // the game uses PlugY (default true): turns on the features that need it
+	QuietChat        bool           `json:"quietChat,omitempty"`   // old setting: same as reportTasks=false
+	ReportTasks      *bool          `json:"reportTasks"`           // bots say what task they are starting ("Ready", "Running town chores", ...) (default true)
+	ReportProblems   *bool          `json:"reportProblems"`        // bots say when they have a problem or cannot do something (default true)
+	Goal             string         `json:"goal,omitempty"`        // what a bot given the script "From goal" does: "Quest", "Farm" ("" = Follow)
+	FarmRuns         []string       `json:"farmRuns,omitempty"`    // the farm runs chosen for the goal Farm (kolbot script names)
+	Difficulty       string         `json:"difficulty,omitempty"`  // difficulty the leader bot hosts in: Normal, Nightmare or Hell (Hell when empty; the highest it has unlocked below that)
+	Pickit           *PickitSel     `json:"pickit,omitempty"`      // which .nip lists followers and the leader bot load (defaults when absent)
+	PickitRules      *PickitRules   `json:"pickitRules,omitempty"` // the simple choices on the Keeper tab (turned into Generated.nip)
+	Gamble           *bool          `json:"gamble"`                // bots may gamble when rich (default true; they say so in chat first)
+	AutoTown         *bool          `json:"autoTown"`              // bots follow the leader between town and the field by themselves (default true)
+	SaveOnStop       *bool          `json:"saveOnStop"`            // save a bot's character before stopping it (default true; needs PlugY commands)
+	AutoSaveMinutes  *int           `json:"autoSaveMinutes"`       // bots also save every N minutes while running (default 5, 0 = off)
+	Storage          *spec.Storage  `json:"storage"`               // inventory/stash/cube sizes and the full-stash policy (default: a 10x6 inventory, a 10x10 stash and a 3x4 cube)
+	Banter           *bool          `json:"banter"`                // bots speak their quotes (default true)
+	BanterBubble     bool           `json:"banterBubble"`          // speak with a leading "!" so the quote shows over the bot's head
+	Protect          *spec.Protect  `json:"protect"`               // equipped items auto-equip must never replace (default: unique, set, crafted, socketed/runeword, Khalim's Will)
+	AutoEquip        *bool          `json:"autoEquip"`             // Automation tab: let bots equip better gear (default true; never touches the protected kinds)
+	AutoStat         *bool          `json:"autoStat"`              // Automation tab: let bots spend their stat points (default true)
+	ChickenLimit     *int           `json:"chickenLimit"`          // a bot that chickens or dies this often within chickenWindowMinutes is stopped as "may not be ready" (default 4, 0 = never)
+	ChickenWindowMin *int           `json:"chickenWindowMinutes"`  // the window for chickenLimit (default 30)
+	WatchKills       *bool          `json:"watchKills"`            // bots report the bosses, uniques and champions they see die (default true; set false if it costs too much CPU)
+	MercWear         *spec.MercWear `json:"mercWear"`              // Automation tab: extra slots the mercenary can wear in this game (default none, as in the base game)
+	TeleportTeam     *bool          `json:"teleportTeam"`          // Quests tab: with a Sorceress in the party (and "clear every zone" off) the bots use her Teleport to get the team to the bosses (default false)
+	QuestClearAll    *bool          `json:"questClearAll"`         // Quests tab: clear every area a quest passes through (default true: slower, but levels the bots)
+	AutoSkill        *bool          `json:"autoSkill"`             // Automation tab: let bots spend their skill points (default true)
+	Wine             string         `json:"wine"`                  // wine binary; ignored on Windows
+	WinVersion       string         `json:"winVersion"`            // Windows version for a new private Wine prefix (default win7)
+	GameArgs         string         `json:"gameArgs"`              // extra Game.exe arguments (default "-direct -txt", as the QOL launcher uses)
+	HostIP           string         `json:"hostIp"`                // address of the TCP/IP game to join (default localhost)
+	Player           string         `json:"player"`                // character you are playing; bots follow this one ("" = auto-detect)
+	NotPlaying       bool           `json:"notPlaying,omitempty"`  // true: you are not playing, the leader is a bot that hosts the game and the others join it
+	SaveDir          string         `json:"saveDir"`               // character saves (default: <Game.exe dir>/Save)
+	WinePrefix       string         `json:"winePrefix"`            // WINEPREFIX (default ~/.qolbot_wine_prefix, kept apart from other Wine apps)
+	Web              string         `json:"web"`                   // web UI listen addr
+	BridgeAddr       string         `json:"bridgeAddr"`            // TCP addr for d2bridge
+	HeartbeatTO      int            `json:"heartbeatTimeoutSec"`
+	Headless         *bool          `json:"headless"`  // no visible game windows (default true)
+	AutoStart        []string       `json:"autoStart"` // profiles started by `run`
+	Profiles         []Profile      `json:"profiles"`
 }
 
 type State struct {
 	Profile
-	Status       string    `json:"status"` // stopped|starting|running|stopping
-	Pid          uint32    `json:"pid"`
-	Difficulty   string    `json:"difficulty,omitempty"` // the difficulty of the game the bot is in (reported with the zone)
-	Zone         string    `json:"zone,omitempty"`       // the area the bot is in (reported by its ToolsThread)
-	ZoneAt       time.Time `json:"-"`
-	Inv          string    `json:"-"` // what the bot carries, as the JSON its ToolsThread reports (shown when you click its card)
-	InvAt        time.Time `json:"-"`
-	Activity     string    `json:"activity,omitempty"`   // the last line the bot reported (not a clock tick or a warning)
-	ActivityAt   time.Time `json:"activityAt,omitempty"` // when
-	Doing        string    `json:"doing,omitempty"`      // the script a bot is running (from its own output)
-	Hwnd         uint64    `json:"hwnd"`
-	Runs         int       `json:"runs"`
-	Chickens     int       `json:"chickens"`
-	Deaths       int       `json:"deaths"`
-	Heartbeat    time.Time `json:"heartbeat"`
-	Tag          string    `json:"tag"`
-	Wanted       bool      `json:"-"` // should be running; supervisor restarts on crash
-	GameAt       time.Time `json:"-"` // last time the starter script reported a game in progress
-	Restarts     int       `json:"restarts"`
-	Char         *CharInfo `json:"char,omitempty"`        // from the .d2s save, if one exists
-	SpecOptions  []string  `json:"specOptions,omitempty"` // builds available for this character's class
-	Forced       string    `json:"forced"`                // build chosen by hand for this character ("" = automatic)
-	SpecAuto     string    `json:"specAuto,omitempty"`    // what automatic detection picks, whether or not a build is chosen by hand
-	Spec         string    `json:"spec,omitempty"`        // detected build, e.g. "Zeal" (see internal/spec)
-	SpecWhy      string    `json:"specWhy,omitempty"`     // why
-	joinWatching bool      // a watchJoin goroutine is pending for this bot
-	rpcSeen      bool      // the starter script has called us at least once (so it has the handle)
-	startedAt    time.Time // when the current Game.exe was launched
-	fastFails    int       // consecutive launches that died within 30s
+	Status       string      `json:"status"` // stopped|starting|running|stopping
+	Pid          uint32      `json:"pid"`
+	Audit        *PointAudit `json:"audit,omitempty"`      // skill or stat points missing from the character (audit.go); nil = nothing found
+	Difficulty   string      `json:"difficulty,omitempty"` // the difficulty of the game the bot is in (reported with the zone)
+	Zone         string      `json:"zone,omitempty"`       // the area the bot is in (reported by its ToolsThread)
+	ZoneAt       time.Time   `json:"-"`
+	Inv          string      `json:"-"` // what the bot carries, as the JSON its ToolsThread reports (shown when you click its card)
+	InvAt        time.Time   `json:"-"`
+	Activity     string      `json:"activity,omitempty"`   // the last line the bot reported (not a clock tick or a warning)
+	ActivityAt   time.Time   `json:"activityAt,omitempty"` // when
+	Doing        string      `json:"doing,omitempty"`      // the script a bot is running (from its own output)
+	Hwnd         uint64      `json:"hwnd"`
+	Runs         int         `json:"runs"`
+	setbacks     []setback   // recent chickens and deaths (readiness.go)
+	lastChicken  string      // the last "Life Chicken (a/b) to X in Y" the bot printed
+	Chickens     int         `json:"chickens"`
+	Deaths       int         `json:"deaths"`
+	Heartbeat    time.Time   `json:"heartbeat"`
+	Tag          string      `json:"tag"`
+	Wanted       bool        `json:"-"` // should be running; supervisor restarts on crash
+	GameAt       time.Time   `json:"-"` // last time the starter script reported a game in progress
+	Restarts     int         `json:"restarts"`
+	Char         *CharInfo   `json:"char,omitempty"`        // from the .d2s save, if one exists
+	SpecOptions  []string    `json:"specOptions,omitempty"` // builds available for this character's class
+	Forced       string      `json:"forced"`                // build chosen by hand for this character ("" = automatic)
+	SpecAuto     string      `json:"specAuto,omitempty"`    // what automatic detection picks, whether or not a build is chosen by hand
+	Spec         string      `json:"spec,omitempty"`        // detected build, e.g. "Zeal" (see internal/spec)
+	SpecWhy      string      `json:"specWhy,omitempty"`     // why
+	joinWatching bool        // a watchJoin goroutine is pending for this bot
+	rpcSeen      bool        // the starter script has called us at least once (so it has the handle)
+	startedAt    time.Time   // when the current Game.exe was launched
+	fastFails    int         // consecutive launches that died within 30s
 }
 
 type Manager struct {
@@ -209,7 +215,7 @@ func main() {
 	}
 }
 
-func (m *Manager) headless() bool { return m.cfg.Headless == nil || *m.cfg.Headless }
+func (m *Manager) headless() bool { return m.cfg.Effective().Headless }
 
 func (m *Manager) run(profiles []string) {
 	m.openLog()
@@ -218,6 +224,9 @@ func (m *Manager) run(profiles []string) {
 			m.logf(9, "", "PROBLEM: %s", p)
 		}
 		m.fatalf("%d problem(s) above. Fix them in qolbot.json or install what is missing, then start again.", len(problems))
+	}
+	if err := loadQuestTable(m.questTablePath()); err != nil {
+		m.logf(9, "", "cannot read the quest table (%v): the Quest Progress sheet and the point audit will have nothing to show", err)
 	}
 	m.checkGameFiles()
 	m.noteOldPrefix()
@@ -702,6 +711,7 @@ func (m *Manager) startProfile(name string) error {
 	args = append(args, strings.Fields(m.cfg.GameArgs)...)
 	m.sendBridge(wire.Msg{T: "launch", Profile: name, Exe: toWin(exe), Dir: toWin(dir), Args: args, Dll: toWin(m.cfg.D2BSDll)})
 	m.logf(0, name, "starting profile (character %s)", s.Character)
+	m.logQuestWordsAtStart(name, s.Character)
 	m.dbgf(name, "launch: exe=%s dir=%s args=%v dll=%s", toWin(exe), toWin(dir), args, toWin(m.cfg.D2BSDll))
 	return nil
 }

@@ -21,6 +21,9 @@ func TestFriendlyActivity(t *testing.T) {
 		{"Going back to town", "Going back to town"},
 		{"AutoSpec (quiet): Waiting for my team: 0 of 1 in the game (not yet: Temp).", "Waiting on teammates"},
 		{"AutoSpec: the whole team is here (Temp)", "Team is here"},
+		{"Team: the whole team is here (Temp)", "Team is here"},
+		{"Team: Waiting for my team: 0 of 1 in the game (not yet: Temp).", "Waiting on teammates"},
+		{"Follower: Taking portal", "Taking portal"},
 		{"SAY: I cannot reach you. Open a town portal, or I stay in town.", "Waiting for a portal"},
 		{"Following Meir.", "Following Meir"},
 		{"Detected hostile monsters.", "Fighting demons"},
@@ -35,7 +38,7 @@ func TestFriendlyActivity(t *testing.T) {
 		"AutoSpec: storage inventory 10x4, stash 10x10", "12", "SAY: /save", "SAY: Nothing to do.", "[Strict Warning] x", "Generated.nip", "\xffc7Picked up \xffc4Scepter \xffc0(ilvl 4)", "AutoSpec: quests: area 1 diff 0 q6=0/0/0",
 		"initNPC: heal", "initNPC: gamble", "Run duration 98.704", "Killed Corpsefire (Den Of Evil)", "SAY: Act 1 - #2 - \"Blood Raven\" is complete.", "Leveled up to level 16",
 		"AutoStat: Using 5 stat points in Strength", "AutoSkill: Using skill point in Skill: Bash ID: 126", "Equipped Sash (gear upgrade)", "Going gambling",
-		"AutoSpec: follow by waypoint: area 1 -> 3 (leader in 2), trip 1 in 40s", "AutoSpec (quiet): Going outside (waypoint).", "Going to town.",
+		"AutoSpec: follow by waypoint: area 1 -> 3 (leader in 2), trip 1 in 40s", "AutoSpec (quiet): Going outside (waypoint).", "Going to town.", "Follower: Going to town.", "Quester: quest state: area 40 diff 2 q6=1/0/1 q7=1/0",
 		"Drinking potion from inventory.", "Taking an item out of the stash.", "Using scroll of resistance.", "Waypoint gathered.", "Leader found.", "Ready.", "Done. Moved 3 item(s) to my stash."} {
 		if got, ok := friendlyActivity(noise); ok {
 			t.Errorf("%q should be left out, got %q", noise, got)
@@ -299,5 +302,29 @@ func TestLevelUpUpdatesTheCard(t *testing.T) {
 func TestNoQuestsLeftStatus(t *testing.T) {
 	if got, ok := friendlyActivity("Questing: no quest is left to do on this difficulty. Waiting here; stop the bots when you like."); !ok || got != "No quests left on this difficulty" {
 		t.Errorf("got %q %v", got, ok)
+	}
+}
+
+func TestQuestItemEvents(t *testing.T) {
+	ev, ok := parseEvent("QuestItems: used the Book of Skill (unspent skill points 0 -> 1, stat points 0 -> 0)")
+	if !ok || ev.Kind != "questitem" || ev.Name != "Book of Skill" || ev.Detail != "skill points 0 to 1" {
+		t.Errorf("got %+v %v", ev, ok)
+	}
+	ev, ok = parseEvent("QuestItems: the Potion of Life would not be used, it stays in the pack")
+	if !ok || ev.Kind != "questitem" || ev.Detail != "could not be used" {
+		t.Errorf("got %+v %v", ev, ok)
+	}
+	if _, ok := parseEvent("QuestItems: using the Book of Skill (unspent skill points 0, stat points 0)"); ok {
+		t.Error("the 'using' line is not an event")
+	}
+}
+
+func TestQuestEventsAreNotDoubled(t *testing.T) {
+	m := &Manager{states: map[string]*State{}, logSubs: map[chan LogLine]bool{}}
+	ev := ActivityEvent{Time: time.Now(), Bot: "Meir", Kind: "quest", Name: "Radament's Lair", Detail: "Act 2"}
+	m.addEvent(ev) // the Quester's own log line
+	m.addEvent(ev) // and the chat line ("SAY: ...") when chat reports are on
+	if len(m.events) != 1 {
+		t.Errorf("got %d events", len(m.events))
 	}
 }

@@ -188,7 +188,7 @@ weapon never had a score and was never equipped; that, rather than anything in t
 Which item types a merc can wear is decided in code (`Item.mercWeapons` in `libs/common/Misc.js`), following what
 your `qol.dll` allows (`qol.ini` `[mercenary] equip=1`): Rogue bows and crossbows; Desert Guard polearms, spears and
 javelins; Iron Wolf shields, 1H swords, wands, scepters, maces and orbs; Barbarian swords, axes, maces and hammers;
-rings, amulets, boots, gloves and belts only when you check them under **Mercenaries can wear** on the Automation tab
+rings, amulets, boots, gloves and belts only when you check them under **Mercenaries can wear these items** on the Equipment tab
 (`"mercWear"` in `qolbot.json`; the base game allows none of them, some mods allow all, and the default is none). This needs `qol.dll` loaded (the bot game folder's `PlugY.ini`
 has `DllToLoad=Basemod.dll|qol.dll`) and BaseMod's `[MercMod]` options all `0`.
 
@@ -239,6 +239,18 @@ if it fits, and moves things to the stash from town. For that to be right, the g
   stash."), moves it to the stash, and reports when it is done. Junk is left for the town chores to sell. If the stash is
   full it follows the stash-full choice above (add a page, or say so and stop). Turn this off with
   `"clearOnLoad": false`.
+
+## A bot that may not be ready for where it is sent
+
+**On by default.** A bot that keeps chickening (leaving the game because its life ran low) or dying is out of its depth, and
+going round the same loop for hours helps nobody. When a bot has chickened or died **3 times within 30 minutes**, Qolbot
+stops it (saved and exited, like the Stop button) and puts a **Stopped: may not be ready** entry on the Activity tab: how many, how long,
+which difficulty and areas, and the last thing the bot said about it (for example "Life Chicken (164/811) to Champion Apparition").
+A leader that is stopped takes the whole team with it (the followers first, the leader last).
+
+Qolbot judges the pattern, not the character: it does not read level or gear. Turn it off or change the two numbers on the **Settings tab, Behavior,
+Safety** (a checkbox: unchecked means never stop a bot for this); it applies at once, because Qolbot does the counting, and is kept in
+`qolbot.json` as `chickenLimit` (0 = off) and `chickenWindowMinutes`. The count starts again after a stop.
 
 ## Kills the bots report as they watch
 

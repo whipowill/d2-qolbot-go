@@ -1,6 +1,6 @@
 # Quester: how the bots play the quests
 
-The quest system is `d2bs/kolbot/libs/common/Quester.js` (about 1,900 lines, written for this project) plus a 16-line launcher,
+The quest system is `d2bs/kolbot/libs/common/Quester.js` (the core), `QuestScripts.js` (the quests, one function each) and `QuestNpcs.js` (the quest NPC visits), all written for this project, driven by one data file, `QuestTable.json` (which Qolbot reads too), plus a small launcher,
 `d2bs/kolbot/libs/bots/Questing.js`. This page explains what it does, quest by quest, how the leader and the followers share the work, and
 an audit of what is solid and what is risky. For the other automations see `AUTOMATION.md`; for the state of play see `../NOTES.md`.
 
@@ -24,6 +24,48 @@ Getting from the Bots page to a running quest:
    `Quester.runQuests(false)`.
 5. The followers follow the leader as usual (`Follower.js`). They do not play the quests; they pick up nothing while you are not playing
    (the leader does the looting), and they do the quest NPC visits when they are in town.
+
+## Quick Travel with a Sorceress
+
+A Sorceress in the party can place portals for the team instead of everyone walking. The leader says `portal <place>` in chat (no name);
+the Sorceress that every bot picks (the first one by name among those Qolbot started and that are in the game) teleports to the boss, opens
+a portal and takes it to town, and the leader takes it from there, then everybody follows. It needs a leader that is not a Sorceress
+itself (a Sorceress leader already teleports).
+
+- **The switch:** Settings, Behavior, **Teleport**: *Quick Travel: Bot parties including a Sorceress will make use of Teleport*. It is off
+  until you check it, and it is the one switch for both modes: unchecked, nobody asks for a portal. If a Sorceress ever gets hurt doing it,
+  uncheck it.
+- **Farm mode:** with the switch on, always.
+- **Quest mode:** with the switch on and **Full Clear** (Behavior, Quests) off. With Full Clear on every zone is cleared on foot.
+- **Where:** the Countess, Andariel, the Pit, the Ancient Tunnels (when the chest and the Dark Elder are not wanted), the Summoner (without
+  the Fire Eye), Nihlathak, Mephisto, Duriel, Diablo and Baal. Not Blood Raven (the Mausoleum script kills her first) or Radament.
+- **Safe to fail:** if she does not answer within 150 seconds, cannot get there, or the portal cannot be taken, the bot walks as before and
+  does not ask again that game. The Countess and Andariel (Farm) were tried in a game; the others are wired the same way but untried.
+
+**The party stays together, with or without Quick Travel.** While she is away everybody else waits in town with the leader. When the
+leader goes through her portal the followers take it too (a follower takes the leader's portal, else any portal of a party member that leads
+to where the leader is). And the leader's TownChicken thread (`Team.separated`, `Team.regroup`) watches the party in every Farm and Quest
+run: if a teammate has not been in the leader's area for a minute (time to repair or sell in town, or to find a waypoint or portal, is
+allowed), the leader goes to town, waits there (up to 90 seconds) for everybody to gather, and takes its portal back out; the followers
+follow it out. At most once every three minutes.
+
+## Reward items: every character takes and uses its own
+
+A few quest rewards change the character for good: the Book of Skill (Radament, +1 skill point), the Potion of Life (+20 life), the
+Scroll of Resistance. A quest is not worth much if the reward item sits unread, and each character has to take its own. `QuestItems.js`
+does this for **every bot, leader or follower**:
+
+- **Pick it up.** The leader walks back to where the boss died. A follower picks up nothing else, but it does pick these up
+  (`Pickit.questOnly`).
+- **Make room.** If the pack is full: the town chores first (junk is sold, keepers go to the stash), then the spare health and mana
+  potions are drunk, then junk gear is dropped, and rejuvenation potions are the last resort. Quest items, tomes, keys, the cube, runeword and
+  cubing parts, charms and anything you own are never touched. If nothing can be freed the bot says so (`Quester: ... problem`).
+- **Use it at once**, and save right after. A reward the game puts into the pack by itself is used within seconds (a follower checks every
+  10 seconds, the leader before each quest).
+
+Not covered: a chicken in the few seconds between picking the item up and using it, and a pack that holds nothing but things the bot must keep.
+Diablo II keeps a quest open until the reward is used, so a miss is normally made good by running the quest again; the audit
+(the warning sign on the Bots tab) shows what is missing.
 
 ## `runQuests`: the main loop
 
@@ -190,7 +232,7 @@ Ordered by how much they can hurt.
 
 | Look at | For |
 |---|---|
-| `d2bs/d2bs.log` and `logs/bot-<name>.log` | the quest function names printed as each starts (`act1_tools_of_the_trade`), the `Attempting to ...` lines, `Talking to ...`, `AutoSpec: quest talk ...` |
+| `d2bs/d2bs.log` and `logs/bot-<name>.log` | the quest function names printed as each starts (`act1_tools_of_the_trade`), the `Attempting to ...` lines, `Talking to ...`, `Quester: quest talk ...`, `Quester: quest skipped: ...`, `QuestItems: ...` (room made, item used and what it gave) |
 | the leader's last status on the Bots page | "Embarking on quest" means the script is running; a card that stays on one status for minutes after "Idle." is item 1 above |
 | `d2bs/kolbot/logs/ScriptErrorLog.txt` | script errors |
 | the Activity list | Quest Complete entries (also created by the `status` chat command for every quest already done) |

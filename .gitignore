@@ -6,6 +6,9 @@
 # --- Local helper scripts that hold git identity / remotes ---
 /reset.sh
 
+# --- Copies of the player's character files kept before a point restore (audit.go) ---
+/backups/
+
 # --- Logs (contain home paths, character names, in-game chat, item drops) ---
 /logs/
 /.qolbot-xvfb.pid

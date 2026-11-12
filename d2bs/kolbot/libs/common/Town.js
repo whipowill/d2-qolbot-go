@@ -33,6 +33,9 @@ var NPC = {
 	Cain: getLocaleString(2890).toLowerCase()
 };
 
+include("common/Report.js");
+include("common/QuestItems.js");
+
 var Town = {
 	telekinesis: true,
 	sellTimer: getTickCount(), // shop speedup test
@@ -979,11 +982,7 @@ CursorLoop:
 
 		print("Going gambling");
 
-		if (typeof AutoSpec === "object") {
-			AutoSpec.note("I'm going gambling, be back soon.");
-		} else {
-			say("I'm going gambling, be back soon.");
-		}
+		Report.note("Town", "I'm going gambling, be back soon.");
 
 		var i, item, items, npc, newItem, result,
 			list = [];
@@ -2001,38 +2000,7 @@ MainLoop:
 
 		for (i = 0; !!items && i < items.length; i += 1) {
 			if ([18, 41, 76, 77, 78].indexOf(items[i].itemType) === -1 && // Don't drop tomes, keys or potions
-					// Keep some quest items
-
-					// act1
-					items[i].classid !== 524 && // Scroll of Inifuss
-					items[i].classid !== 525 && // Key to Cairn Stones
-					items[i].classid !== 89 && // Horadric Malus
-					// act2
-					items[i].classid !== 552 && // Book of Skill
-					items[i].classid !== 549 && // Horadric Cube
-					items[i].classid !== 92 && // Staff of Kings
-					items[i].classid !== 521 && // Viper Amulet
-					items[i].classid !== 91 && // Horadric Staff
-					// act3
-					items[i].classid !== 546 && // A Jade Figurine
-					items[i].classid !== 547 && // The Golden Bird
-					items[i].classid !== 545 && // Potion of Life
-					items[i].classid !== 87 && // The Gidbinn
-					items[i].classid !== 548 && // Lam Esen's Tome
-					items[i].classid !== 553 && // Khalim's Eye
-					items[i].classid !== 554 && // Khalim's Heart
-					items[i].classid !== 555 && // Khalim's Brain
-					items[i].classid !== 173 && // Khalim's Flail
-					items[i].classid !== 174 && // Khalim's Will
-					// act4
-					items[i].classid !== 90 && // Hellforge Hammer
-					// act5
-					items[i].classid !== 644 && // Malah's Potion
-					items[i].classid !== 646 && // Scroll of Resistance
-
-					// Pandemonium keys, organs, token and essences: the player needs these, never throw them away
-					["pk1", "pk2", "pk3", "dhn", "bey", "mbr", "toa", "tes", "ceh", "bet", "fed"].indexOf(items[i].code) === -1 &&
-					//
+					!QuestItems.isProtected(items[i]) && // the quest items (QuestItems.keep) and the Pandemonium keys, organs, token and essences: never thrown away
 					(items[i].code !== 529 || !!me.findItem(518, 0, 3)) && // Don't throw scrolls if no tome is found (obsolete code?)
 					(items[i].code !== 530 || !!me.findItem(519, 0, 3)) && // Don't throw scrolls if no tome is found (obsolete code?)
 					!Cubing.keepItem(items[i]) && // Don't throw cubing ingredients

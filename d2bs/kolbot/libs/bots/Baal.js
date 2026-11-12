@@ -197,15 +197,21 @@ function Baal() {
 	};
 
 	Town.doChores();
-	Pather.useWaypoint(Config.RandomPrecast ? "random" : 129);
-	Precast.doPrecast(true);
 
-	if (me.area !== 129) {
-		Pather.useWaypoint(129);
-	}
+	// a Sorceress in the party puts the team at the way into the Throne of Destruction (Quick Travel)
+	if (typeof QuickTravel === "object" && QuickTravel.portal("baal", 131)) {
+		Precast.doPrecast(true);
+	} else {
+		Pather.useWaypoint(Config.RandomPrecast ? "random" : 129);
+		Precast.doPrecast(true);
 
-	if (!Pather.moveToExit([130, 131], true)) {
-		throw new Error("Failed to move to Throne of Destruction.");
+		if (me.area !== 129) {
+			Pather.useWaypoint(129);
+		}
+
+		if (!Pather.moveToExit([130, 131], true)) {
+			throw new Error("Failed to move to Throne of Destruction.");
+		}
 	}
 
 	Pather.moveTo(15095, 5029);

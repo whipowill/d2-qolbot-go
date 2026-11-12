@@ -198,6 +198,7 @@ type Plan struct {
 	WatchKills      bool           `json:"watchKills"`         // the bot reports the bosses, uniques and champions it sees die
 	SkillPoints     map[string]int `json:"skillPoints"`        // skill id -> hard points the save holds now: the game's own skill query adds item bonuses, so AutoSkill counts from this
 	MercWear        MercWear       `json:"mercWear"`           // which extra slots the mercenary may be given gear for (some mods allow more than helm, armor, weapon)
+	TeleportTeam    bool           `json:"teleportTeam"`       // the Quests tab option: use a Sorceress party member's Teleport (only when QuestClearAll is false)
 	QuestClearAll   bool           `json:"questClearAll"`      // Quest mode clears every area it passes through (false: only the areas a quest needs)
 	AutoSkill       bool           `json:"autoSkill"`          // let the bot spend its skill points; false in safe mode
 }

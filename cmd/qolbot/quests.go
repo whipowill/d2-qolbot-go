@@ -2,6 +2,8 @@ package main
 
 import (
 	"encoding/binary"
+	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,33 +13,97 @@ import (
 // Party analysis: which quests each checked bot has done, read from the character files (.d2s), so it works for bots that are
 // stopped and shows all three difficulties. The file holds what the character last saved, not what a running game has in memory.
 
-// questRow is one quest of Quester.quests (d2bs/kolbot/libs/common/Quester.js): the same ids, in the same order.
+// questRow is one quest of the quest table: the quests the sheets show (the ones the Quester plays).
 type questRow struct {
 	Act   int    `json:"act"`
 	ID    int    `json:"id"`
 	Title string `json:"title"`
 }
 
-var questTable = []questRow{
-	{1, 1, "Den of Evil"}, {1, 2, "Sisters' Burial Grounds"}, {1, 4, "Search for Cain"}, {1, 5, "Forgotten Tower"}, {1, 3, "Tools of the Trade"}, {1, 6, "Sisters to the Slaughter"},
-	{2, 9, "Radament's Lair"}, {2, 10, "Horadric Staff"}, {2, 11, "Tainted Sun"}, {2, 12, "Arcane Sanctuary"}, {2, 13, "Summoner"}, {2, 14, "Seven Tombs"},
-	{3, 19, "Blade of the Old Religion"}, {3, 18, "Khalim's Will"}, {3, 17, "Lam Esen's Tome"}, {3, 22, "The Guardian"},
-	{4, 25, "Fallen Angel"}, {4, 27, "Hell's Forge"}, {4, 26, "Terror's End"},
-	{5, 35, "Siege on Harrogath"}, {5, 36, "Rescue on Mount Arreat"}, {5, 37, "Prison of Ice"}, {5, 38, "Betrayal of Harrogath"}, {5, 39, "Rite of Passage"}, {5, 40, "Eve of Destruction"},
+// questFileRow is a row of d2bs/kolbot/libs/common/QuestTable.json, the one table the Quester (libs/common/QuestTable.js) and Qolbot both read.
+type questFileRow struct {
+	Act     int      `json:"act"`
+	ID      int      `json:"id"`
+	Title   string   `json:"title"`
+	Play    *bool    `json:"play"`
+	Aliases []string `json:"aliases"`
+	Reward  *struct {
+		Skill int    `json:"skill"`
+		Stat  int    `json:"stat"`
+		Life  int    `json:"life"`
+		How   string `json:"how"`
+	} `json:"reward"`
 }
 
-// readQuestDone returns, for Normal, Nightmare and Hell, the ids of the quests whose "complete" bit is set (the bit Quester.getQuestProgress
-// tests with me.getQuest(id, 0)). The quest block follows the "Woo!" marker: 6 bytes, then 96 bytes (48 words, indexed by quest id) per difficulty.
-func readQuestDone(path string) (done [3][]int, ok bool) {
+var (
+	questTable   []questRow          // the quests the Quester plays, in the table's order
+	pointQuests  []pointQuest        // the quests whose reward is skill points, stat points or life (audit.go)
+	questAliases map[string][]string // title -> other spellings in older logs
+	questAll     []questRow          // every row, played or not (for finding a quest by its title)
+)
+
+// loadQuestTable reads the quest table. Without it the sheets and the audit have nothing to show, so a missing or broken file is an error.
+func loadQuestTable(path string) error {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	var doc struct {
+		Quests []questFileRow `json:"quests"`
+	}
+	if err := json.Unmarshal(b, &doc); err != nil {
+		return fmt.Errorf("%s: %v", path, err)
+	}
+	if len(doc.Quests) == 0 {
+		return fmt.Errorf("%s: no quests in it", path)
+	}
+	table, points, all, aliases := []questRow{}, []pointQuest{}, []questRow{}, map[string][]string{}
+	for _, q := range doc.Quests {
+		row := questRow{q.Act, q.ID, q.Title}
+		all = append(all, row)
+		aliases[q.Title] = q.Aliases
+		if q.Play == nil || *q.Play {
+			table = append(table, row)
+		}
+		if q.Reward != nil {
+			points = append(points, pointQuest{ID: q.ID, Title: q.Title, Skill: q.Reward.Skill, Stat: q.Reward.Stat, Life: q.Reward.Life, How: q.Reward.How})
+		}
+	}
+	questTable, pointQuests, questAll, questAliases = table, points, all, aliases
+	return nil
+}
+
+// questTablePath is where the table lives under the Qolbot folder.
+func (m *Manager) questTablePath() string {
+	return filepath.Join(m.root, "d2bs", "kolbot", "libs", "common", "QuestTable.json")
+}
+
+// readQuestWords returns the raw quest words of a character file for Normal, Nightmare and Hell, indexed by quest id (the quest block follows
+// the "Woo!" marker: 6 bytes, then 96 bytes = 48 words per difficulty). Bit 0 of a word is "complete", the bit Quester.getQuestProgress tests
+// with me.getQuest(id, 0); bit 1 set with bit 0 clear is a reward waiting.
+func readQuestWords(path string) (words [3][48]uint16, ok bool) {
 	b, err := os.ReadFile(path)
 	if err != nil || len(b) < 345+96*3 || string(b[335:339]) != "Woo!" {
 		return
 	}
 	for d := 0; d < 3; d++ {
-		blk := b[345+96*d : 345+96*(d+1)]
+		for q := 0; q < 48; q++ {
+			words[d][q] = binary.LittleEndian.Uint16(b[345+96*d+q*2:])
+		}
+	}
+	return words, true
+}
+
+// readQuestDone returns, for Normal, Nightmare and Hell, the ids of the quests of questTable whose "complete" bit is set.
+func readQuestDone(path string) (done [3][]int, ok bool) {
+	words, ok := readQuestWords(path)
+	if !ok {
+		return
+	}
+	for d := 0; d < 3; d++ {
 		done[d] = []int{}
 		for _, q := range questTable {
-			if binary.LittleEndian.Uint16(blk[q.ID*2:])&1 != 0 {
+			if words[d][q.ID]&1 != 0 {
 				done[d] = append(done[d], q.ID)
 			}
 		}
@@ -96,4 +162,122 @@ func splitNames(s string) []string {
 		}
 	}
 	return out
+}
+
+func normTitle(s string) string {
+	var b []rune
+	for _, r := range strings.ToLower(s) {
+		if r >= 'a' && r <= 'z' {
+			b = append(b, r)
+		}
+	}
+	return string(b)
+}
+
+// questIDByTitle finds the quest id for a title as the bots print it ("Radament's Lair" in act 2), whatever the spelling.
+func questIDByTitle(act int, title string) (int, bool) {
+	want := normTitle(title)
+	for _, q := range questAll {
+		if q.Act != act {
+			continue
+		}
+		if normTitle(q.Title) == want {
+			return q.ID, true
+		}
+		for _, a := range questAliases[q.Title] {
+			if normTitle(a) == want {
+				return q.ID, true
+			}
+		}
+	}
+	return 0, false
+}
+
+// how often verifyQuest looks at the file, how long it waits for a save to show the quest, and how long it tries (variables for the tests)
+var (
+	verifyPoll     = 3 * time.Second
+	verifyPatience = 20 * time.Second
+	verifyDeadline = 2 * time.Minute
+)
+
+// verifyQuest checks a "Quest Complete" entry against the character file. The Quester says "complete" when the game's own quest check says
+// so, and that check can be ahead of what the server wrote (it was for Radament's Lair twice). After the bot has saved, the file is the truth:
+// the entry is marked "saved" when the quest's complete bit is set in it and "notsaved" when it is not. It waits up to two minutes for the save.
+func (m *Manager) verifyQuest(profile string, ev ActivityEvent) {
+	var act int
+	fmt.Sscanf(ev.Detail, "Act %d", &act)
+	id, ok := questIDByTitle(act, ev.Name)
+	m.mu.Lock()
+	st := m.states[profile]
+	var character, diff string
+	if st != nil {
+		character, diff = st.Character, st.Difficulty
+	}
+	m.mu.Unlock()
+	d := -1
+	for i, n := range difficultyNames {
+		if n == diff {
+			d = i
+		}
+	}
+	if !ok || character == "" || d < 0 {
+		return // cannot tell which quest or difficulty: leave the entry as it is
+	}
+	path := m.savePath(character)
+	deadline := time.Now().Add(verifyDeadline)
+	var seenAt, seenMod time.Time // when a save after the entry was first seen, and its time stamp
+	for time.Now().Before(deadline) {
+		time.Sleep(verifyPoll)
+		fi, err := os.Stat(path)
+		if err != nil || fi.ModTime().Before(ev.Time.Add(-3*time.Second)) {
+			continue // the bot has not saved since it said so
+		}
+		words, ok := readQuestWords(path)
+		if !ok {
+			continue
+		}
+		if words[d][id]&1 != 0 {
+			m.setQuestVerified(profile, ev, "saved")
+			return
+		}
+		if seenAt.IsZero() {
+			seenAt, seenMod = time.Now(), fi.ModTime()
+		}
+		// a save after the entry that still says not complete: a later save has not fixed it either, or a while has gone by
+		if !fi.ModTime().Equal(seenMod) || time.Since(seenAt) > verifyPatience {
+			m.setQuestVerified(profile, ev, "notsaved")
+			m.logf(9, profile, "%q is reported complete, but the saved character does not have it as complete", ev.Name)
+			return
+		}
+	}
+}
+
+func (m *Manager) setQuestVerified(profile string, ev ActivityEvent, v string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for i := len(m.events) - 1; i >= 0; i-- {
+		if e := &m.events[i]; e.Kind == "quest" && e.Bot == profile && e.Name == ev.Name && e.Detail == ev.Detail {
+			e.Verified = v
+			return
+		}
+	}
+}
+
+// logQuestWordsAtStart writes what the character file says about the quests that give points, just before the bot starts, to Qolbot's log.
+// The bot logs the same quests as the game sees them once it has loaded (Quester.logBits at the start of a run): when a quest is complete in the
+// file and not complete in the game, the game took the completion back when the character loaded.
+func (m *Manager) logQuestWordsAtStart(profile, character string) {
+	words, ok := readQuestWords(m.savePath(character))
+	if !ok {
+		return
+	}
+	var parts []string
+	for _, q := range pointQuests {
+		var w []string
+		for d := 0; d < 3; d++ {
+			w = append(w, fmt.Sprintf("%04x", words[d][q.ID]))
+		}
+		parts = append(parts, fmt.Sprintf("%s %s", q.Title, strings.Join(w, "/")))
+	}
+	m.logf(0, profile, "saved file before start, quest words Normal/Nightmare/Hell (bit 0 = complete): %s", strings.Join(parts, "; "))
 }

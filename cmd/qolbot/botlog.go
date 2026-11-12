@@ -70,19 +70,20 @@ func scriptStarted(text string) string {
 
 // ActivityEvent is one entry of the Status tab's Activity list: an item picked up, a boss killed or a quest completed.
 type ActivityEvent struct {
-	Time    time.Time `json:"time"`
-	Bot     string    `json:"bot"`
-	Kind    string    `json:"kind"` // item, kill, quest
-	Name    string    `json:"name"`
-	Detail  string    `json:"detail,omitempty"`
-	Key     string    `json:"-"`               // what the event is about (a monster's id): the same key within two minutes is shown once, however many bots saw it
-	Count   int       `json:"count,omitempty"` // skill points: how many were spent in one go (a reset character spends dozens in a row)
-	skills  []string  // the distinct skills of a merged Auto Skill entry, in order
-	Zone    string    `json:"zone,omitempty"` // where the bot was when it picked the item up or put gear on
-	Ilvl    int       `json:"ilvl,omitempty"`
-	Quality string    `json:"quality,omitempty"` // items: unique, set, rare, magic, crafted, rune, potion, normal
-	Title   string    `json:"title,omitempty"`   // the item's full name as the bot saw it, when its details were reported
-	Desc    string    `json:"desc,omitempty"`    // the item's stat text (colour codes included); empty if it was never reported (not identified, or not logged)
+	Time     time.Time `json:"time"`
+	Bot      string    `json:"bot"`
+	Kind     string    `json:"kind"` // item, kill, quest
+	Name     string    `json:"name"`
+	Detail   string    `json:"detail,omitempty"`
+	Key      string    `json:"-"`               // what the event is about (a monster's id): the same key within two minutes is shown once, however many bots saw it
+	Count    int       `json:"count,omitempty"` // skill points: how many were spent in one go (a reset character spends dozens in a row)
+	skills   []string  // the distinct skills of a merged Auto Skill entry, in order
+	Zone     string    `json:"zone,omitempty"` // where the bot was when it picked the item up or put gear on
+	Ilvl     int       `json:"ilvl,omitempty"`
+	Quality  string    `json:"quality,omitempty"`  // items: unique, set, rare, magic, crafted, rune, potion, normal
+	Title    string    `json:"title,omitempty"`    // the item's full name as the bot saw it, when its details were reported
+	Verified string    `json:"verified,omitempty"` // a quest entry checked against the character file after the bot saved: "saved" (the file says complete) or "notsaved" (it does not)
+	Desc     string    `json:"desc,omitempty"`     // the item's stat text (colour codes included); empty if it was never reported (not identified, or not logged)
 }
 
 // parsePicked reads the pickit's "Picked up <colour><name> (ilvl N)" line. Gold, keys and scrolls (counts like "(3/12)") are not items
@@ -222,6 +223,9 @@ func (m *Manager) followBotLogs() {
 			if ok {
 				ev.Time, ev.Bot = time.Now(), name
 				m.addEvent(ev)
+				if ev.Kind == "quest" {
+					go m.verifyQuest(name, ev)
+				}
 				if ev.Kind == "level" {
 					m.noteLevel(name, ev.Name)
 				}
@@ -264,6 +268,14 @@ func (m *Manager) addEvent(it ActivityEvent) {
 	if it.Kind == "kill" { // the leader's script prints no id: the same boss in the same place within 30 seconds is the same kill
 		for i := len(m.events) - 1; i >= 0 && i >= len(m.events)-80; i-- {
 			if e := m.events[i]; e.Kind == "kill" && e.Name == it.Name && e.Detail == it.Detail && (e.Key == "" || it.Key == "") && time.Since(e.Time) < 30*time.Second {
+				m.mu.Unlock()
+				return
+			}
+		}
+	}
+	if it.Kind == "quest" || it.Kind == "questitem" { // the script logs it and, with chat on, says it too: one entry
+		for i := len(m.events) - 1; i >= 0 && i >= len(m.events)-80; i-- {
+			if e := m.events[i]; e.Kind == it.Kind && e.Bot == it.Bot && e.Name == it.Name && e.Detail == it.Detail && time.Since(e.Time) < 30*time.Second {
 				m.mu.Unlock()
 				return
 			}
