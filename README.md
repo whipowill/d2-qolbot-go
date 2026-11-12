@@ -1,14 +1,16 @@
 # Qolbot for Diablo II
 
-A botting application for Diablo II designed for the singleplayer enthusiast.  This program is specially built around D2LOD ``v1.13d``.
+A botting application for Diablo II designed for the singleplayer enthusiast.
 
 This program focuses on botting on your local machine, allowing you to create LAN games that your other singleplayer characters can join. It's like having your own ladder reset where you roll through the game with a full team.
 
 What began as an old version of Kolbot was eventually rewritten in Go to make it run on Linux and Mac in addition to Windows. The UI has been completely redesigned and strips out all the complexity of the old botting system.
 
-| | | |
-|---|---|---|
-| ![Screenshot 1](https://i.imgur.com/FNm353J.png) | ![Screenshot 2](https://i.imgur.com/xJqNewn.png) | ![Screenshot 3](https://i.imgur.com/bPrhvVZ.png) |
+This program is built around D2LOD ``v1.13d`` and includes PlugY support.
+
+| | |
+|---|---|
+| ![Screenshot](https://i.imgur.com/FNm353J.png) | ![Screenshot](https://i.imgur.com/bPrhvVZ.png) |
 
 The beauty of running this on Linux is that I never even see the bot windows at all. It all happens completely in the background on my machine using minimal resources. Each bot I run consumes about 5% of my total CPU.
 
@@ -24,6 +26,8 @@ The goal was to create an experience where bots will join your games and play wi
 - AutoSkill assign skills as they play
 - Complete quests as they are able in town
 - Infinite stash support for PlugY
+
+![Screenshot](https://i.imgur.com/xJqNewn.png)
 
 ## Install
 
