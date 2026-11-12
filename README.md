@@ -79,9 +79,11 @@ The attempt was to make something really complicated become really simple.
 
 ## Credits
 
-Runs on Kolbot by Kolton and D2BS by Noah.
+Runs on [Kolbot](https://github.com/kolton/d2bot-with-kolbot/tree/patch-113d-core15) by Kolton and D2BS by Noah.
 
-- [Kolbot](https://github.com/kolton/d2bot-with-kolbot/tree/patch-113d-core15) - the original repository from which this program was born
+## License
+
+The Go code, web interface, scripts and docs are [MIT licensed](LICENSE). The bundled third-party code keeps its own terms: D2BS is GPL v2 (see ``d2bs/LICENSE.txt``) and Kolbot has no published license.
 
 ## External Links
 
