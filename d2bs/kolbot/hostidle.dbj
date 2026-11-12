@@ -1,0 +1,177 @@
+// hostidle.dbj: game script for a profile with role "host" or "idle". The starter creates or
+// joins the TCP/IP game; this just stays in it. Nothing moves, fights, or talks, UNLESS the
+// file data/sellprobe.txt exists: then it repeatedly buys a Scroll of Town Portal from the
+// town vendor and sells it back (used to trigger BaseMod's World Event auto-sell).
+js_strict(true);
+
+include("json2.js");
+include("NTItemParser.dbl");
+include("OOG.js");
+include("AutoMule.js");
+include("Gambling.js");
+include("CraftingSystem.js");
+include("TorchSystem.js");
+include("MuleLogger.js");
+include("modules/sdk.js");
+include("common/Attack.js");
+include("common/Cubing.js");
+include("common/CollMap.js");
+include("common/Config.js");
+include("common/Loader.js");
+include("common/Misc.js");
+include("common/Pickit.js");
+include("common/Pather.js");
+include("common/Precast.js");
+include("common/Prototypes.js");
+include("common/Runewords.js");
+include("common/Storage.js");
+include("common/Town.js");
+
+function sellProbe() {
+	var i, npc, scroll, mine;
+
+	for (i = 0; i < 40; i += 1) {
+		try {
+			npc = Town.initNPC("Shop", "sellprobe");
+
+			if (!npc) {
+				print("sellprobe: no vendor yet");
+				delay(3000);
+				continue;
+			}
+
+			scroll = npc.getItem("tsc");
+
+			if (!scroll || !scroll.buy()) {
+				print("sellprobe: buy failed (gold " + me.gold + ")");
+				delay(3000);
+				continue;
+			}
+
+			delay(500);
+			mine = me.getItem("tsc");
+
+			if (!mine) {
+				print("sellprobe: bought but cannot find the scroll");
+			} else {
+				print("sellprobe: bought tsc #" + (i + 1) + ", selling");
+				mine.sell();
+				print("sellprobe: sold tsc #" + (i + 1));
+			}
+
+			me.cancel();
+			delay(8000); // BaseMod interval is short; leave time for its announcements
+		} catch (e) {
+			print("sellprobe error: " + e);
+			delay(3000);
+		}
+	}
+}
+
+
+// Read-only character/skill probe, runs when data/specprobe.txt exists. Prints to d2bs.log (lines start SPEC:).
+function specProbe() {
+	var i, c, v, lo, hi, row, id,
+		ranges = [[6, 35], [36, 65], [66, 95], [96, 125], [126, 155], [221, 250], [251, 280]];
+
+	print("SPEC: name=" + me.name + " classid=" + me.classid + " level=" + me.charlvl + " gold=" + me.gold);
+	print("SPEC: unspent skill pts=" + me.getStat(5) + " stat pts=" + me.getStat(4));
+	print("SPEC: str=" + me.getStat(0) + " ene=" + me.getStat(1) + " dex=" + me.getStat(2) + " vit=" + me.getStat(3));
+
+	lo = ranges[me.classid][0];
+	hi = ranges[me.classid][1];
+
+	for (id = lo; id <= hi; id += 1) {
+		row = [];
+		v = me.getSkill(id, 0);
+
+		// raw skills.txt columns D2BS exposes through getBaseStat (reqlevel, prerequisites, ...)
+		try { row.push("reqlvl=" + getBaseStat("skills", id, 176)); } catch (e1) { row.push("reqlvl=?"); }
+		try { row.push("pre=" + getBaseStat("skills", id, 181) + "," + getBaseStat("skills", id, 182) + "," + getBaseStat("skills", id, 183)); } catch (e2) { row.push("pre=?"); }
+		print("SPEC: skill " + id + " " + getSkillById(id) + " hard=" + v + " total=" + me.getSkill(id, 1) + " " + row.join(" "));
+	}
+
+	// look for a column that holds the skill tab: try a few getSkillInfo / getBaseStat indices on one skill
+	id = lo + 3;
+
+	for (c = 0; c < 40; c += 1) {
+		try { v = getBaseStat("skills", id, c); } catch (e3) { v = "ERR"; }
+		print("SPEC: raw skills[" + id + "][" + c + "] = " + v);
+	}
+
+	for (c = 0; c < 8; c += 1) {
+		try { v = getSkillInfo(id, c); } catch (e4) { v = "ERR"; }
+		print("SPEC: getSkillInfo(" + id + "," + c + ") = " + v);
+	}
+}
+
+function main() {
+	D2Bot.init();
+	D2Bot.ingame();
+
+	while (!me.gameReady) {
+		delay(50);
+	}
+
+	if (!getScript("tools/heartbeat.js")) {
+		load("tools/heartbeat.js");
+	}
+
+	print("hostidle: hosting as " + me.name);
+
+	// log every server "event message" (packet 0x5A: player joined/left, Stones of Jordan sold, ...)
+	addEventListener("gamepacket", function (bytes) {
+		var out = [], i;
+
+		if (bytes && bytes[0] === 0x5A) {
+			for (i = 0; i < bytes.length; i += 1) {
+				out.push((bytes[i] < 16 ? "0" : "") + bytes[i].toString(16));
+			}
+
+			print("PKT5A " + out.join(" "));
+		}
+
+		return false;
+	});
+	addEventListener("chatmsg", function (who, msg) {
+		print("CHATMSG [" + who + "] " + msg);
+	});
+
+	if (FileTools.exists("data/specprobe.txt")) {
+		specProbe();
+	}
+
+	if (FileTools.exists("data/sellprobe.txt")) {
+		Config.init(true);
+		Storage.Init();
+		print("sellprobe: starting (gold " + me.gold + ", area " + me.area + ")");
+		sellProbe();
+	}
+
+	// A host bot invites everyone who joins into its party (followers wait for that), once every few seconds.
+	var lastInvite = 0;
+
+	while (true) {
+		if (getTickCount() - lastInvite > 5000) {
+			lastInvite = getTickCount();
+
+			try {
+				var party = getParty();
+
+				if (party) {
+					do {
+						if (party.name !== me.name && party.partyid === 65535) { // not in any party
+							clickParty(party, 2);
+							print("hostidle: invited " + party.name);
+							delay(500);
+						}
+					} while (party.getNext());
+				}
+			} catch (inviteError) {
+				print("hostidle: invite error " + inviteError);
+			}
+		}
+
+		delay(1000);
+	}
+}

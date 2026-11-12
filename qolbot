@@ -1,0 +1,16 @@
+#!/bin/sh
+# Starts qolbot: picks the build that matches this computer (see build.sh) and runs it from this folder.
+cd "$(dirname "$0")" || exit 1
+case "$(uname -s)" in Linux) os=linux ;; Darwin) os=darwin ;; *) echo "qolbot: unsupported system $(uname -s) (on Windows use qolbot.cmd)"; exit 1 ;; esac
+case "$(uname -m)" in x86_64|amd64) arch=amd64 ;; arm64|aarch64) arch=arm64 ;; *) echo "qolbot: unsupported CPU $(uname -m)"; exit 1 ;; esac
+bin="bin/qolbot-$os-$arch"
+if [ ! -x "$bin" ]; then
+  if command -v go >/dev/null 2>&1; then
+    echo "qolbot: no build for $os/$arch yet, building (needs Go)..."
+    ./build.sh >/dev/null || exit 1
+  else
+    echo "qolbot: there is no build for $os/$arch in ./bin and Go is not installed to make one."
+    exit 1
+  fi
+fi
+exec "$bin" "$@"

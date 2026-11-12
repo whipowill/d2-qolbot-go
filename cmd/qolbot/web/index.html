@@ -1,0 +1,465 @@
+<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1">
+<title>Qolbot for Diablo II</title>
+<style>
+:root{--bg:#f4f3ef;--card:#fff;--ink:#23272b;--strong:#23272b;--dim:#6b7177;--line:#e3e1da;--accent:#2f6f5e;--accent-ink:#fff;--accent-soft:rgba(47,111,94,.10);--ok:#2f6f5e;--ok-soft:rgba(47,111,94,.10);--warn:#a8741a;--warn-soft:rgba(168,116,26,.12);--bad:#b23a3a;--bad-soft:rgba(178,58,58,.08);--hover:rgba(35,39,43,.045);--field:#fff;--shadow:0 1px 2px rgba(0,0,0,.04),0 4px 14px rgba(0,0,0,.04);--con-bg:#fdf6e3;--con-ink:#657b83;--con-line:#eee8d5}
+@media (prefers-color-scheme:dark){:root{--bg:#17191b;--card:#1f2326;--ink:#e6e8ea;--strong:#e6e8ea;--dim:#99a0a6;--line:#2f3539;--accent:#58b59c;--accent-ink:#0f1a17;--accent-soft:rgba(88,181,156,.12);--ok:#58b59c;--ok-soft:rgba(88,181,156,.12);--warn:#d9a441;--warn-soft:rgba(217,164,65,.14);--bad:#e07a7a;--bad-soft:rgba(224,122,122,.10);--hover:rgba(255,255,255,.04);--field:#171a1c;--shadow:none;--con-bg:#002b36;--con-ink:#93a1a1;--con-line:#0f4552}}
+*{box-sizing:border-box}
+body{font:14px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;margin:0;background:var(--bg);color:var(--ink)}
+.wrap{max-width:1080px;margin:0 auto;padding:28px 20px 48px}
+h2{color:var(--strong);font-size:20px;font-weight:650;letter-spacing:.01em;margin:0 0 4px}
+.tagline{color:var(--dim);margin:0 0 18px}
+.hdr{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.playtoggle{display:flex;align-items:center;gap:8px;color:var(--dim);font-size:13px;white-space:nowrap}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
+.seg button{border:none;border-radius:0;margin:0;background:var(--card);padding:3px 12px}
+.seg button.on{background:var(--accent);color:var(--accent-ink);font-weight:600}
+.seg button.on:hover:not(:disabled){background:var(--accent);filter:brightness(1.08)}
+h3{color:var(--strong);font-size:15px;font-weight:650;margin:22px 0 8px}h3:first-child{margin-top:0}
+p{margin:8px 0}a{color:var(--accent)}code{background:var(--hover);padding:1px 5px;border-radius:4px;font-size:12.5px}
+.dim{color:var(--dim)}.stgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px;align-items:start}@media (max-width:760px){.stgrid{grid-template-columns:minmax(0,1fr)}}
+#itembody{margin-top:10px;font:13px/1.5 ui-monospace,Menlo,Consolas,monospace}#itembody div{min-height:1.5em}
+.dc0{color:var(--ink)}.dc1{color:var(--q-potion)}.dc2{color:var(--q-set)}.dc3{color:var(--q-magic)}.dc4{color:var(--q-unique)}.dc5{color:var(--dim)}.dc8{color:var(--q-crafted)}.dc9{color:var(--q-rare)}.dc7{color:var(--ink)}
+.arow{padding:9px 2px;border-bottom:1px solid var(--line)}.arow .meta{display:flex;justify-content:space-between;gap:12px;font-size:12.5px;color:var(--dim)}.actrow{display:flex;justify-content:space-between;gap:12px}.arow .ago{white-space:nowrap;margin-left:auto;text-align:right}.arow.click{cursor:pointer;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:9px 14px;margin:4px 0 10px;box-shadow:var(--shadow)}.arow.click:hover{border-color:var(--dim)}
+.sth{font-size:11.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--dim);margin:0 0 10px}
+.cpubox{text-align:center;color:var(--dim);padding:4px 16px 10px;margin-bottom:10px;font-size:13px}.cpubox b{font-size:15px;font-weight:600}.mgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:12px}@media(max-width:1000px){.mgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:640px){.mgrid{grid-template-columns:1fr}}.mcol{padding:10px 12px;overflow:visible}.mcol h4{margin:0 0 4px}.mrow{display:flex;gap:4px;margin:3px 0}.mrow .mc{flex:1;min-width:0;width:0}.mrow .mv{width:64px}.mrow .mx{flex:none;position:relative;box-sizing:border-box;width:22px;height:22px;min-width:22px;max-width:22px;min-height:22px;max-height:22px;padding:0;margin:0 2px;border:0;border-radius:50%;background:var(--accent);font-size:0;line-height:0;align-self:center;cursor:pointer}.mrow .mx::before,.mrow .mx::after{content:'';position:absolute;left:50%;top:50%;width:10px;height:2px;margin:-1px 0 0 -5px;border-radius:1px;background:#fff}.mrow .mx::before{transform:rotate(45deg)}.mrow .mx::after{transform:rotate(-45deg)}.mrow .mx:hover{filter:brightness(1.15)}.mlink{color:var(--accent);font-size:13px;text-decoration:none;cursor:pointer}.mlink:hover{text-decoration:underline}.mbad{border-color:var(--bad)!important;background:var(--bad-soft)}.mpool{margin-top:10px;font-size:13px}.mpool b{font-size:13px}.pod{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 16px;box-shadow:var(--shadow);margin-bottom:10px}
+.pod .top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.pod .nm{font-weight:600}.pod .role{font-size:12px;color:var(--dim);opacity:.65}.pod .act{margin-top:6px;font-size:13px;color:var(--dim);overflow-wrap:anywhere}
+:root{--k-kill:rgba(196,60,50,.14);--k-killb:#c43c32;--k-quest:rgba(124,92,196,.14);--k-questb:#7c5cc4;--k-equip:rgba(56,132,196,.14);--k-equipb:#3884c4;--k-stat:rgba(36,150,140,.14);--k-statb:#24968c;--k-skill:rgba(196,120,40,.14);--k-skillb:#c47828;--k-level:rgba(230,180,40,.24);--k-levelb:#b08410;--k-item:rgba(120,120,120,.07);--k-itemb:#9a9a9a}
+@media (prefers-color-scheme:dark){:root{--k-kill:rgba(224,100,90,.18);--k-killb:#e0645a;--k-quest:rgba(160,130,230,.18);--k-questb:#a082e6;--k-equip:rgba(100,170,230,.18);--k-equipb:#64aae6;--k-stat:rgba(70,190,180,.18);--k-statb:#46beb4;--k-skill:rgba(230,150,70,.18);--k-skillb:#e69646;--k-level:rgba(240,200,70,.26);--k-levelb:#f0c846;--k-item:rgba(200,200,200,.06);--k-itemb:#777}}
+:root{--q-rejuv:#8a4fc7;--q-unique:#a9770f;--q-set:#2f8f47;--q-rare:#9a7d00;--q-magic:#3b6fc4;--q-crafted:#c0651a;--q-rune:#c0651a;--q-potion:#b0453f}
+@media (prefers-color-scheme:dark){:root{--q-rejuv:#b78af0;--q-unique:#d9a441;--q-set:#5fc27a;--q-rare:#e0c64a;--q-magic:#7ea6f0;--q-crafted:#eb9650;--q-rune:#eb9650;--q-potion:#e07a73}}
+.q-rejuv{color:var(--q-rejuv)}.q-unique{color:var(--q-unique)}.q-set{color:var(--q-set)}.q-rare{color:var(--q-rare)}.q-magic{color:var(--q-magic)}.q-crafted{color:var(--q-crafted)}.q-rune{color:var(--q-rune)}.q-potion{color:var(--q-potion)}.r{text-align:right}
+button{font:inherit;font-size:13px;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:6px;padding:3px 10px;cursor:pointer;margin-right:6px;transition:background .12s,border-color .12s}
+button:hover:not(:disabled){background:var(--hover);border-color:var(--dim)}
+button:disabled{opacity:.45;cursor:default}
+button.active{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:600}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+button.primary:hover:not(:disabled){background:var(--accent);filter:brightness(1.08)}
+button.danger{color:var(--bad);border-color:var(--bad-soft)}button.danger:hover:not(:disabled){background:var(--bad-soft);border-color:var(--bad)}
+input,select{font:inherit;color:var(--ink);background:var(--field);border:1px solid var(--line);border-radius:6px;padding:4px 8px}
+input:focus,select:focus{outline:2px solid var(--accent-soft);border-color:var(--accent)}
+input[type=checkbox]{accent-color:var(--accent);width:15px;height:15px;vertical-align:-2px;margin-right:4px}
+label{cursor:pointer}
+.tabs{display:flex;gap:4px;margin:0 0 20px;border-bottom:1px solid var(--line)}
+.tabs button{border:none;border-bottom:2px solid transparent;border-radius:0;background:none;padding:8px 16px;margin:0 0 -1px;color:var(--dim);font-size:15px}
+.tabs button:hover{background:none;color:var(--ink);border-color:transparent;border-bottom-color:var(--line)}
+.tabs button.on{color:var(--strong);font-weight:650;border-bottom-color:var(--accent)}
+.sub{display:inline-flex;flex-wrap:wrap;gap:2px;margin:0 0 16px;padding:3px;background:var(--hover);border:1px solid var(--line);border-radius:9px}
+.sub button{border:none;background:none;border-radius:6px;padding:4px 12px;font-size:13.5px;margin:0;color:var(--dim)}
+.sub button:hover{background:none;color:var(--ink)}
+.sub button.on{background:var(--card);color:var(--ink);font-weight:600;box-shadow:var(--shadow)}
+.pane{display:none;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px 24px;box-shadow:var(--shadow)}
+#gbanner{display:none;background:var(--bad-soft);border:1px solid var(--bad);border-radius:10px;padding:10px 14px;margin:0 0 16px}
+.bar{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;margin:0 0 14px}
+.bar p{margin:0}
+.toolbar{margin:14px 0 14px}.toolbar button{padding:3px 11px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);overflow:hidden}
+table{border-collapse:collapse;width:100%}
+th{font-size:11.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--dim);text-align:left;padding:10px 12px;border-bottom:1px solid var(--line)}
+td{padding:9px 12px;border-bottom:1px solid var(--line);text-align:left}
+tr:last-child td{border-bottom:none}
+tr.run td{background:var(--ok-soft)}
+tr.wait td{background:var(--warn-soft)}
+tr:hover td{box-shadow:inset 0 0 0 999px var(--hover)}
+td select{width:150px}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;padding:2px 10px 2px 8px;border-radius:99px;background:var(--hover);color:var(--dim)}
+.pill:before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+#farmlist{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:0 20px}.farmact label{line-height:1.35}
+@media (max-width:760px){#farmlist{grid-template-columns:repeat(2,minmax(0,1fr))}}.acth{font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);margin:6px 0 2px}
+table.noruns th:nth-child(6),table.noruns td:nth-child(6){display:none}
+.rrow{line-height:2}
+.pkpane>label,.pkpane .rrow{display:block;line-height:32px}.pkpane select{padding:1px 6px;vertical-align:middle;line-height:normal}
+#basetab{table-layout:fixed}#basetab th,#basetab td{padding:6px}#basetab input,#basetab select{width:100%;min-width:0}#basetab th:nth-child(1){width:25%}#basetab th:nth-child(2){width:15%}#basetab th:nth-child(3){width:15%}#basetab th:nth-child(4){width:17%}#basetab th:nth-child(5){width:16%}#basetab th:nth-child(6){width:12%}#basetab button{margin:0}
+dialog{max-width:760px;width:calc(100% - 32px);max-height:75vh;overflow:auto;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);padding:16px 20px;box-shadow:0 8px 40px rgba(0,0,0,.25)}
+dialog::backdrop{background:rgba(0,0,0,.35)}
+.pill.cls:before{display:none}.pill.cls{padding:2px 10px}.pill.cls b{margin-right:2px}
+:root{--c-amazon:#8a6a40;--c-sorceress:#5d7088;--c-necromancer:#7a6070;--c-paladin:#8a7c3e;--c-barbarian:#8c4e3e;--c-druid:#5e7a48;--c-assassin:#587672}
+@media (prefers-color-scheme:dark){:root{--c-amazon:#c0a070;--c-sorceress:#94a8c0;--c-necromancer:#b096a6;--c-paladin:#c4b472;--c-barbarian:#c88470;--c-druid:#98b280;--c-assassin:#8eb0aa}}
+.pill.cls.c-amazon{color:var(--c-amazon);background:color-mix(in srgb,var(--c-amazon) 18%,transparent)}.pill.cls.c-sorceress{color:var(--c-sorceress);background:color-mix(in srgb,var(--c-sorceress) 18%,transparent)}.pill.cls.c-necromancer{color:var(--c-necromancer);background:color-mix(in srgb,var(--c-necromancer) 18%,transparent)}.pill.cls.c-paladin{color:var(--c-paladin);background:color-mix(in srgb,var(--c-paladin) 18%,transparent)}.pill.cls.c-barbarian{color:var(--c-barbarian);background:color-mix(in srgb,var(--c-barbarian) 18%,transparent)}.pill.cls.c-druid{color:var(--c-druid);background:color-mix(in srgb,var(--c-druid) 18%,transparent)}.pill.cls.c-assassin{color:var(--c-assassin);background:color-mix(in srgb,var(--c-assassin) 18%,transparent)}
+.pill.running{background:var(--ok-soft);color:var(--ok)}
+.pill.starting,.pill.stopping{background:var(--warn-soft);color:var(--warn)}
+h3.cons{margin:26px 0 8px}
+pre#c{background:var(--con-bg);color:var(--con-ink);border:1px solid var(--con-line);border-radius:12px;padding:12px 14px;height:calc(100vh - 230px);min-height:320px;overflow:auto;font:12.5px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;margin:0}
+.pane>p:last-child{margin-top:20px}
+#about{display:none;max-width:760px;margin:0 auto}#about h3{margin-top:26px}#about h3:first-child{margin-top:0}#about p,#about li{line-height:1.65}#about>p:last-child{margin-top:8px}#about ul{padding-left:20px;margin:8px 0}
+pre.err{background:var(--bad-soft);color:var(--bad);border:1px solid var(--bad);border-radius:10px;padding:10px 14px;margin:0 0 16px;white-space:pre-wrap;font:13px/1.5 ui-monospace,Menlo,Consolas,monospace}
+footer a.gh{display:inline-flex;vertical-align:middle;margin-left:4px;color:var(--dim)}footer a.gh:hover{color:var(--strong)}
+footer .credits{margin-bottom:6px;font-size:12px}footer{margin-top:40px;padding-top:16px;border-top:1px solid var(--line);color:var(--dim);font-size:13px;text-align:center}
+#saveWarn{color:var(--bad)}
+.msg{margin-left:6px}
+@media (max-width:640px){.wrap{padding:16px 12px}.pane{padding:14px}th:nth-child(6),td:nth-child(6),th:nth-child(7),td:nth-child(7){display:none}}
+</style>
+<div class=wrap>
+<div class=hdr><h2>Qolbot for Diablo II</h2><div class=playtoggle>Are you playing? <span class=seg><button id=py onclick="setPlaying(1)">Yes</button><button id=pn onclick="setPlaying(0)">No</button></span></div></div>
+<p class=tagline id=tagline>Host a TCP/IP game, select the bots to join, and press <code>Start</code>.</p>
+<div class=tabs><button id=tb class=on onclick="tab('bots')">Bots</button><button id=ts onclick="tab('status')">Status</button><button id=tp onclick="tab('pickit')">Keeper</button><button id=tc onclick="tab('cfg')">Settings</button><button id=ta style="margin-left:auto" onclick="tab('about')">About</button><button id=tk onclick="tab('console')">Console</button></div>
+<div id=cfg style="display:none">
+<div class=sub id=subbar></div>
+<div class=pane id=p_game>
+<h3>Game</h3>
+<p><label>Path to Game.exe<br><input id=gpath size=72 placeholder="/home/you/Games/Diablo II/Game.exe"></label></p>
+<p id=gmsg class=dim></p>
+<p><label><input type=checkbox id=plugy onchange="plugyChanged()"> Using PlugY?</label> <span class=dim>Bots will use additional capabilities provided by PlugY.</span></p>
+<p id=plugyInfo class=dim></p>
+<p><button onclick="saveGameTab()">Save</button> <span class=dim id=gamemsg></span></p>
+</div>
+<div class=pane id=p_conn>
+<h3>Connection</h3>
+<p><label>Host IP Address <input id=hostip size=22></label></p>
+<p><label><input type=checkbox id=showwin> Show the bots' game windows on your desktop</label></p>
+<p><button onclick="saveSettings()">Save</button> <span class=dim id=setmsg>applies to bots after you restart Qolbot</span></p>
+</div>
+<div class=pane id=p_inv>
+<h3>Inventory</h3>
+<p><label>Inventory <input id=inv_w type=number min=1 max=30 style="width:56px"> x <input id=inv_h type=number min=1 max=30 style="width:56px"></label>
+&nbsp; <label>Stash <input id=st_w type=number min=1 max=30 style="width:56px"> x <input id=st_h type=number min=1 max=30 style="width:56px"></label>
+&nbsp; <label>Cube <input id=cu_w type=number min=1 max=30 style="width:56px"> x <input id=cu_h type=number min=1 max=30 style="width:56px"></label></p>
+<p class=dim style="margin-top:0">Bots use the whole pack, except the charms, tomes, keys, cube and torch parts you keep in it.</p>
+<p><button onclick="savePlay('invmsg')">Save</button> <span class=dim id=invmsg>applies to bots started after you save</span></p>
+</div>
+<div class=pane id=p_save>
+<h3>Saving</h3>
+<p><label><input type=checkbox id=autosave onchange="autosaveChanged()"> Bots will autosave their progress periodically</label></p>
+<p id=saveWarn style="display:none;color:#c62828"><b>Periodic saving is off:</b> saving while a bot keeps playing uses PlugY's /save command, and PlugY's commands are off. Set <code>ActiveCommands=1</code> in your PlugY.ini and restart Qolbot to turn it on. Saving when a bot is stopped still works.</p>
+<p><label>Save every <input id=saveEvery type=number min=1 max=240 style="width:56px"> minutes</label> <span class=dim>(only works when using PlugY)</span></p>
+<p><button onclick="savePlay('savemsg')">Save</button> <span class=dim id=savemsg>applies to bots started after you save</span></p>
+</div>
+<div class=pane id=p_beh>
+<h3>Town</h3>
+<p><label><input type=checkbox id=autotown> Bots follow you between town and the field by themselves</label></p>
+<p><label><input type=checkbox id=gamble> Bots may gamble rings and amulets when they hold a million gold</label></p>
+<h3>Chat</h3>
+<p><label><input type=checkbox id=reptask> Bots report when they engage in tasks</label></p>
+<p><label><input type=checkbox id=repprob> Bots report when they have a problem</label></p>
+<p><label><input type=checkbox id=banter> Bots banter with gallows humor comments</label></p>
+<p><label><input type=checkbox id=bubble> Bots banter appears as a bubble over their head</label></p>
+<p><button onclick="savePlay('behmsg')">Save</button> <span class=dim id=behmsg>applies to bots started after you save</span></p>
+</div>
+<div class=pane id=p_auto>
+<h3>Automation</h3>
+<p><label><input type=checkbox id=ae> Bots can auto-equip items they deem to be an upgrade</label></p>
+<p><label><input type=checkbox id=autostat> Bots can auto spend stat points</label></p>
+<p><label><input type=checkbox id=autoskill> Bots can auto spend skill points</label></p>
+<p class=dim>Safe Mode on the Bots page switches all three off, regardless of what is checked here.</p>
+<p style="margin-top:16px">Mercenaries can wear these items:</p>
+<p><label><input type=checkbox id=mw_rings> Rings</label> &nbsp; <label><input type=checkbox id=mw_amulets> Amulets</label> &nbsp; <label><input type=checkbox id=mw_belts> Belts</label> &nbsp; <label><input type=checkbox id=mw_gloves> Gloves</label> &nbsp; <label><input type=checkbox id=mw_boots> Boots</label></p>
+<p><button onclick="saveAuto()">Save</button> <span class=dim id=automsg>applies to bots started after you save</span></p>
+</div>
+<div class=pane id=p_quests>
+<h3>Quests</h3>
+<p><label><input type=checkbox id=qclear> Bots clear every monster in every zone</label></p>
+<p><button onclick="saveQuests()">Save</button> <span class=dim id=questmsg>applies to bots started after you save</span></p>
+</div>
+<div class=pane id=p_gear>
+<h3>Equipment</h3>
+<p><b>Bots never auto-equip, replace, identify or sell items that are:</b></p>
+<p id=pflags></p>
+<p class=dim style="margin-top:0">The above list protects these items from potential mishandling by the bots. They will never try to put these on, or take these off, or sell these items. If a bot ever wears these items it's because you put them there. If a bot ever picks up these items it's because they're going into the stash.</p>
+<p><button onclick="saveGear()">Save</button> <span class=dim id=cfgmsg>applies to bots started after you save</span></p>
+</div>
+</div>
+<dialog id=itemdlg onclick="outsideClose(event,this)"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px"><b id=itemtitle></b><button onclick="itemdlg.close()">Close</button></div><div id=itembody></div></dialog>
+<dialog id=invdlg style="max-width:900px" onclick="outsideClose(event,this)"><div id=invbody></div></dialog>
+<div id=stpane style="display:none">
+<div id=cpubox class=cpubox style="display:none"></div>
+<div class=stgrid><div><div class=sth>Bots</div><div id=stbots></div></div><div><div class=sth>Activity</div><div id=stitems></div></div></div>
+</div>
+<div id=pickit style="display:none">
+<div class=sub id=pksubbar></div>
+<div id=pk_us class="pane pkpane">
+<div class=rrow><label><input type=checkbox id=r_unique> Bots pick up unique items from</label> <select id=u_base><option value="">Normal</option><option value="exceptional">Exceptional</option><option value="elite">Elite</option></select> quality or higher</div>
+<div class=rrow><label><input type=checkbox id=r_set> Bots pick up set items from</label> <select id=s_base><option value="">Normal</option><option value="exceptional">Exceptional</option><option value="elite">Elite</option></select> quality or higher</div>
+<p><button class=primary onclick="savePickit()">Save</button> <span class="dim pickmsg">applies to the leader bot the next time it starts</span></p>
+</div>
+<div id=pk_rg class="pane pkpane" style="display:none">
+<label style="display:block"><input type=checkbox id=r_runeon> Bots pick up runes from <select id=r_rune></select> and higher</label>
+<label style="display:block"><input type=checkbox id=r_gemon> Bots pick up gems from <select id=r_gem></select> and higher</label>
+<p><button class=primary onclick="savePickit()">Save</button> <span class="dim pickmsg">applies to the leader bot the next time it starts</span></p>
+</div>
+<div id=pk_mr class="pane pkpane" style="display:none">
+<label style="display:block"><input type=checkbox id=r_magicon onchange="if(!this.checked)r_lenient.checked=false"> Bots pick up magic, rare and crafted items that match the columns below</label>
+<label style="display:block"><input type=checkbox id=r_lenient onchange="if(this.checked)r_magicon.checked=true"> Bots will accept items less than perfect the lower level they are</label>
+<div id=magicbtns style="display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 4px"></div>
+<datalist id=statcodes></datalist>
+<p><button class=primary onclick="savePickit()">Save</button> <button onclick="resetMagic()">Reset to defaults</button> <span class="dim pickmsg">applies to the leader bot the next time it starts</span></p>
+</div>
+<dialog id=magicdlg style="width:min(1100px,96vw);max-width:96vw" onclick="outsideClose(event,this)"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px"><b id=mgtitle></b><button class=primary onclick="magicdlg.close()">Done</button></div><div id=magicsecs class=mgrid></div></dialog>
+<div id=pk_bs class="pane pkpane" style="display:none">
+<label style="display:block"><input type=checkbox id=r_eth> Bots pick up ethereal armors of <select id=r_ethtier><option value=normal>Normal</option><option value=exceptional selected>Exceptional</option><option value=elite>Elite</option></select> quality or higher</label>
+<label style="display:block"><input type=checkbox id=r_ethhelm> Bots pick up ethereal helms of <select id=r_helmtier><option value=normal>Normal</option><option value=exceptional selected>Exceptional</option><option value=elite>Elite</option></select> quality or higher</label>
+<label style="display:block"><input type=checkbox id=r_circlet> Bots pick up base circlets from <select id=r_circletmin><option value=normal>Normal</option><option value=exceptional selected>Exceptional</option><option value=elite>Elite</option></select> quality or higher</label>
+<label style="display:block"><input type=checkbox id=r_class> Bots pick up desirable class items of <select id=r_classtier><option value=normal>Normal</option><option value=exceptional selected>Exceptional</option><option value=elite>Elite</option></select> quality or higher</label>
+<div id=classbtns style="display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 18px"></div>
+<datalist id=tablist></datalist>
+<dialog id=classdlg style="width:min(420px,96vw)" onclick="outsideClose(event,this)"><div style="display:flex;justify-content:space-between;align-items:center;gap:12px"><b id=cltitle></b><button class=primary onclick="classdlg.close()">Done</button></div><div id=classbody></div></dialog>
+<label style="display:block"><input type=checkbox id=r_baseson> Bots pick up desirable base items from <select id=r_basemin><option value="">Normal</option><option value="exceptional">Exceptional</option><option value="elite">Elite</option></select> quality or higher</label>
+<p style="margin-top:18px"><button onclick="basedlg.showModal()">Desirable Base Items <span id=basecount class=dim></span></button></p>
+<dialog id=basedlg style="max-width:900px" onclick="outsideClose(event,this)"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px"><b>Desirable Base Items</b><button onclick="basedlg.close()">Close</button></div>
+<table id=basetab style="width:100%"></table>
+<datalist id=baselist></datalist>
+<p><button onclick="addBase()">Add a base item</button> <button class=primary onclick="savePickit()">Save</button> <span class="dim pickmsg"></span></p></dialog>
+<p><button class=primary onclick="savePickit()">Save</button> <button onclick="resetBases()">Reset to defaults</button> <span class="dim pickmsg">applies to the leader bot the next time it starts</span></p>
+</div>
+<div id=pk_ms class="pane pkpane" style="display:none">
+<p style="margin:0 0 4px"><b>Jewels</b></p>
+<label style="display:block"><input type=checkbox id=r_jewels> Bots pick up jewels</label>
+<p style="margin:18px 0 4px"><b>Potions</b></p>
+<label style="display:block"><input type=checkbox id=r_rejuv> Bots pick up rejuvenation potions</label>
+<p style="margin:18px 0 4px"><b>Endgame</b></p>
+<label style="display:block"><input type=checkbox id=r_pand> Bots pick up Pandemonium keys, organs, tokens and essences</label>
+<p style="margin:18px 0 4px"><b>Anything Else</b></p>
+<p class=dim style="margin:0 0 4px">Insert your custom pickit ruleset here. <a href="https://github.com/blizzhackers/pickits" target="_blank" rel="noopener noreferrer">Pickit collections</a></p>
+<textarea id=r_trophy rows=8 style="width:100%;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px" spellcheck=false placeholder="[name] == jeweledmonarch &amp;&amp; [quality] == magic # [sockets] == 4 &amp;&amp; [maxhp] >= 50"></textarea>
+<p><button class=primary onclick="savePickit()">Save</button> <span class="dim pickmsg">applies to the leader bot the next time it starts</span></p>
+</div>
+<div id=picklists><p style="margin-top:18px"><b>Item lists</b> <span class=dim>(your own lists: what each one keeps is in the file; "Loaded" is what the bots' log said the last time they read it, valid entries / entries)</span></p>
+<table id=picktab style="width:100%"></table></div>
+<div id=pickedit class=card style="display:none;padding:12px 16px;margin-top:10px"><b id=pickname></b> <span class=dim>(the old text is kept next to it as a .bak file)</span>
+<textarea id=picktext spellcheck=false style="width:100%;height:320px;margin:8px 0;font:12px/1.45 ui-monospace,Menlo,Consolas,monospace"></textarea>
+<button class=primary onclick="savePickFile()">Save list</button> <button onclick="pickedit.style.display='none'">Close</button> <span class=dim id=pickeditmsg></span></div>
+</div>
+<div id=about class=pane style="display:none">
+<h3>What this is</h3>
+<p>Qolbot runs Diablo II characters as helpers, two ways. <b>You play</b>: you host a TCP/IP game, check the bots that should join, press
+<code>Start</code>, and they walk in and follow you, fight beside you and look after their own characters. <b>You do not play</b>: you
+pick a bot to lead and an objective, farming the locations you choose or playing the quests, and the leader hosts the game and does the
+work while the others follow. Either way nobody has to sit at them.</p>
+<h3>Where it comes from</h3>
+<p>The brains are <b>Kolbot</b>, the long-standing set of Diablo II bot scripts by Kolton and its community, running inside
+<b>D2BS</b>, the library that lets those scripts see and control the game. Normally a program called D2Bot starts the games
+and injects D2BS, but it does not run under Wine. Qolbot replaces that part: it launches the games, injects D2BS and passes
+messages between the game and this page. The Kolbot and D2BS code is kept and extended, not rewritten.</p>
+<h3>An older build, on purpose</h3>
+<p>This is based on an older Kolbot and D2BS build made for Diablo II <b>version 1.13</b> (LoD, the final classic patch), the
+version PlugY runs on. Newer Kolbot versions target other game builds and do not fit this setup, so the scripts here are an
+older generation with fixes and new features added. Those additions are what let the bots follow you, farm, play the quests
+and look after their own gear, points and saving.</p>
+<h3>What runs where</h3>
+<p>On Linux and macOS the games run under Wine in a private prefix (<code>~/.qolbot_wine_prefix</code>), so they never touch your own Wine setup,
+and on Linux they use a hidden display so no windows appear. The bots launch from your own game folder: nothing is copied or linked, and Qolbot never changes your game files. It only checks
+that <code>PlugY.ini</code> and <code>BaseMod.ini</code> have the World Event off (it crashes bots) and warns if not. Logs are in
+<code>logs/</code> and can be cleared from the Bots tab.</p>
+</div>
+<div id=bots>
+<div id=gbanner><b>Bots cannot start yet.</b> Set the path to Game.exe on the <a href="#" onclick="tab('cfg');return false"><b>Settings tab</b></a> first.</div>
+<p style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px"><label><b>Who is going to be leader?</b> <select id=player onchange="setPlayer(this.value)"></select></label>
+<span id=goalwrap style="display:none;align-items:center;gap:8px"><label><b>Objective</b> <select id=goal onchange="goalChanged()"><option>Farm</option><option>Quest</option></select></label> <label><b>Difficulty</b> <select id=diff onchange="saveGoal(true)"><option>Normal</option><option>Nightmare</option><option selected>Hell</option></select></label> <button id=farmbtn onclick="toggleFarm()" style="display:none">Pick Farm Locations</button> <span class=dim id=goalmsg></span></span></p>
+<dialog id=farmbox style="max-width:900px" onclick="outsideClose(event,this)"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px"><b>Farm Locations</b><button onclick="farmbox.close()">Close</button></div><div id=farmlist style="font-size:12.5px;margin:8px 0 18px"></div><button class=primary onclick="saveGoal()">Save</button> <span class=dim id=farmmsg></span></dialog>
+<p class=toolbar><button class=primary onclick="each('start')">Start selected</button><button onclick="each('stop')">Stop selected</button><button class=danger onclick="stopAll()">Stop all bots</button>
+<button onclick="rescan()">Rescan characters</button> <button onclick="clearLogs()">Clear logs</button> <a href="/log" target=_blank>Full log file</a></p>
+<div class=card><table id=t></table></div>
+<p style="margin-top:16px"><label><input type=checkbox id=safe onchange="setSafe(this.checked)"> <b>Safe Mode:</b> <span id=safetxt>Bots are prohibited from AutoEquip, AutoStat, and AutoSkill.</span></label></p></div>
+<div id=consoleEl style="display:none"><pre id=c></pre></div>
+<footer><div class=credits>Runs on <b>Kolbot</b> by Kolton and <b>D2BS</b> by Noah.</div>Made with &#10084;&#65039; by Will Scarlet &middot; <a class=gh href="https://github.com/whipowill/d2-qolbot-go" target=_blank rel=noopener title="Qolbot on GitHub" aria-label="Qolbot on GitHub"><svg viewBox="0 0 16 16" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg></a></footer>
+</div>
+<script>
+function showErr(m){let b=document.getElementById('errbox');if(!b){document.querySelector('.wrap').insertAdjacentHTML('afterbegin','<pre class=err id=errbox></pre>');b=document.getElementById('errbox')}b.textContent='The page hit an error: '+String(m)}
+function clearErr(){const b=document.getElementById('errbox');if(b)b.remove()}
+window.addEventListener('error',e=>showErr(e.message+' (line '+e.lineno+')'));
+window.addEventListener('unhandledrejection',e=>showErr(e.reason&&e.reason.stack||e.reason));
+const colL=['#657b83','#dc322f','#859900','#268bd2','#b58900','#93a1a1','#657b83','#93a1a1','#cb4b16','#b58900','#d33682','#2aa198'],colD=['#93a1a1','#e0534f','#859900','#4aa3e0','#b58900','#839496','#93a1a1','#839496','#cb4b16','#b58900','#d33682','#2aa198'];
+const isDark=()=>window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches;
+const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+let playingNow=true,playerNow='',lastHtml='',playerOpts='',picked=new Set(),profs={},busy=0;
+async function req(url){const r=await fetch(url,{method:'POST'});if(!r.ok)alert(await r.text());return r.ok}
+const q=n=>'?profile='+encodeURIComponent(n);
+async function act(a,n){await req('/api/'+a+q(n));load()}
+async function each(a){let names=[...picked].filter(n=>profs[n]&&(!playingNow||profs[n].character!=playerNow));if(!names.length){alert('Check the bots you want first.');return}
+if(a=='stop'){await req('/api/stopmany?names='+encodeURIComponent(names.join(',')));load();return}
+if(a=='start'&&!playingNow){const lead=names.find(n=>profs[n].character==playerNow);if(lead){const team=names.filter(n=>n!=lead).map(n=>profs[n].character).join(',');if(!await req('/api/start'+q(lead)+'&team='+encodeURIComponent(team)))return;names=names.filter(n=>n!=lead);
+for(let i=0;i<90&&names.length;i++){await new Promise(r=>setTimeout(r,2000));await load();const l=profs[lead];if(l&&/^Game:/.test(l.info||''))break}}}
+for(const n of names)if(!await req('/api/'+a+q(n)))break;load()}
+async function setPlaying(v){if(!await req('/api/playing?on='+v))return;lastHtml='';playerOpts='';load()}
+function fillPlaying(d){playingNow=d.playing!==false;py.className=playingNow?'on':'';pn.className=playingNow?'':'on';goalwrap.style.display=playingNow?'none':'inline-flex';tagline.innerHTML=playingNow?'Host a TCP/IP game, select the bots to join, and press <code>Start</code>.':'Choose a bot to lead, select the bots to follow, and press <code>Start</code>.';if(playingNow)showFarm(false)}
+async function setPlayer(v){if(!await req('/api/player?name='+encodeURIComponent(v)))lastHtml='';load()}
+
+const pf=[['unique','Unique'],['set','Set'],['crafted','Crafted'],['rare','Rare'],['magic','Magic'],['socketed','Socketed'],['runeword','Runeword'],['ethereal','Ethereal']];
+pflags.innerHTML=pf.map(f=>'<label style="margin-right:16px"><input type=checkbox id=pf_'+f[0]+'> '+f[1]+'</label>').join('');
+let cfgLoaded=false;
+let tabAuto=false,gameOK=false;
+const subs=[['p_game','Game'],['p_conn','Connection'],['p_inv','Inventory'],['p_gear','Equipment'],['p_auto','Automation'],['p_quests','Quests'],['p_beh','Behavior'],['p_save','Saving']];
+let curTab='bots';
+const tabSlug={bots:'',status:'status',pickit:'keeper',cfg:'settings',about:'about',console:'console'};
+const cfgSlug={p_game:'game',p_conn:'connection',p_inv:'inventory',p_gear:'equipment',p_auto:'automation',p_quests:'quests',p_beh:'behavior',p_save:'saving'};
+const pkSlug={pk_rg:'gems-runes',pk_us:'uniques-sets',pk_mr:'magic-rares',pk_bs:'base-items',pk_ms:'miscellaneous'};
+function setUrl(replace){let p='/'+(tabSlug[curTab]||'');if(curTab=='cfg')p+='/'+cfgSlug[subNow];if(curTab=='pickit')p+='/'+pkSlug[pkNow];if(location.pathname!==p){try{history[replace?'replaceState':'pushState'](null,'',p)}catch(e){}}}
+function route(){const seg=location.pathname.split('/').filter(Boolean);if(seg[0]=='pickit')seg[0]='keeper';if(seg[0]=='config')seg[0]='settings'; // the old address still works
+let t=Object.keys(tabSlug).find(k=>tabSlug[k]==(seg[0]||''))||'bots';
+if(t=='cfg'){const s=Object.keys(cfgSlug).find(k=>cfgSlug[k]==seg[1]);if(s)subNow=s;sub(subNow)}
+if(t=='pickit'){const s=Object.keys(pkSlug).find(k=>pkSlug[k]==seg[1]);if(s)pkNow=s}
+tab(t,true)}
+window.addEventListener('popstate',route);
+let subNow=(function(){try{return localStorage.getItem('sub')||'p_game'}catch(e){return 'p_game'}})();
+const pksubs=[['pk_rg','Gems & Runes'],['pk_us','Uniques & Sets'],['pk_mr','Magic & Rares'],['pk_bs','Base Items'],['pk_ms','Miscellaneous']];
+let pkNow=(function(){try{return localStorage.getItem('pksub')||'pk_rg'}catch(e){return 'pk_rg'}})();
+function pksub(n){pkNow=n;if(curTab=='pickit')setUrl();try{localStorage.setItem('pksub',n)}catch(e){}pksubs.forEach(x=>{document.getElementById(x[0]).style.display=x[0]==n?'block':'none'});pksubbar.innerHTML=pksubs.map(x=>'<button class="'+(x[0]==n?'on':'')+'" onclick="pksub(\''+x[0]+'\')">'+x[1]+'</button>').join('')}
+let baseRows=[],codeMap={},magicRows=[],magicCat={cols:[],stats:[],groups:[]},magicGroup='',classRows=[],classCat={kinds:[]},classNow='';
+function mStat(k){return magicCat.stats.find(x=>x.key==k)}
+function mEntry(c){let i=magicRows.findIndex(e=>e.category==c.category&&(e.type||'')==(c.type||''));if(i<0){magicRows.push({category:c.category,type:c.type||'',magic:c.category=='charm',rare:c.category!='charm',crafted:c.category!='charm',primary:[],primaryNeed:1,secondary:[],secondaryNeed:1});i=magicRows.length-1}return i}
+function mBad(c,x){const d=mStat((x.key||'').toLowerCase());return !!x.key&&(!d||(d.only&&d.only.indexOf(c.category)<0))}
+function mPoolHtml(c,mi,pool,title){const e=magicRows[mi],l=e[pool],need=Math.min(e[pool+'Need']||1,l.length||1);
+return '<div class=mpool><b>'+title+'</b> <span class=dim>at least <select onchange="magicRows['+mi+'].'+pool+'Need=parseInt(this.value)">'+(l.length?l.map((_,k)=>'<option'+(need==k+1?' selected':'')+'>'+(k+1)+'</option>').join(''):'<option>1</option>')+'</select> of</span>'+
+l.map((x,i)=>{const d=mStat(x.key),num=!d||d.def>0;return '<div class=mrow><input class="mc'+(mBad(c,x)?' mbad':'')+'" list=statcodes value="'+esc(x.key)+'" placeholder="code" title="'+esc(d?d.label:(x.key?'unknown code for '+c.label:''))+'" onchange="mCode('+mi+',\''+pool+'\','+i+',this.value)"><input class=mv type=number min=0 value="'+(num&&x.min?x.min:'')+'"'+(num?'':' disabled placeholder="-"')+' onchange="mVal('+mi+',\''+pool+'\','+i+',this.value)"><button class=mx title="Remove" onclick="mDel('+mi+',\''+pool+'\','+i+')">&times;</button></div>'}).join('')+
+'<div style="margin-top:2px"><a class=mlink href="#" onclick="mAdd('+mi+',\''+pool+'\');return false">+ stat</a></div></div>'}
+function openMagic(g){magicGroup=g;const gr=magicCat.groups.find(x=>x.key==g)||{label:''};mgtitle.textContent=gr.label;renderMagic();magicdlg.showModal()}
+function renderMagic(){magicbtns.innerHTML=magicCat.groups.map(g=>{let n=0;magicCat.cols.filter(c=>c.group==g.key).forEach(c=>{const e=magicRows[mEntry(c)];n+=e.primary.filter(x=>x.key).length+e.secondary.filter(x=>x.key).length});return '<button onclick="openMagic(\''+g.key+'\')">'+esc(g.label)+' <span class=dim>('+n+' stats)</span></button>'}).join('');
+magicsecs.innerHTML=magicCat.cols.filter(c=>c.group==magicGroup).map(c=>{const mi=mEntry(c),e=magicRows[mi];
+return '<div class="card mcol"><h4>'+esc(c.label)+'</h4><div class=dim style="font-size:12.5px"><label><input type=checkbox'+(e.magic?' checked':'')+' onchange="magicRows['+mi+'].magic=this.checked"> Magic</label> &nbsp;<label><input type=checkbox'+(e.rare?' checked':'')+' onchange="magicRows['+mi+'].rare=this.checked"> Rare</label> &nbsp;<label><input type=checkbox'+(e.crafted?' checked':'')+' onchange="magicRows['+mi+'].crafted=this.checked"> Crafted</label></div>'+mPoolHtml(c,mi,'primary','Primary')+mPoolHtml(c,mi,'secondary','Secondary')+'</div>'}).join('')}
+function mCode(mi,pool,i,v){v=(v||'').trim().toLowerCase();const x=magicRows[mi][pool][i],d=mStat(v);x.key=v;if(d)x.min=d.def||0;renderMagic()}
+function mVal(mi,pool,i,v){magicRows[mi][pool][i].min=Math.max(0,parseInt(v)||0)}
+function mDel(mi,pool,i){magicRows[mi][pool].splice(i,1);renderMagic()}
+function mAdd(mi,pool){if(magicRows[mi][pool].length<8){magicRows[mi][pool].push({key:'',min:0});renderMagic()}}
+function magicPayload(){const out=[];for(const c of magicCat.cols){const e=magicRows[mEntry(c)];for(const pool of ['primary','secondary']){e[pool]=e[pool].filter(x=>x.key);const bad=e[pool].find(x=>mBad(c,x));if(bad){renderMagic();alert('"'+bad.key+'" is not a stat code for '+c.label+'. Start typing in the box to see the codes.');return null}}
+if(e.primary.length||e.secondary.length){if(!e.magic&&!e.rare&&!e.crafted){alert(c.label+': check at least one of Magic, Rare or Crafted.');return null}out.push(Object.assign({},e,{primaryNeed:Math.min(e.primaryNeed||1,e.primary.length||1),secondaryNeed:Math.min(e.secondaryNeed||1,e.secondary.length||1)}))}}
+return out}
+let pkDefaults=null;
+function resetMagic(){if(!pkDefaults||!confirm('Put every column back to the starter list? Your own numbers on this page are replaced. Nothing is saved until you press Save.'))return;
+magicRows=pkDefaults.magic.map(e=>Object.assign({primary:[],secondary:[]},JSON.parse(JSON.stringify(e))));renderMagic()}
+function resetBases(){if(!pkDefaults||!confirm('Put this page back to its defaults: the ethereal, circlet and desirable base item choices and the starter list of bases? Nothing is saved until you press Save.'))return;
+r_eth.checked=false;r_ethtier.value='exceptional';r_ethhelm.checked=false;r_helmtier.value='exceptional';r_circlet.checked=false;r_circletmin.value='exceptional';r_baseson.checked=true;r_basemin.value='';r_class.checked=false;r_classtier.value='exceptional';classRows=pkDefaults.class.map(c=>JSON.parse(JSON.stringify(c)));renderClassBtns();
+baseRows=pkDefaults.bases.map(b=>Object.assign({},b));renderBases()}
+function cKind(k){return classCat.kinds.find(x=>x.key==k)}
+function cEntry(k){let i=classRows.findIndex(e=>e.kind==k);if(i<0){classRows.push({kind:k,need:1,skills:[]});i=classRows.length-1}return i}
+function cBad(k,x){const kd=cKind(k);return !!x.key&&!(kd&&kd.skills.some(t=>t.key==x.key))}
+function renderClassBtns(){classbtns.innerHTML=classCat.kinds.map(k=>{const n=classRows[cEntry(k.key)].skills.filter(x=>x.key).length;return '<button onclick="openClass(\''+k.key+'\')">'+esc(k.class||k.label)+' <span class=dim>('+n+')</span></button>'}).join('')}
+function openClass(k){classNow=k;renderClass();classdlg.showModal()}
+function renderClass(){const kd=cKind(classNow);if(!kd)return;const i=cEntry(classNow),e=classRows[i],need=Math.min(e.need||1,e.skills.length||1);cltitle.textContent=kd.label;
+tablist.innerHTML=kd.skills.map(t=>'<option value="'+esc(t.key)+'" label="'+esc(t.label)+'">').join('');
+classbody.innerHTML='<div class=mpool><span class=dim>Kept when it has at least <select onchange="classRows['+i+'].need=parseInt(this.value)">'+(e.skills.length?e.skills.map((_,k)=>'<option'+(need==k+1?' selected':'')+'>'+(k+1)+'</option>').join(''):'<option>1</option>')+'</select> of these skills:</span>'+
+e.skills.map((x,j)=>'<div class=mrow><input class="mc'+(cBad(classNow,x)?' mbad':'')+'" list=tablist value="'+esc(x.key)+'" placeholder="code" title="'+esc((kd.skills.find(t=>t.key==x.key)||{}).label||'')+'" onchange="cCode('+j+',this.value)"><input class=mv type=number min=1 max=6 value="'+(x.min||'')+'" onchange="cVal('+j+',this.value)"><button class=mx title="Remove" onclick="cDel('+j+')">&times;</button></div>').join('')+
+'<div style="margin-top:2px"><a class=mlink href="#" onclick="cAdd();return false">+ stat</a></div></div>'+
+'<p class=dim style="font-size:12.5px;margin:10px 0 0">Magic, rare and crafted items only. A code is one of the '+esc(kd.class)+' skills, such as <code>'+esc(kd.skills[0].key)+' 3</code>; start typing to see them.</p>';renderClassBtns()}
+function cCode(j,v){v=(v||'').trim().toLowerCase();const x=classRows[cEntry(classNow)].skills[j];x.key=v;if(!x.min)x.min=3;renderClass()}
+function cVal(j,v){classRows[cEntry(classNow)].skills[j].min=Math.min(6,Math.max(1,parseInt(v)||1))}
+function cDel(j){classRows[cEntry(classNow)].skills.splice(j,1);renderClass()}
+function cAdd(){const t=classRows[cEntry(classNow)].skills;if(t.length<6){t.push({key:'',min:3});renderClass()}}
+function classPayload(){const out=[];for(const k of classCat.kinds){const e=classRows[cEntry(k.key)];e.skills=e.skills.filter(x=>x.key);const bad=e.skills.find(x=>cBad(k.key,x));if(bad){alert('"'+bad.key+'" is not a skill for '+k.label+'. Open it and start typing to see the codes.');return null}
+if(e.skills.length)out.push({kind:k.key,need:Math.min(e.need||1,e.skills.length),skills:e.skills})}return out}
+function renderBases(){basecount.textContent='('+baseRows.length+')';basetab.innerHTML=baseRows.length?'<tr><th>Nickname<th>Item code<th>Quality<th>Ethereal<th>Sockets<th></tr>'+baseRows.map((b,i)=>'<tr><td><input value="'+esc(b.nickname||'')+'" size=16 placeholder="thresher" onchange="baseRows['+i+'].nickname=this.value.trim()"><td><input list=baselist class=bn value="'+esc(b.code||'')+'" size=6 placeholder="7s8" onchange="baseRows['+i+'].code=this.value.trim().toLowerCase();renderBases()"> '+(b.code&&!codeMap[b.code]?'<span style="color:var(--bad)">unknown code</span>':'')+'<td><select onchange="baseRows['+i+'].quality=this.value">'+[['','any'],['normal','normal'],['superior','superior']].map(o=>'<option value="'+o[0]+'"'+(b.quality==o[0]?' selected':'')+'>'+o[1]+'</option>').join('')+'</select><td><select onchange="baseRows['+i+'].ethereal=this.value">'+[['','any'],['no','not ethereal'],['yes','ethereal']].map(o=>'<option value="'+o[0]+'"'+(b.ethereal==o[0]?' selected':'')+'>'+o[1]+'</option>').join('')+'</select><td><select onchange="baseRows['+i+'].sockets=this.value">'+[['','any'],['0','0'],['1','1'],['2','2'],['3','3'],['4','4'],['5','5'],['6','6'],['2+','2 or more'],['3+','3 or more'],['4+','4 or more']].map(o=>'<option value="'+o[0]+'"'+(b.sockets==o[0]?' selected':'')+'>'+o[1]+'</option>').join('')+'</select><td><button onclick="baseRows.splice('+i+',1);renderBases()">Remove</button></tr>').join(''):'<tr><td class=dim>none yet</td></tr>'}
+function addBase(){baseRows.push({nickname:'',code:'',name:'',quality:'normal',ethereal:'no',sockets:''});renderBases()}
+async function loadPickit(){const r=await fetch('/api/pickit');if(!r.ok)return;const d=await r.json(),ru=d.rules||{};codeMap=d.codes||{};magicCat=d.magic||magicCat;classCat=d.classKinds||classCat;pkDefaults=d.defaults||pkDefaults;if(magicCat.stats.length&&statcodes.options.length!=magicCat.stats.length)statcodes.innerHTML=magicCat.stats.map(x=>'<option value="'+esc(x.key)+'" label="'+esc(x.label)+(x.def?' ('+x.def+(x.unit||'')+')':'')+'">').join('');picklists.style.display=d.listsEnabled?'block':'none';
+if(!r_gem.options.length)r_gem.innerHTML=''+(d.gems||[]).map(n=>'<option>'+n+'</option>').join('');
+if(!r_rune.options.length)r_rune.innerHTML=''+(d.runes||[]).map(n=>'<option>'+n+'</option>').join('');
+if(document.activeElement.closest&&!document.activeElement.closest('#pickit')||true){r_unique.checked=!!ru.unique;r_set.checked=!!ru.set;u_base.value=ru.uniqueBase=='normal'?'':(ru.uniqueBase||'');s_base.value=ru.setBase=='normal'?'':(ru.setBase||'');r_runeon.checked=!!ru.runeMin;r_rune.value=ru.runeMin||'Hel';const gm=ru.gemMin||(ru.perfectGems?'Perfect':'');r_gemon.checked=!!gm;r_gem.value=gm||'Flawless';r_pand.checked=!!ru.pandemonium;r_rejuv.checked=!!ru.rejuv;r_magicon.checked=!!ru.magicOn;r_lenient.checked=!!ru.lenient&&!!ru.magicOn;r_jewels.checked=!!ru.allJewels;magicRows=(ru.magic||[]).map(e=>Object.assign({primary:[],secondary:[]},JSON.parse(JSON.stringify(e))));r_trophy.value=ru.trophy||'';renderMagic();r_eth.checked=!!ru.ethArmor;r_ethtier.value=ru.ethArmorTier||'exceptional';r_helmtier.value=ru.ethHelmTier||'exceptional';r_ethhelm.checked=!!ru.ethHelm;r_circlet.checked=!!ru.circlets;r_class.checked=!!ru.classItems;r_classtier.value=ru.classTier||'exceptional';classRows=(ru.class||[]).map(c=>Object.assign({skills:[]},JSON.parse(JSON.stringify(c))));renderClassBtns();r_circletmin.value=ru.circletMin||'exceptional';r_basemin.value=ru.baseMin=='normal'?'':(ru.baseMin||'');r_baseson.checked=!!ru.basesOn;baseRows=(ru.bases||[]).map(b=>Object.assign({},b));renderBases()}
+codeMap=d.codes||{};if(baselist.options.length!=Object.keys(codeMap).length)baselist.innerHTML=Object.keys(codeMap).sort().map(c=>'<option value="'+esc(c)+'" label="'+esc(codeMap[c])+'">').join('')
+picktab.innerHTML='<tr><th>List<th class=r>Lines<th>Leader loads it<th>Loaded<th></tr>'+d.lists.map(l=>'<tr><td>'+esc(l.path)+'<td class=r>'+l.lines+'<td><input type=checkbox class=pl value="'+esc(l.path)+'"'+(l.lead?' checked':'')+'><td class=dim>'+esc(l.loaded||'')+'<td><button onclick="editPickit(\''+esc(l.path)+'\')">Edit</button></tr>').join('')}
+async function savePickit(){const mp=magicPayload();if(mp===null)return;const cp=classPayload();if(cp===null)return;const l=[...picktab.querySelectorAll('.pl:checked')].map(i=>i.value),rules={unique:r_unique.checked,uniqueBase:u_base.value,set:r_set.checked,setBase:s_base.value,runeMin:r_runeon.checked?r_rune.value:'',gemMin:r_gemon.checked?r_gem.value:'',pandemonium:r_pand.checked,rejuv:r_rejuv.checked,magicOn:r_magicon.checked,lenient:r_lenient.checked,allJewels:r_jewels.checked,magic:mp,trophy:r_trophy.value,ethArmor:r_eth.checked,ethArmorTier:r_ethtier.value,ethHelmTier:r_helmtier.value,ethHelm:r_ethhelm.checked,circlets:r_circlet.checked,classItems:r_class.checked,classTier:r_classtier.value,class:cp,circletMin:r_circletmin.value,baseMin:r_basemin.value,basesOn:r_baseson.checked,bases:baseRows.filter(b=>b.code||b.name)};
+const r=await fetch('/api/pickit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lead:l,rules:rules})});
+const pm=await (r.ok?Promise.resolve('saved'):r.text());document.querySelectorAll('.pickmsg').forEach(e=>{e.textContent=r.ok?'saved':'not saved: '+pm;e.style.color=r.ok?'var(--ok)':'var(--bad)'})}
+async function editPickit(p){const r=await fetch('/api/pickitfile?path='+encodeURIComponent(p));if(!r.ok){alert(await r.text());return}picktext.value=await r.text();pickname.textContent=p;pickedit.style.display='block';pickeditmsg.textContent=''}
+async function savePickFile(){const r=await fetch('/api/pickitfile',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:pickname.textContent,text:picktext.value})});
+pickeditmsg.textContent=r.ok?'saved':'not saved: '+await r.text();pickeditmsg.style.color=r.ok?'var(--ok)':'var(--bad)';if(r.ok)loadPickit()}
+function sub(n){subNow=n;if(curTab=='cfg')setUrl();try{localStorage.setItem('sub',n)}catch(e){}subs.forEach(s=>{document.getElementById(s[0]).style.display=s[0]==n?'block':'none'});subbar.innerHTML=subs.map(s=>'<button class="'+(s[0]==n?'on':'')+'" onclick="sub(\''+s[0]+'\')">'+s[1]+'</button>').join('')}
+sub(subNow);
+function tab(n,noUrl){curTab=n;bots.style.display=n=='bots'?'':'none';stpane.style.display=n=='status'?'block':'none';ts.className=n=='status'?'on':'';cfg.style.display=n=='cfg'?'':'none';about.style.display=n=='about'?'block':'none';pickit.style.display=n=='pickit'?'block':'none';tp.className=n=='pickit'?'on':'';if(n=='pickit'){loadPickit();pksub(pkNow)}consoleEl.style.display=n=='console'?'block':'none';tk.className=n=='console'?'on':'';tb.className=n=='bots'?'on':'';tc.className=n=='cfg'?'on':'';ta.className=n=='about'?'on':'';if(n=='cfg')cfgLoaded=false;if(!noUrl)setUrl()}
+async function saveSettings(){const r=await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({hostIp:hostip.value,headless:!showwin.checked})});
+setmsg.textContent=r.ok?'saved: applies to bots after you restart Qolbot':'not saved: '+await r.text();setmsg.style.color=r.ok?'#2e7d32':'#c62828'}
+let farmCat=[],farmSel=[],goalNow='Follow';
+function goalChanged(){farmbtn.style.display=goal.value=='Farm'?'':'none';if(goal.value!='Farm')showFarm(false);saveGoal(true)}
+farmlist.addEventListener('change',()=>farmHint());
+function farmHint(){const n=farmlist.querySelectorAll('input:checked').length;if(goal.value=='Farm'&&!n){goalmsg.textContent='no farm runs chosen yet';goalmsg.style.color='var(--warn)'}else if(goal.value=='Farm'){goalmsg.innerHTML='<a href="#" style="color:var(--ok)" onclick="toggleFarm();return false">'+n+(n==1?' location':' locations')+'</a>';goalmsg.style.color='var(--ok)'}else goalmsg.textContent=''}
+function showFarm(open){if(open&&!farmbox.open)farmbox.showModal();else if(!open&&farmbox.open)farmbox.close()}
+function toggleFarm(){showFarm(!farmbox.open)}
+async function saveGoal(quiet){const farm=[...farmlist.querySelectorAll('input:checked')].map(i=>i.value);
+const r=await fetch('/api/goal',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({goal:goal.value,difficulty:diff.value,farm:farm})});
+const t=r.ok?'saved':'not saved: '+await r.text();(quiet?goalmsg:farmmsg).textContent=t;(quiet?goalmsg:farmmsg).style.color=r.ok?'var(--ok)':'var(--bad)';if(r.ok)setTimeout(farmHint,1500)}
+function fillGoal(d){if(document.activeElement===goal||document.activeElement===diff||farmbox.contains(document.activeElement))return;goal.value=d.goal||'Farm';diff.value=d.difficulty||'Hell';farmbtn.style.display=goal.value=='Farm'?'':'none';
+const cat=d.farmCatalog||[],sel=d.farmRuns||[],key=JSON.stringify([cat,sel]);if(key!==fillGoal.key){fillGoal.key=key;farmlist.innerHTML=[1,2,3,4,5].map(a=>{const rows=cat.filter(f=>(f.act||0)==a);return rows.length?'<div class=farmact><div class=acth>Act '+a+'</div>'+rows.map(f=>'<label style="display:block;padding:1px 0"><input type=checkbox value="'+esc(f.name)+'"'+(sel.indexOf(f.name)>-1?' checked':'')+'> '+esc(f.label)+'</label>').join('')+'</div>':''}).join('')}farmHint()}
+async function setSpec(n,v){if(!await req('/api/spec'+q(n)+'&spec='+encodeURIComponent(v)))lastHtml='';load()}
+function autosaveChanged(){if(autosave.checked&&!(parseInt(saveEvery.value)>0))saveEvery.value=5;saveEvery.disabled=!autosave.checked||autosave.disabled}
+function plugyChanged(){const on=plugy.checked;autosave.disabled=!on;if(!on){autosave.checked=false}autosaveChanged()}
+async function savePlay(msgId){msgId=typeof msgId=='string'?msgId:'behmsg';const playmsg=document.getElementById(msgId);const n=id=>parseInt(document.getElementById(id).value);
+const body={storage:{inventory:[n('inv_w'),n('inv_h')],stash:[n('st_w'),n('st_h')],cube:[n('cu_w'),n('cu_h')],addStashPages:plugy.checked},banter:banter.checked,banterBubble:bubble.checked,autoSaveMinutes:autosave.checked?(parseInt(saveEvery.value)||5):0,plugy:plugy.checked,autoTown:autotown.checked,gamble:gamble.checked,reportTasks:reptask.checked,reportProblems:repprob.checked};
+const r=await fetch('/api/play',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+playmsg.textContent=r.ok?'saved':'not saved: '+await r.text();playmsg.style.color=r.ok?'#2e7d32':'#c62828'}
+async function saveGameTab(){await savePlay('gamemsg');await saveGame()}
+async function saveGame(){const r=await fetch('/api/game',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({gameExe:gpath.value})});
+gmsg.textContent=r.ok?'saved':'not saved: '+await r.text();gmsg.style.color=r.ok?'#2e7d32':'#c62828';cfgLoaded=false;lastHtml='';load()}
+function fillCfg(d){if(cfgLoaded||cfg.style.display=='none')return;cfgLoaded=true;gpath.value=d.gameExe||'';const sg=d.storage||{inventory:[10,6],stash:[10,10],cube:[3,4]};inv_w.value=sg.inventory[0];inv_h.value=sg.inventory[1];st_w.value=sg.stash[0];st_h.value=sg.stash[1];cu_w.value=sg.cube[0];cu_h.value=sg.cube[1];banter.checked=d.banter!==false;plugy.checked=d.plugy.says;autotown.checked=d.autoTown!==false;gamble.checked=d.gamble!==false;reptask.checked=d.reportTasks!==false;repprob.checked=d.reportProblems!==false;(function(){const pl=d.plugy;if(pl.installed&&pl.commands){plugyInfo.textContent='PlugY detected';plugyInfo.style.color='var(--ok)'}else if(pl.installed){plugyInfo.textContent='PlugY detected, but its chat commands are off (set ActiveCommands=1 in PlugY.ini)';plugyInfo.style.color='var(--warn)'}else{plugyInfo.textContent='PlugY not detected';plugyInfo.style.color='var(--bad)'}})();plugyChanged();autosave.checked=d.autoSaveMinutes>0;saveEvery.value=d.autoSaveMinutes>0?d.autoSaveMinutes:5;plugyChanged();saveWarn.style.display=d.saveAvailable?'none':'block';bubble.checked=!!d.banterBubble;hostip.value=d.hostIp||'localhost';showwin.checked=d.headless===false;if(!gmsg.textContent||gmsg.textContent=='saved'||gmsg.textContent.startsWith('not'))gmsg.textContent='';gmsg.textContent=gmsg.textContent||(d.gameOK?'Game detected':d.gameProblem);gmsg.style.color=d.gameOK?'var(--ok)':'var(--bad)';ae.checked=!!d.autoEquip;const mw=d.mercWear||{};mw_rings.checked=!!mw.rings;mw_amulets.checked=!!mw.amulets;mw_belts.checked=!!mw.belts;mw_gloves.checked=!!mw.gloves;mw_boots.checked=!!mw.boots;autostat.checked=d.autoStat!==false;qclear.checked=d.questClearAll!==false;autoskill.checked=d.autoSkill!==false;pf.forEach(f=>document.getElementById('pf_'+f[0]).checked=!!d.protect[f[0]])}
+async function saveQuests(){const r=await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({questClearAll:qclear.checked})});
+questmsg.textContent=r.ok?'saved':'error: '+await r.text();questmsg.style.color=r.ok?'var(--ok)':'var(--bad)'}
+async function saveAuto(){const r=await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({autoEquip:ae.checked,autoStat:autostat.checked,autoSkill:autoskill.checked,mercWear:{rings:mw_rings.checked,amulets:mw_amulets.checked,belts:mw_belts.checked,gloves:mw_gloves.checked,boots:mw_boots.checked}})});
+automsg.textContent=r.ok?'saved':'error: '+await r.text();automsg.style.color=r.ok?'var(--ok)':'var(--bad)'}
+async function saveGear(){await savePlay('cfgmsg');await saveCfg()}
+async function saveCfg(){const p={};pf.forEach(f=>p[f[0]]=document.getElementById('pf_'+f[0]).checked);
+const r=await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({protect:p})});
+cfgmsg.textContent=r.ok?'saved':'error: '+await r.text()}
+async function setSafe(on){if(!await req('/api/safemode?on='+(on?1:0)))lastHtml='';load()}
+async function clearLogs(){if(!confirm("Delete all log files (Qolbot, Wine and D2BS logs)? Your loot history is kept."))return;if(await req('/api/clearlogs'))load()}
+async function stopAll(){if(await req('/api/stopall'))load()}
+async function rescan(){await req('/api/rescan');load()}
+function pick(n,on){on?picked.add(n):picked.delete(n);lastHtml=''}
+function pickAll(on){Object.keys(profs).forEach(n=>on?picked.add(n):picked.delete(n));lastHtml='';load()}
+function clsPill(c){return '<span class="pill cls c-'+esc((c.class||'').toLowerCase())+'"><b>'+c.level+'</b> '+esc(c.class)+(c.hardcore?' (HC)':'')+'</span>'}
+function ago(t){if(!t)return '';const s=Math.max(0,Math.round((Date.now()-new Date(t))/1000));return s<60?s+'s ago':s<3600?Math.floor(s/60)+'m ago':Math.floor(s/3600)+'h ago'}
+let invStorage=null,invDemo=false;
+function renderStatus(d0){invStorage=d0.storage||invStorage;const real=d0.profiles.some(p=>p.status!='stopped')||(d0.events||[]).length>0||location.search.indexOf('real')>-1;const d=d0.demo&&!real?Object.assign({},d0,d0.demo):d0;invDemo=!!(d0.demo&&!real);const on=d.profiles.filter(p=>p.status!='stopped');
+cpubox.style.display=d.cpu&&on.length?'':'none';if(d.cpu)cpubox.innerHTML='Bots are using <b>'+Math.round(d.cpu.percent)+'%</b> of this machine&#39;s CPU';
+stbots.innerHTML=on.length?on.map(p=>{const lead=d.player&&p.character==d.player&&d.playing===false,role=lead?'Leading '+(d.goal||'Farm'):(d.player?'Following '+d.player:'');return '<div class=pod style="cursor:pointer" title="Click to see what '+esc(p.name)+' is carrying" onclick="showInv(\''+esc(p.name)+'\')"><div class=top><span class=nm>'+esc(p.name)+'</span>'+(lead?' <span title="Leader">&#128681;</span>':'')+(p.char?' '+clsPill(p.char):'')+(role?' <span class=role>'+esc(role)+'</span>':'')+'<span class="pill '+p.status+'" style="margin-left:auto">'+(p.status=='starting'?'connecting':p.status)+'</span></div><div class="act actrow"><span><b>'+esc(p.zone||'Unknown')+'</b>: '+actIcon(p.activity)+esc(cap(p.activity||'Waiting for first report'))+'</span>'+(p.activity?'<span class=ago>'+ago(p.activityAt)+'</span>':'')+'</div></div>'}).join(''):'<div class="pod dim">No bots are running.</div>';
+evs=d.events||[];stitems.innerHTML=evs.length?evs.map((i,n)=>{const who=esc(i.bot),det=i.detail?esc(i.detail):'';
+const row=(title,left,click)=>'<div class="arow'+(click?' click':'')+' k-'+i.kind+'"'+(click?' onclick="showItem('+n+')"':'')+'>'+title+'<div class=meta><span>'+left+'</span><span class=ago>'+ago(i.time)+'</span></div></div>';
+if(i.kind=='level')return row('<b>&#127881; Leveled Up!</b>',who+' &middot; Reached level '+esc(i.name));
+if(i.kind=='stat')return row('<b>'+({Strength:'&#128170; ',Dexterity:'&#128400;&#65039; ',Vitality:'&#129728; ',Energy:'&#129504; '}[i.name]||'&#128200; ')+'Auto Stat</b>',who+' &middot; '+esc(i.name)+' &middot; '+esc(i.detail)+(i.detail=='1'?' point':' points'));
+if(i.kind=='skill')return row('<b>&#128293; Auto Skill</b>',who+' &middot; '+esc(i.name)+' &middot; '+(i.count>1?i.count+' points':'1 point'));
+if(i.kind=='kill')return row('<b>&#9760;&#65039; '+esc(i.name)+' Defeated</b>',who+(det?' &middot; '+det:''));
+if(i.kind=='quest')return row('<b>&#9989; Quest Complete</b>',who+' &middot; '+esc(i.name));
+if(i.kind=='problem')return row('<b>&#128680; Errored</b>',who+' &middot; '+esc(i.name)+(det?' &middot; '+det:''));
+if(i.kind=='restart')return row('<b>&#128276; '+esc(i.name)+'</b>',who+(det?' &middot; '+det:''));
+if(i.kind=='death')return row('<b>&#9904;&#65039; Died</b>',who+(det?' &middot; '+det:''));
+if(i.kind=='stash')return row('<b class="'+(/rejuvenation/i.test(i.name||'')?'q-rejuv':'q-'+esc(i.quality||''))+'">&#128452;&#65039; '+esc(i.name)+'</b>',who+(i.zone?' &middot; '+esc(i.zone):'')+qualityWord(i)+' &middot; Stashed');
+if(i.kind=='connect')return row('<b>&#128279; Connected</b>',who);
+if(i.kind=='disconnect')return row('<b>&#128268; Disconnected</b>',who+(i.zone?' &middot; '+esc(i.zone):''));
+if(i.kind=='gamble')return row('<b>&#128176; Gambled</b>',who+(det?' &middot; '+det:''));
+if(i.kind=='chicken')return row('<b>&#128019; Chickened</b>',who+(det?' &middot; '+det:''));
+if(i.kind=='heal')return row('<b>&#10084;&#65039; Healed</b>',who+(det?' &middot; '+det:''));
+if(i.kind=='equip')return row('<b>&#11014;&#65039; Auto Equip</b>',who+(i.zone?' &middot; '+esc(i.zone):''),1);
+return row('<b class="'+(/rejuvenation/i.test(i.name||'')?'q-rejuv':'q-'+esc(i.quality||''))+'">'+itemIcon(i)+esc(i.name)+'</b>',who+(i.zone?' &middot; '+esc(i.zone):'')+qualityWord(i)+(det?' &middot; '+det:''),1)}).join(''):'<div class="pod dim">Nothing yet.</div>'}
+const invBody={1:'Head',2:'Amulet',3:'Body armor',4:'Weapon',5:'Shield',6:'Ring',7:'Ring',8:'Belt',9:'Boots',10:'Gloves',11:'Weapon (swap)',12:'Shield (swap)'},invQ={4:'magic',5:'set',6:'rare',7:'unique',8:'crafted'};
+let invItems={},invName='';
+function invCls(i){return /rune$/i.test(i.n)?'q-rune':[76,77,78].indexOf(i.t)>-1?(i.t==78||/rejuv/i.test(i.n)?'q-rejuv':'q-potion'):(invQ[i.q]?'q-'+invQ[i.q]:'')}
+function invGrid(list,w,h){const u=26;list.forEach(i=>{w=Math.max(w,i.x+i.w);h=Math.max(h,i.y+i.h)});
+return '<div style="position:relative;width:'+w*u+'px;height:'+h*u+'px;background-color:var(--card);background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:'+u+'px '+u+'px;border:1px solid var(--line)">'+list.map(i=>'<div class="'+invCls(i)+'" title="'+esc(i.n)+'" onclick="showInvItem('+i.g+')" style="position:absolute;left:'+i.x*u+'px;top:'+i.y*u+'px;width:'+(i.w*u-2)+'px;height:'+(i.h*u-2)+'px;margin:1px;box-sizing:border-box;border:1px solid currentColor;border-radius:3px;background:var(--accent-soft);font-size:10px;line-height:1.1;overflow:hidden;cursor:pointer;padding:1px 2px;font-weight:600">'+esc(i.n)+'</div>').join('')+'</div>'}
+function showInvItem(g){const i=invItems[g];if(!i)return;itemtitle.textContent=i.n;itembody.innerHTML=(i.d?descHtml(i.d):'<div class=dim>'+(i.k?'No stat text reported for this item.':'Not identified yet.')+'</div>')+'<div class=dim style="margin-top:12px;font-family:inherit">'+esc(invName)+(i.i?' &middot; item level '+i.i:'')+'</div>';itemdlg.showModal()}
+function demoInv(){const it=(g,n,q,l,x,y,w,h,t,b,d)=>({g,n,q,l,x,y,w,h,t:t||0,b:b||0,m:l?0:1,k:1,i:85,d:d||''});return {gold:128450,bank:2400000,items:[
+it(1,'Griffon\'s Eye Diadem',7,0,0,0,1,1,0,1,'\xffc4Griffon\'s Eye\n\xffc4Diadem\n+1 To All Skills'),it(2,'Skin of the Vipermagi Serpent Skin',7,0,0,0,2,3,0,3,'\xffc4Skin of the Vipermagi\n+1 To All Skills'),it(3,'Magefist Light Gauntlets',5,0,0,0,2,2,0,10),
+it(4,'Full Rejuvenation Potion',2,3,0,0,1,1,78),it(5,'Full Rejuvenation Potion',2,3,1,0,1,1,78),it(6,'Ist Rune',2,3,2,0,1,1,0),it(7,'Grand Charm of Vita',4,3,3,0,1,3,0,0,'\xffc3Grand Charm of Vita\n+38 To Life'),it(8,'Rare Boots',6,3,5,0,2,2,15),it(9,'Cold Rooster Armor',6,3,7,0,2,3,3),it(10,'Scroll of Town Portal',2,3,9,0,1,1,0),it(11,'Tome of Town Portal',2,3,9,1,2,2,0),it(12,'Sapphire',2,3,0,3,1,1,0),
+it(13,'Ethereal Archon Plate',2,7,0,0,2,3,3),it(14,'Windforce Hydra Bow',7,7,2,0,2,4,27),it(15,'Perfect Skull',2,7,4,0,1,1,0)].map(x=>(x.l==0?(x.m=1):0,x))}}
+async function showInv(name){invName=name;invbody.innerHTML='<div class=dim>Loading…</div>';invdlg.showModal();
+let r;try{r=await (await fetch('/api/inventory?name='+encodeURIComponent(name))).json()}catch(e){r={known:false}}
+if(!r.known&&invDemo)r={known:true,at:new Date().toISOString(),inventory:demoInv()};
+const head='<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px"><b>'+esc(name)+' is carrying</b><button onclick="invdlg.close()">Close</button></div>';
+if(!r.known){invbody.innerHTML=head+'<div class=dim>Nothing reported yet. A bot reports what it carries a few seconds after it enters a game, and again whenever its items change.</div>';return}
+const inv=r.inventory,items=inv.items||[];invItems={};items.forEach(i=>invItems[i.g]=i);const st=invStorage||{inventory:[10,4],stash:[10,10],cube:[3,4]};
+const worn=items.filter(i=>i.m==1).sort((a,b)=>a.b-b.b),pack=items.filter(i=>i.m==0&&i.l==3),stash=items.filter(i=>i.m==0&&i.l==7),cube=items.filter(i=>i.m==0&&i.l==6),belt=items.filter(i=>i.m==2);
+const beltTxt={};belt.forEach(i=>beltTxt[i.n]=(beltTxt[i.n]||0)+1);
+const sec=(t,b)=>'<p style="margin:14px 0 4px"><b>'+t+'</b></p>'+b;
+invbody.innerHTML=head+'<div class=dim style="margin:-4px 0 6px">'+(inv.gold!=null?'Gold '+inv.gold.toLocaleString()+(inv.bank?' &middot; '+inv.bank.toLocaleString()+' in the stash':'')+' &middot; ':'')+'updated '+ago(r.at)+'</div>'+
+sec('Wearing',worn.length?'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:3px 16px;font-size:13px">'+worn.map(i=>'<div style="cursor:pointer" onclick="showInvItem('+i.g+')"><span class=dim>'+(invBody[i.b]||'Slot '+i.b)+'</span> &nbsp;<b class="'+invCls(i)+'">'+esc(i.n)+'</b></div>').join('')+'</div>':'<div class=dim style="font-size:13px">nothing</div>')+
+sec('Inventory',invGrid(pack,st.inventory[0],st.inventory[1]))+(belt.length?sec('Belt','<div style="font-size:13px">'+Object.keys(beltTxt).map(n=>beltTxt[n]+' &times; '+esc(n)).join(', ')+'</div>'):'')+
+sec('Horadric Cube',invGrid(cube,st.cube[0],st.cube[1]))+sec('Stash',invGrid(stash,st.stash[0],st.stash[1]))}
+let evs=[];
+function qualityWord(i){const w={set:'Set',unique:'Unique',rare:'Rare',magic:'Magic',crafted:'Crafted'}[i.quality];return w?' &middot; <span class="q-'+i.quality+'">'+w+'</span>':''}
+const weaponRe=/sword|blade|axe|bow|staff|wand|mace|hammer|club|spear|javelin|pike|scepter|dagger|knife|claw|orb|flail|scythe|halberd|cleaver|maul|katar|lance|glaive|trident|whip|stave/i;
+function itemIcon(i){const n=i.name||'',d=i.desc||'';if(i.quality=='rune')return '&#129704; ';if(/^key of /i.test(n))return '&#128477;&#65039; ';if(/^(chipped |flawed |flawless |perfect )?(amethyst|topaz|sapphire|emerald|ruby|diamond|skull)$/i.test(n))return '&#128142; ';if(i.quality=='potion'||/potion/i.test(n))return '&#127862; ';if(/upgrade/i.test(i.detail||'')&&/\bring\b|\bamulet\b|\bcoil\b|\bhoop\b/i.test(n)&&!/Defense:|Damage:/.test(d))return /amulet/i.test(n)?'&#128255; ':'&#128141; ';if(/upgrade/i.test(i.detail||''))return (/Defense:/.test(d)?false:/Damage:/.test(d)||(!d&&weaponRe.test(n)))?'&#9876;&#65039; ':'&#128737;&#65039; ';return '&#127942; '}
+const actIcons=[[/wait/i,'&#9203;'],[/follow/i,'&#128099;'],[/searching/i,'&#128064;'],[/taking waypoint/i,'&#128506;&#65039;'],[/taking portal/i,'&#127744;'],[/talking to/i,'&#128172;'],[/stash/i,'&#128452;&#65039;'],[/^engaging/i,'&#128121;'],[/fighting/i,'&#9876;&#65039;'],[/embarking/i,'&#128220;'],[/saving/i,'&#128190;'],[/team is here/i,'&#128640;'],[/^disconnected/i,'&#128268;'],[/joining game|creating game|choosing difficulty/i,'&#128682;'],[/just arrived/i,'&#128205;'],[/travel|going back/i,'&#129517;']];
+function cap(s){s=String(s||'');return s.charAt(0).toUpperCase()+s.slice(1)}
+function actIcon(a){a=a||'waiting';for(const r of actIcons)if(r[0].test(a))return r[1]+' ';return '&#9654;&#65039; '}
+function outsideClose(e,d){const r=d.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)d.close()}
+function descHtml(t){return t.split('\n').map(l=>{const m=l.match(/^(?:\\xff|\u00ff|\ufffd)c(.)/);const col=m?m[1]:'0';return '<div class="dc'+(/[0-9]/.test(col)?col:'0')+'">'+esc(l.replace(/(?:\\xff|\u00ff|\ufffd)c./g,''))+'</div>'}).join('')}
+function showItem(n){const i=evs[n];if(!i)return;itemtitle.textContent=i.title?i.title.replace(/^(Field Kept|Runeword Kept|Cubing Kept|Merc Equipped|Equipped|Kept|Gambled|Shopped) /,''):i.name;
+itembody.innerHTML=(i.desc?descHtml(i.desc):'<div class=dim>Stats unknown: the bot did not report this item\'s details (it may not have been identified).</div>')+'<div class=dim style="margin-top:12px;font-family:inherit">'+esc(i.bot)+' &middot; '+ago(i.time)+(i.ilvl?' &middot; item level '+i.ilvl:'')+(i.detail?' &middot; '+esc(i.detail):'')+'</div>';itemdlg.showModal()}
+async function load(){if(busy)return;busy=1;try{
+const d=await (await fetch('/api/state')).json();clearErr();profs={};d.profiles.forEach(p=>profs[p.name]=p);
+fillPlaying(d);renderStatus(d);
+const opts=d.profiles.map(p=>'<option value="'+esc(p.character)+'">'+esc(p.character)+'</option>').join('');
+if(opts!==playerOpts){player.innerHTML=opts;playerOpts=opts}
+if(document.activeElement!==safe)safe.checked=!!d.safeMode;gameOK=!!d.gameOK;gbanner.style.display=d.gameOK?'none':'block';if(!d.gameOK&&!tabAuto){tabAuto=true;tab('cfg')}fillCfg(d);fillGoal(d);
+playerNow=d.player||'';if(document.activeElement!==player)player.value=playerNow;
+const html='<tr><th><input type=checkbox title="select all" onchange="pickAll(this.checked)"><th>Profile<th>Class<th>Spec<th>Status<th class=r>Runs<th class=r>Chickens<th class=r>Deaths<th></tr>'+d.profiles.map(p=>{const n=esc(p.name),lead=d.player&&p.character==d.player,me=lead&&playingNow,off=p.status=='stopped'&&!me;
+return '<tr class="'+(p.status=='running'?'run':(p.status=='starting'||p.status=='stopping'?'wait':''))+'"><td><input type=checkbox '+(me?'disabled ':'')+(picked.has(p.name)&&!me?'checked ':'')+'onchange="pick(\''+n+'\',this.checked)"><td>'+n+(me?' <span title="You">&#129781;</span>':(lead?' <span title="Leader">&#128681;</span>':''))+'<td>'+(p.char?clsPill(p.char):'-')+'<td title="'+esc(p.specAuto?'Detected: '+p.specAuto+(p.specWhy&&!p.forced?'. '+p.specWhy:''):p.specWhy)+'"><select onchange="setSpec(\''+n+'\',this.value)"><option value="">Auto: '+esc(p.specAuto||p.spec||'detect')+'</option>'+(p.specOptions||[]).map(o=>'<option'+(o==p.forced?' selected':'')+'>'+esc(o)+'</option>').join('')+'</select>'+
+'<td><span class="pill '+p.status+'">'+p.status+'</span>'+'<td class=r>'+p.runs+'<td class=r>'+p.chickens+'<td class=r>'+p.deaths+
+'<td><button class=primary '+(off&&d.gameOK?'':'disabled')+' onclick="act(\'start\',\''+n+'\')">Start</button><button '+(off?'disabled':'')+' onclick="act(\'stop\',\''+n+'\')">Stop</button></tr>'}).join('');
+if(html!==lastHtml){t.innerHTML=html;lastHtml=html}t.className=playingNow?'noruns':''
+const atEnd=c.scrollTop+c.clientHeight>=c.scrollHeight-24;c.innerHTML=d.logs.map(l=>'<div style="color:'+(isDark()?colD:colL)[l.color%12]+'">'+new Date(l.time).toLocaleTimeString()+' ['+esc(l.profile)+'] '+esc(l.msg)+'</div>').join('');if(atEnd)c.scrollTop=c.scrollHeight;}finally{busy=0}}
+route();setUrl(true);
+load();setInterval(load,2000);
+</script>

@@ -1,0 +1,52 @@
+// .................................................
+// QOL AutoEquip Ruleset (casters: Sorceress, Necromancer, Druid)
+// by whipowill, kept up to date with the QOL bot
+// .................................................
+
+// How it works
+// Each line says "an item like this is worth [tier] == <number> to the bot". The bot puts on an item in a slot when its number beats
+// what is there. Only normal, magic and rare gear that is not ethereal and not a runeword is ranked. Unique, set, crafted and socketed
+// gear the bot is already wearing is never replaced (the Equipment tab's "never replace" list). The numbers are built from the same
+// pieces everywhere, so they can be compared: resistances count most (each point is 100, all-res counts four times), then the
+// build's own stats (below), then defense for armor.
+//
+// Caster build stats (points each): +1 all skills 1500, +1 your class skills 1000, fast cast rate 25 per %, faster hit recovery 8,
+// life 10, mana 2. Attack speed, leech and damage are ignored.
+//
+// Which of the two files a bot uses is decided by its class: Sorceress, Necromancer and Druid use caster.nip; Amazon, Paladin,
+// Barbarian and Assassin use melee.nip. Rare and magic circlets, helms, armor, belts, boots, gloves, rings and amulets are ranked by
+// every class; the weapon and shield lines below are limited to the types each class really swaps (classid is Amazon 0, Sorceress 1,
+// Necromancer 2, Paladin 3, Barbarian 4, Druid 5, Assassin 6). There are no lines for staves or other two-handed weapons or Druid weapons
+// (the right choice depends on the build): those characters keep what they wear.
+
+// =================================================
+// ARMOR AND JEWELRY (all casters)
+// =================================================
+
+// boots also count run/walk speed
+[type] == boots && ([quality] == normal || [quality] == magic || [quality] == rare) && [flag] != ethereal && [flag] != runeword # # [tier] == /*resists: fire+cold+lightning+poison, all-res counts four times*/((item.getStatEx(39) + item.getStatEx(41) + item.getStatEx(43) + item.getStatEx(45) + (item.getStatEx(555) * 4)) * 100) + /*all skills*/(item.getStatEx(127) * 1500) + /*class skills*/(item.getStatEx(83, me.classid) * 1000) + /*fcr*/(item.getStatEx(105) * 25) + /*mana*/(item.getStatEx(9) * 2) + /*fhr*/(item.getStatEx(99) * 8) + /*life*/(item.getStatEx(7) * 10) + /*run/walk*/(item.getStatEx(96) * 10) + /*defense*/(item.getStatEx(31) * 1)
+([type] == amulet || [type] == ring || [type] == circlet || [type] == helm || [type] == armor || [type] == belt || [type] == gloves) && ([quality] == normal || [quality] == magic || [quality] == rare) && [flag] != ethereal && [flag] != runeword # # [tier] == /*resists: fire+cold+lightning+poison, all-res counts four times*/((item.getStatEx(39) + item.getStatEx(41) + item.getStatEx(43) + item.getStatEx(45) + (item.getStatEx(555) * 4)) * 100) + /*all skills*/(item.getStatEx(127) * 1500) + /*class skills*/(item.getStatEx(83, me.classid) * 1000) + /*fcr*/(item.getStatEx(105) * 25) + /*mana*/(item.getStatEx(9) * 2) + /*fhr*/(item.getStatEx(99) * 8) + /*life*/(item.getStatEx(7) * 10) + /*defense*/(item.getStatEx(31) * 1)
+
+// =================================================
+// SORCERESS (classid 1)
+// =================================================
+
+me.classid == 1 && ([type] == orb || [type] == wand) && ([quality] == normal || [quality] == magic || [quality] == rare) && [flag] != ethereal && [flag] != runeword # # [tier] == /*resists: fire+cold+lightning+poison, all-res counts four times*/((item.getStatEx(39) + item.getStatEx(41) + item.getStatEx(43) + item.getStatEx(45) + (item.getStatEx(555) * 4)) * 100) + /*all skills*/(item.getStatEx(127) * 1500) + /*class skills*/(item.getStatEx(83, me.classid) * 1000) + /*fcr*/(item.getStatEx(105) * 25) + /*mana*/(item.getStatEx(9) * 2) + /*fhr*/(item.getStatEx(99) * 8) + /*life*/(item.getStatEx(7) * 10) + /*max damage*/(item.getStatEx(24) * 1)
+me.classid == 1 && [type] == shield && ([quality] == normal || [quality] == magic || [quality] == rare) && [flag] != ethereal && [flag] != runeword # # [tier] == /*resists: fire+cold+lightning+poison, all-res counts four times*/((item.getStatEx(39) + item.getStatEx(41) + item.getStatEx(43) + item.getStatEx(45) + (item.getStatEx(555) * 4)) * 100) + /*all skills*/(item.getStatEx(127) * 1500) + /*class skills*/(item.getStatEx(83, me.classid) * 1000) + /*fcr*/(item.getStatEx(105) * 25) + /*mana*/(item.getStatEx(9) * 2) + /*fhr*/(item.getStatEx(99) * 8) + /*life*/(item.getStatEx(7) * 10) + /*defense*/(item.getStatEx(31) * 1)
+
+// =================================================
+// NECROMANCER (classid 2)
+// =================================================
+
+me.classid == 2 && [type] == wand && ([quality] == normal || [quality] == magic || [quality] == rare) && [flag] != ethereal && [flag] != runeword # # [tier] == /*resists: fire+cold+lightning+poison, all-res counts four times*/((item.getStatEx(39) + item.getStatEx(41) + item.getStatEx(43) + item.getStatEx(45) + (item.getStatEx(555) * 4)) * 100) + /*all skills*/(item.getStatEx(127) * 1500) + /*class skills*/(item.getStatEx(83, me.classid) * 1000) + /*fcr*/(item.getStatEx(105) * 25) + /*mana*/(item.getStatEx(9) * 2) + /*fhr*/(item.getStatEx(99) * 8) + /*life*/(item.getStatEx(7) * 10) + /*max damage*/(item.getStatEx(24) * 1)
+me.classid == 2 && ([type] == shield || [type] == voodooheads) && ([quality] == normal || [quality] == magic || [quality] == rare) && [flag] != ethereal && [flag] != runeword # # [tier] == /*resists: fire+cold+lightning+poison, all-res counts four times*/((item.getStatEx(39) + item.getStatEx(41) + item.getStatEx(43) + item.getStatEx(45) + (item.getStatEx(555) * 4)) * 100) + /*all skills*/(item.getStatEx(127) * 1500) + /*class skills*/(item.getStatEx(83, me.classid) * 1000) + /*fcr*/(item.getStatEx(105) * 25) + /*mana*/(item.getStatEx(9) * 2) + /*fhr*/(item.getStatEx(99) * 8) + /*life*/(item.getStatEx(7) * 10) + /*defense*/(item.getStatEx(31) * 1)
+
+// =================================================
+// DRUID (classid 5)
+// =================================================
+
+// pelts
+me.classid == 5 && [type] == pelt && ([quality] == normal || [quality] == magic || [quality] == rare) && [flag] != ethereal && [flag] != runeword # # [tier] == /*resists: fire+cold+lightning+poison, all-res counts four times*/((item.getStatEx(39) + item.getStatEx(41) + item.getStatEx(43) + item.getStatEx(45) + (item.getStatEx(555) * 4)) * 100) + /*all skills*/(item.getStatEx(127) * 1500) + /*class skills*/(item.getStatEx(83, me.classid) * 1000) + /*fcr*/(item.getStatEx(105) * 25) + /*mana*/(item.getStatEx(9) * 2) + /*fhr*/(item.getStatEx(99) * 8) + /*life*/(item.getStatEx(7) * 10) + /*defense*/(item.getStatEx(31) * 1)
+
+// shields
+me.classid == 5 && [type] == shield && ([quality] == normal || [quality] == magic || [quality] == rare) && [flag] != ethereal && [flag] != runeword # # [tier] == /*resists: fire+cold+lightning+poison, all-res counts four times*/((item.getStatEx(39) + item.getStatEx(41) + item.getStatEx(43) + item.getStatEx(45) + (item.getStatEx(555) * 4)) * 100) + /*all skills*/(item.getStatEx(127) * 1500) + /*class skills*/(item.getStatEx(83, me.classid) * 1000) + /*fcr*/(item.getStatEx(105) * 25) + /*mana*/(item.getStatEx(9) * 2) + /*fhr*/(item.getStatEx(99) * 8) + /*life*/(item.getStatEx(7) * 10) + /*defense*/(item.getStatEx(31) * 1)

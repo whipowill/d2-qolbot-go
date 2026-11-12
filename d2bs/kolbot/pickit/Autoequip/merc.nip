@@ -1,0 +1,41 @@
+// .................................................
+// QOL AutoEquip Merc Ruleset
+// by whipowill, extended for the QOL bot (weapons, shields, and every jewelry/armor slot)
+// .................................................
+
+// How it works
+// Each line says "an item like this is worth [merctier] == <number> to the mercenary". The bot puts on an item in
+// a slot when its number beats what is there. Which TYPES a merc can wear at all is decided in code
+// (Item.mercWeapons in libs/common/Misc.js, matching qol.ini [mercenary] equip=1): Rogue bows/crossbows,
+// Desert Guard polearms/spears/javelins, Iron Wolf shields/1H swords/wands/scepters/maces/orbs,
+// Barbarian swords/axes/maces/hammers. Gear the merc is already wearing that is unique, set, crafted or
+// socketed is never replaced (configurable on the web page, Config tab).
+//
+// Building blocks used below
+//   resists  /*fr+cr+lr+pr+ar*/((item.getStatEx(39) + item.getStatEx(41) + item.getStatEx(43) + item.getStatEx(45) + (item.getStatEx(555) * 4)) * 100)
+//   defense  /*defense*/(item.getStatEx(31) * 1)
+//   damage   /*bigger of 1H and 2H max damage*/(Math.max(item.getStatEx(22), item.getStatEx(24)) * 100)
+//   leech    /*life+mana leech*/((item.getStatEx(60) + item.getStatEx(62)) * 100)
+
+// =================================================
+// ARMOR (every merc): helm, circlet, body armor
+// =================================================
+([type] == circlet || [type] == helm || [type] == primalhelm || [type] == armor) && ([quality] == normal || [quality] == magic || [quality] == rare) && [flag] != runeword # # [merctier] == /*fr+cr+lr+pr+ar*/((item.getStatEx(39) + item.getStatEx(41) + item.getStatEx(43) + item.getStatEx(45) + (item.getStatEx(555) * 4)) * 100) + /*defense*/(item.getStatEx(31) * 1)
+
+// =================================================
+// BELT, BOOTS, GLOVES (qol.dll lets every merc wear these). Rings and amulets are NOT here: the game refuses them on a merc,
+// and listing them made bots pick rings up as "upgrades" only to sell them later.
+// =================================================
+([type] == belt || [type] == boots || [type] == gloves) && ([quality] == normal || [quality] == magic || [quality] == rare) && [flag] != runeword # # [merctier] == /*fr+cr+lr+pr+ar*/((item.getStatEx(39) + item.getStatEx(41) + item.getStatEx(43) + item.getStatEx(45) + (item.getStatEx(555) * 4)) * 100) + /*defense*/(item.getStatEx(31) * 1)
+
+// =================================================
+// SHIELDS (Iron Wolf)
+// =================================================
+([type] == shield || [type] == auricshields) && ([quality] == normal || [quality] == magic || [quality] == rare) && [flag] != ethereal && [flag] != runeword # # [merctier] == /*fr+cr+lr+pr+ar*/((item.getStatEx(39) + item.getStatEx(41) + item.getStatEx(43) + item.getStatEx(45) + (item.getStatEx(555) * 4)) * 100) + /*defense*/(item.getStatEx(31) * 1)
+
+// =================================================
+// WEAPONS: ranked by damage and leech
+// Rogue: bow, crossbow.  Desert Guard: polearm, spear, javelin.  Iron Wolf: sword, wand, scepter, mace, orb.
+// Barbarian: sword, axe, mace, hammer.
+// =================================================
+([type] == bow || [type] == crossbow || [type] == polearm || [type] == spear || [type] == javelin || [type] == amazonbow || [type] == amazonspear || [type] == amazonjavelin || [type] == sword || [type] == axe || [type] == mace || [type] == hammer || [type] == scepter || [type] == wand || [type] == orb) && ([quality] == normal || [quality] == magic || [quality] == rare) && [flag] != ethereal && [flag] != runeword # # [merctier] == /*bigger of 1H and 2H max damage*/(Math.max(item.getStatEx(22), item.getStatEx(24)) * 100) + /*life+mana leech*/((item.getStatEx(60) + item.getStatEx(62)) * 100)

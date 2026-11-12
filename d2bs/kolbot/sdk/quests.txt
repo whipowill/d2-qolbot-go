@@ -1,0 +1,66 @@
+Info from Mattir:
+
+int = me.getQuest( int QuestNumber , int QuestCompletion );
+
+QuestNumber
+0 = Spoke to Warriv
+1 = Den of Evil
+2 = Sisters' Burial Grounds
+4 = The Search for Cain
+5 = Forgotten Tower
+3 = Tools of the Trade
+6 = Sisters to the Slaughter
+7 = Able to go to Act II
+8 = Spoke to Jerhyn
+9 = Radament's Lair
+10 = The Horadric Staff
+11 = The Tainted Sun
+12 = The Arcane Sanctuary
+13 = The Summoner
+14 = The Seven Tombs
+15 = Able to go to Act III
+16 = Spoke to Hratli
+20 = The Golden Bird
+19 = Blade of the Old Religion
+18 = Khalim's Will
+17 = Lam Esen's Tome
+21 = The Blackened Temple
+22 = The Guardian
+23 = Able to go to Act IV
+24 = Spoke to Tyrael
+25 = The Fallen Angel
+27 = Hell's Forge
+26 = Terror's End
+28 = Able to go to Act V
+35 = Seige on Haggorath
+36 = Rescue on Mount Arreat
+37 = Prison of Ice
+38 = Betrayal of Haggorath
+39 = Rite of Passage
+40 = Eve of Destruction
+
+QuestCompletion
+0 = Requirements Complete (Quest Complete)
+2 = Quest Started
+3-10 = Parts of Quest Complete Varies by Quest
+12 = Quest Box Filled in
+
+QuestItems // if (!me.getItem(548))
+items[i].classid !== 524 && // Scroll of Inifuss
+items[i].classid !== 525 && // Key to Cairn Stones
+items[i].classid !== 549 && // Horadric Cube
+items[i].classid !== 92 && // Staff of Kings
+items[i].classid !== 521 && // Viper Amulet
+items[i].classid !== 91 && // Horadric Staff
+items[i].classid !== 552 && // Book of Skill
+items[i].classid !== 545 && // Potion of Life
+items[i].classid !== 546 && // A Jade Figurine
+items[i].classid !== 547 && // The Golden Bird
+items[i].classid !== 548 && // Lam Esen's Tome
+items[i].classid !== 553 && // Khalim's Eye
+items[i].classid !== 554 && // Khalim's Heart
+items[i].classid !== 555 && // Khalim's Brain
+items[i].classid !== 173 && // Khalim's Flail
+items[i].classid !== 174 && // Khalim's Will
+items[i].classid !== 644 && // Malah's Potion
+items[i].classid !== 646 && // Scroll of Resistance

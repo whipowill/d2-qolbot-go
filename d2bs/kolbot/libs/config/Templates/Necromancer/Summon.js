@@ -1,0 +1,107 @@
+// Necromancer / Summoner: skeletons, skeletal mages and a golem fight; the necromancer stays back and revives.
+// Generated for the QOL bot auto-spec (internal/spec). Skill order = AutoSkill, stats = AutoStat. Edit freely.
+function LoadTemplate()
+{
+	Config.SkipImmune = []; // "fire", "cold", "lightning", "poison", "physical", "magic"
+	Config.SkipEnchant = []; // "extra strong", "extra fast", "cursed", "magic resistant", "fire enchanted", "lightning enchanted", "cold enchanted", "mana burn", "teleportation", "spectral hit", "stone skin", "multiple shots"
+	Config.SkipAura = []; // "fanaticism", "might", "holy fire", "blessed aim", "holy freeze", "holy shock". Conviction is bugged, don't use it.
+
+	// ID 	Skill
+	// -1	Nothing
+	// 0	Attack
+	// 1	Kick
+	// 2	Throw
+	// 66	Amplify Damage
+	// 71	Dim Vision
+	// 72	Weaken
+	// 76	Iron Maiden
+	// 77	Terror
+	// 81	Confuse
+	// 82	Life Tap
+	// 86	Attract
+	// 87	Decrepify
+	// 91	Lower Resist
+	// 67	Teeth
+	// 68	Bone Armor
+	// 73	Poison Dagger
+	// 74	Corpse Explosion
+	// 78	Bone Wall
+	// 83	Poison Explosion
+	// 84	Bone Spear
+	// 88	Bone Prison
+	// 92	Poison Nova
+	// 93	Bone Spirit
+	// 69	Skeleton Mastery
+	// 70	Raise Skeleton
+	// 75	Clay Golem
+	// 79	Golem Mastery
+	// 80	Raise Skeletal Mage
+	// 85	Blood Golem
+	// 89	Summon Resist
+	// 90	Iron Golem
+	// 94	Fire Golem
+	// 95	Revive
+
+	Config.AttackSkill[0] = -1; // Preattack skill.
+	Config.AttackSkill[1] = 0; // Primary skill to bosses.
+	Config.AttackSkill[2] = -1; // Primary untimed skill to bosses. Keep at -1 if Config.AttackSkill[1] is untimed skill.
+	Config.AttackSkill[3] = 0; // Primary skill to others.
+	Config.AttackSkill[4] = -1; // Primary untimed skill to others. Keep at -1 if Config.AttackSkill[3] is untimed skill.
+	Config.AttackSkill[5] = -1; // Secondary skill if monster is immune to primary.
+	Config.AttackSkill[6] = -1; // Secondary untimed skill if monster is immune to primary untimed.
+
+	Config.LowManaSkill[0] = -1; // Timed low mana skill.
+	Config.LowManaSkill[1] = -1; // Untimed low mana skill.
+
+	Config.Curse[0] = 0; // Boss curse. Use skill number or set to 0 to disable.
+	Config.Curse[1] = 0; // Other monsters curse. Use skill number or set to 0 to disable.
+
+	Config.ExplodeCorpses = 74; // Explode corpses. Use skill number or 0 to disable. 74 = Corpse Explosion, 83 = Poison Explosion
+	Config.Golem = "Clay"; // Golem. 0 or "None" = don't summon, 1 or "Clay" = Clay Golem, 2 or "Blood" = Blood Golem, 3 or "Fire" = Fire Golem
+	Config.Skeletons = "max"; // Number of skeletons to raise. Set to "max" to auto detect, set to 0 to disable.
+	Config.SkeletonMages = "max"; // Number of skeleton mages to raise. Set to "max" to auto detect, set to 0 to disable.
+	Config.Revives = 0; // Number of revives to raise. Set to "max" to auto detect, set to 0 to disable.
+	Config.PoisonNovaDelay = 2; // Delay between two Poison Novas in seconds.
+	Config.ActiveSummon = false; // Raise dead between each attack. If false, it will raise after clearing a spot.
+	Config.ReviveUnstackable = true; // Revive monsters that can move freely after you teleport.
+	Config.IronGolemChicken = 30; // Exit game if Iron Golem's life is less or equal to designated percent.
+	
+	Config.Dodge = true; // Move away from monsters that get too close. Don't use with short-ranged attacks like Poison Dagger.
+	Config.DodgeRange = 15; // Distance to keep from monsters.
+
+	Config.AutoSkill.Enabled = true; // Enable or disable AutoSkill system
+	Config.AutoSkill.Build = [
+		[70, 1, false], // raise skeleton
+		[69, 1, false], // skeleton mastery
+		[80, 1, false], // raise skeletal mage
+		[75, 1, false], // clay golem
+		[70, 10, false], // raise skeleton
+		[69, 10, false], // skeleton mastery
+		[80, 10, false], // raise skeletal mage
+		[79, 5, false], // golem mastery
+		[69, 20, false], // skeleton mastery
+		[70, 20, false], // raise skeleton
+		[80, 20, false], // raise skeletal mage
+		[79, 20, false], // golem mastery
+		[95, 5, false], // revive
+	];
+
+	Config.AutoStat.Enabled = true; // Enable or disable AutoStat system
+	Config.AutoStat.Build = [
+		["s", 12], // strength for quilt armor
+		["v", 28], // vitality (level 5)
+		["e", 50], // energy (level 8)
+		["v", 50], // vitality
+		["s", 15], // strength
+		["v", 65], // vitality
+		["s", 35], // strength
+		["e", 75], // energy
+		["v", 75], // vitality
+		["s", 55], // strength
+		["v", 100], // vitality
+		["s", 80], // strength
+		["v", 125], // vitality
+		["s", 95], // strength
+		["v", "all"], // rest into vitality
+	];
+}

@@ -1,0 +1,61 @@
+// .................................................
+// QOL AutoEquip Ruleset (attackers: Amazon, Paladin, Barbarian, Assassin)
+// by whipowill, kept up to date with the QOL bot
+// .................................................
+
+// How it works
+// Each line says "an item like this is worth [tier] == <number> to the bot". The bot puts on an item in a slot when its number beats
+// what is there. Only normal, magic and rare gear that is not ethereal and not a runeword is ranked. Unique, set, crafted and socketed
+// gear the bot is already wearing is never replaced (the Equipment tab's "never replace" list). The numbers are built from the same
+// pieces everywhere, so they can be compared: resistances count most (each point is 100, all-res counts four times), then the
+// build's own stats (below), then defense for armor.
+//
+// Attacker build stats (points each): +1 all skills 1000, +1 your class skills 800, increased attack speed 30 per %, life leech 100
+// per %, crushing blow and deadly strike 15 per %, faster hit recovery 8, life 10. Weapons add enhanced damage (4 per %) and max
+// damage (3 per point). Fast cast rate is ignored.
+//
+// Which of the two files a bot uses is decided by its class: Sorceress, Necromancer and Druid use caster.nip; Amazon, Paladin,
+// Barbarian and Assassin use melee.nip. Rare and magic circlets, helms, armor, belts, boots, gloves, rings and amulets are ranked by
+// every class; the weapon and shield lines below are limited to the types each class really swaps (classid is Amazon 0, Sorceress 1,
+// Necromancer 2, Paladin 3, Barbarian 4, Druid 5, Assassin 6). There are no lines for Amazon bows, two-handed weapons or Barbarian melee
+// weapons (the right choice depends on the build): those characters keep what they wear.
+
+// =================================================
+// ARMOR AND JEWELRY (all attackers)
+// =================================================
+
+// boots also count run/walk speed
+[type] == boots && ([quality] == normal || [quality] == magic || [quality] == rare) && [flag] != ethereal && [flag] != runeword # # [tier] == /*resists: fire+cold+lightning+poison, all-res counts four times*/((item.getStatEx(39) + item.getStatEx(41) + item.getStatEx(43) + item.getStatEx(45) + (item.getStatEx(555) * 4)) * 100) + /*all skills*/(item.getStatEx(127) * 1000) + /*class skills*/(item.getStatEx(83, me.classid) * 800) + /*ias*/(item.getStatEx(93) * 30) + /*life leech*/(item.getStatEx(60) * 100) + /*crushing blow*/(item.getStatEx(136) * 15) + /*deadly strike*/(item.getStatEx(141) * 15) + /*fhr*/(item.getStatEx(99) * 8) + /*life*/(item.getStatEx(7) * 10) + /*run/walk*/(item.getStatEx(96) * 10) + /*defense*/(item.getStatEx(31) * 1)
+([type] == amulet || [type] == ring || [type] == circlet || [type] == helm || [type] == armor || [type] == belt || [type] == gloves) && ([quality] == normal || [quality] == magic || [quality] == rare) && [flag] != ethereal && [flag] != runeword # # [tier] == /*resists: fire+cold+lightning+poison, all-res counts four times*/((item.getStatEx(39) + item.getStatEx(41) + item.getStatEx(43) + item.getStatEx(45) + (item.getStatEx(555) * 4)) * 100) + /*all skills*/(item.getStatEx(127) * 1000) + /*class skills*/(item.getStatEx(83, me.classid) * 800) + /*ias*/(item.getStatEx(93) * 30) + /*life leech*/(item.getStatEx(60) * 100) + /*crushing blow*/(item.getStatEx(136) * 15) + /*deadly strike*/(item.getStatEx(141) * 15) + /*fhr*/(item.getStatEx(99) * 8) + /*life*/(item.getStatEx(7) * 10) + /*defense*/(item.getStatEx(31) * 1)
+
+// =================================================
+// AMAZON (classid 0)
+// =================================================
+
+// javazon
+me.classid == 0 && ([type] == javelin || [type] == amazonjavelin) && ([quality] == normal || [quality] == magic || [quality] == rare) && [flag] != ethereal && [flag] != runeword # # [tier] == /*resists: fire+cold+lightning+poison, all-res counts four times*/((item.getStatEx(39) + item.getStatEx(41) + item.getStatEx(43) + item.getStatEx(45) + (item.getStatEx(555) * 4)) * 100) + /*all skills*/(item.getStatEx(127) * 1000) + /*class skills*/(item.getStatEx(83, me.classid) * 800) + /*ias*/(item.getStatEx(93) * 30) + /*life leech*/(item.getStatEx(60) * 100) + /*crushing blow*/(item.getStatEx(136) * 15) + /*deadly strike*/(item.getStatEx(141) * 15) + /*fhr*/(item.getStatEx(99) * 8) + /*life*/(item.getStatEx(7) * 10) + /*enhanced damage*/(item.getStatEx(18) * 4) + /*max damage*/(item.getStatEx(24) * 3)
+me.classid == 0 && [type] == shield && ([quality] == normal || [quality] == magic || [quality] == rare) && [flag] != ethereal && [flag] != runeword # # [tier] == /*resists: fire+cold+lightning+poison, all-res counts four times*/((item.getStatEx(39) + item.getStatEx(41) + item.getStatEx(43) + item.getStatEx(45) + (item.getStatEx(555) * 4)) * 100) + /*all skills*/(item.getStatEx(127) * 1000) + /*class skills*/(item.getStatEx(83, me.classid) * 800) + /*ias*/(item.getStatEx(93) * 30) + /*life leech*/(item.getStatEx(60) * 100) + /*crushing blow*/(item.getStatEx(136) * 15) + /*deadly strike*/(item.getStatEx(141) * 15) + /*fhr*/(item.getStatEx(99) * 8) + /*life*/(item.getStatEx(7) * 10) + /*defense*/(item.getStatEx(31) * 1)
+
+// =================================================
+// PALADIN (classid 3)
+// =================================================
+
+me.classid == 3 && ([type] == scepter || [type] == hammer || [type] == mace) && ([quality] == normal || [quality] == magic || [quality] == rare) && [flag] != ethereal && [flag] != runeword # # [tier] == /*resists: fire+cold+lightning+poison, all-res counts four times*/((item.getStatEx(39) + item.getStatEx(41) + item.getStatEx(43) + item.getStatEx(45) + (item.getStatEx(555) * 4)) * 100) + /*all skills*/(item.getStatEx(127) * 1000) + /*class skills*/(item.getStatEx(83, me.classid) * 800) + /*ias*/(item.getStatEx(93) * 30) + /*life leech*/(item.getStatEx(60) * 100) + /*crushing blow*/(item.getStatEx(136) * 15) + /*deadly strike*/(item.getStatEx(141) * 15) + /*fhr*/(item.getStatEx(99) * 8) + /*life*/(item.getStatEx(7) * 10) + /*enhanced damage*/(item.getStatEx(18) * 4) + /*max damage*/(item.getStatEx(24) * 3)
+me.classid == 3 && ([type] == shield || [type] == auricshields) && ([quality] == normal || [quality] == magic || [quality] == rare) && [flag] != ethereal && [flag] != runeword # # [tier] == /*resists: fire+cold+lightning+poison, all-res counts four times*/((item.getStatEx(39) + item.getStatEx(41) + item.getStatEx(43) + item.getStatEx(45) + (item.getStatEx(555) * 4)) * 100) + /*all skills*/(item.getStatEx(127) * 1000) + /*class skills*/(item.getStatEx(83, me.classid) * 800) + /*ias*/(item.getStatEx(93) * 30) + /*life leech*/(item.getStatEx(60) * 100) + /*crushing blow*/(item.getStatEx(136) * 15) + /*deadly strike*/(item.getStatEx(141) * 15) + /*fhr*/(item.getStatEx(99) * 8) + /*life*/(item.getStatEx(7) * 10) + /*defense*/(item.getStatEx(31) * 1)
+
+// =================================================
+// BARBARIAN (classid 4)
+// =================================================
+
+// barb helms
+me.classid == 4 && [type] == primalhelm && ([quality] == normal || [quality] == magic || [quality] == rare) && [flag] != ethereal && [flag] != runeword # # [tier] == /*resists: fire+cold+lightning+poison, all-res counts four times*/((item.getStatEx(39) + item.getStatEx(41) + item.getStatEx(43) + item.getStatEx(45) + (item.getStatEx(555) * 4)) * 100) + /*all skills*/(item.getStatEx(127) * 1000) + /*class skills*/(item.getStatEx(83, me.classid) * 800) + /*ias*/(item.getStatEx(93) * 30) + /*life leech*/(item.getStatEx(60) * 100) + /*crushing blow*/(item.getStatEx(136) * 15) + /*deadly strike*/(item.getStatEx(141) * 15) + /*fhr*/(item.getStatEx(99) * 8) + /*life*/(item.getStatEx(7) * 10) + /*defense*/(item.getStatEx(31) * 1)
+
+// throwing weapons
+me.classid == 4 && [type] == thrownweapon && ([quality] == normal || [quality] == magic || [quality] == rare) && [flag] != ethereal && [flag] != runeword # # [tier] == /*resists: fire+cold+lightning+poison, all-res counts four times*/((item.getStatEx(39) + item.getStatEx(41) + item.getStatEx(43) + item.getStatEx(45) + (item.getStatEx(555) * 4)) * 100) + /*all skills*/(item.getStatEx(127) * 1000) + /*class skills*/(item.getStatEx(83, me.classid) * 800) + /*ias*/(item.getStatEx(93) * 30) + /*life leech*/(item.getStatEx(60) * 100) + /*crushing blow*/(item.getStatEx(136) * 15) + /*deadly strike*/(item.getStatEx(141) * 15) + /*fhr*/(item.getStatEx(99) * 8) + /*life*/(item.getStatEx(7) * 10) + /*enhanced damage*/(item.getStatEx(18) * 4) + /*max damage*/(item.getStatEx(24) * 3)
+
+// =================================================
+// ASSASSIN (classid 6)
+// =================================================
+
+// claws (both hands wear one)
+me.classid == 6 && [type] == assassinclaw && ([quality] == normal || [quality] == magic || [quality] == rare) && [flag] != ethereal && [flag] != runeword # # [tier] == /*resists: fire+cold+lightning+poison, all-res counts four times*/((item.getStatEx(39) + item.getStatEx(41) + item.getStatEx(43) + item.getStatEx(45) + (item.getStatEx(555) * 4)) * 100) + /*all skills*/(item.getStatEx(127) * 1000) + /*class skills*/(item.getStatEx(83, me.classid) * 800) + /*ias*/(item.getStatEx(93) * 30) + /*life leech*/(item.getStatEx(60) * 100) + /*crushing blow*/(item.getStatEx(136) * 15) + /*deadly strike*/(item.getStatEx(141) * 15) + /*fhr*/(item.getStatEx(99) * 8) + /*life*/(item.getStatEx(7) * 10) + /*enhanced damage*/(item.getStatEx(18) * 4) + /*max damage*/(item.getStatEx(24) * 3)

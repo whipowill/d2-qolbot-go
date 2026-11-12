@@ -1,0 +1,67 @@
+# --- Personal config: paths, character names, settings. Copy qolbot.example.json instead. ---
+/qolbot.json
+/qolbot.*.json
+!/qolbot.example.json
+
+# --- Local helper scripts that hold git identity / remotes ---
+/reset.sh
+
+# --- Logs (contain home paths, character names, in-game chat, item drops) ---
+/logs/
+/.qolbot-xvfb.pid
+*.log
+d2bs/kolbot/logs/*
+!d2bs/kolbot/logs/deleteme
+
+# --- Generated per run (written by Qolbot every start; characters, specs, state) ---
+/d2bs/d2bs.ini
+/d2bs/kolbot/console
+/d2bs/kolbot/data/*.json
+/d2bs/kolbot/data/*.txt
+/d2bs/kolbot/data/web/*.json
+/d2bs/kolbot/data/secure/*
+!/d2bs/kolbot/data/secure/deleteme
+
+# --- Game saves, characters, backups (never belong in the repo) ---
+*.d2s
+*.d2x
+*.sss
+*.stash
+*.key
+savebackup/
+Save/
+
+# --- Wine prefixes ---
+.qolbot_wine_prefix/
+*.reg
+dosdevices/
+drive_c/
+
+# --- Stray local builds (the real outputs in bin/ and d2bridge.exe are tracked) ---
+/cmd/qolbot/qolbot
+/cmd/d2bridge/d2bridge.exe
+*.test
+*.out
+
+# --- Debug symbols (huge, not needed) ---
+*.pdb
+
+# --- Secrets / credentials, just in case ---
+.env
+.env.*
+*.pem
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*
+secrets*
+credentials*
+
+# --- Editor / OS noise ---
+.idea/
+.vscode/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+.claude/
