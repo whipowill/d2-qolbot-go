@@ -59,7 +59,7 @@ $ ./qolbot
 
 On Linux or Mac the first run will generate a Wine prefix (stored at ``~/.qolbot_wine_prefix``). This separate and distinct Wine installation is helpful in preventing game interference as you play at the same time.
 
-Qolbot will generate a [web interface](http://127.0.0.1:8080/) you can load in your browser.  When your play session is complete, use ``control-c`` in the command line to close your bots and exit the program.
+Qolbot will create a [web interface](http://127.0.0.1:8080/) you can load in your browser.  When your play session is complete, use ``control-c`` in the command line to close your bots and exit the program.
 
 ## Usage
 
