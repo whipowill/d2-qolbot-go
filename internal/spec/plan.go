@@ -55,7 +55,12 @@ func set(ids ...int) map[int]bool {
 var (
 	buildBlock = regexp.MustCompile(`(?s)Config\.AutoSkill\.Build\s*=\s*\[(.*?)\n\s*\];`)
 	buildEntry = regexp.MustCompile(`\[\s*(\d+)\s*,\s*(\d+)\s*,\s*(?:true|false)\s*\]`)
+	// [mastery, n, false]: the Whirlwind template works out its weapon mastery in the game (sword, axe, mace, polearm or spear). All five
+	// sit in one tree, so it counts here as Sword Mastery (127): the tree is what Detect needs, and the hard points of the real one still overlap.
+	masteryEntry = regexp.MustCompile(`\[\s*mastery\s*,\s*(\d+)\s*,\s*(?:true|false)\s*\]`)
 )
+
+const masteryStandIn = 127
 
 // LoadTemplates reads every template for a class from <libs>/config/Templates/<Class>/*.js.
 func LoadTemplates(libs string, class int) []Template {
@@ -79,6 +84,12 @@ func LoadTemplates(libs string, class int) []Template {
 				n, _ := strconv.Atoi(string(e[2]))
 				if n > t.Key[id] {
 					t.Key[id] = n
+				}
+			}
+			for _, e := range masteryEntry.FindAllSubmatch(m[1], -1) {
+				n, _ := strconv.Atoi(string(e[1]))
+				if n > t.Key[masteryStandIn] {
+					t.Key[masteryStandIn] = n
 				}
 			}
 		}
@@ -117,6 +128,7 @@ type Protect struct {
 	Runeword bool  `json:"runeword"`
 	Ethereal bool  `json:"ethereal"`
 	ClassIDs []int `json:"classIds"`
+	MinLevel int   `json:"minLevel"` // the list only applies to a character of this level or higher (0: always); class ids (Khalim's Will) are always protected
 }
 
 // DefaultProtect is the rule set the user asked for: never replace unique, set, crafted or socketed/runeword gear.
@@ -177,30 +189,56 @@ type Plan struct {
 	Stats  [][]interface{} `json:"stats,omitempty"`  // ["strength", 80]
 	Main   int             `json:"main,omitempty"`   // main attack skill id (custom mode)
 
-	Storage         Storage        `json:"storage"`            // container sizes and the full-stash policy
-	Plugy           bool           `json:"plugy"`              // the game uses PlugY (needed for /save, stash pages, the big stash)
-	ReportTasks     bool           `json:"reportTasks"`        // bots say what task they are starting
-	ReportProblems  bool           `json:"reportProblems"`     // bots say when they have a problem
-	Gamble          bool           `json:"gamble"`             // bots may gamble when they hold a lot of gold
-	Script          string         `json:"script,omitempty"`   // kolbot script to run instead of Follower
-	Goal            string         `json:"goal,omitempty"`     // with Script "Goal": Quest or Farm
-	Farm            []string       `json:"farm,omitempty"`     // with goal Farm: the kolbot scripts to run, in order
-	Pickit          []string       `json:"pickit,omitempty"`   // the .nip lists this bot loads
-	NoPickup        bool           `json:"noPickup,omitempty"` // pick nothing up (a follower while a leader bot farms)
-	AutoTown        bool           `json:"autoTown"`           // bots follow the leader between town and the field by themselves
-	AutoSaveMinutes int            `json:"autoSaveMinutes"`    // the bot saves (PlugY /save) this often while following; 0 = never
-	Banter          bool           `json:"banter"`             // bots speak their quotes
-	BanterBubble    bool           `json:"banterBubble"`       // ... with a leading "!" so they show over the bot's head
-	Protect         Protect        `json:"protect"`            // gear auto-equip must never replace
-	SafeMode        bool           `json:"safeMode"`           // Safe mode is on: AutoEquip, AutoStat and AutoSkill below are already false, and the bot picks up only consumables and quest items
-	AutoEquip       bool           `json:"autoEquip"`          // let the bot equip better gear (never touches the protected kinds); false in safe mode
-	AutoStat        bool           `json:"autoStat"`           // let the bot spend its stat points; false in safe mode
-	WatchKills      bool           `json:"watchKills"`         // the bot reports the bosses, uniques and champions it sees die
-	SkillPoints     map[string]int `json:"skillPoints"`        // skill id -> hard points the save holds now: the game's own skill query adds item bonuses, so AutoSkill counts from this
-	MercWear        MercWear       `json:"mercWear"`           // which extra slots the mercenary may be given gear for (some mods allow more than helm, armor, weapon)
-	TeleportTeam    bool           `json:"teleportTeam"`       // the Quests tab option: use a Sorceress party member's Teleport (only when QuestClearAll is false)
-	QuestClearAll   bool           `json:"questClearAll"`      // Quest mode clears every area it passes through (false: only the areas a quest needs)
-	AutoSkill       bool           `json:"autoSkill"`          // let the bot spend its skill points; false in safe mode
+	// the points the character's save says are spent, read by Qolbot before the game: strength, dexterity, vitality, energy (the base stats, no gear), and when (ms since 1970).
+	// AutoStat counts from these instead of estimating them from the gear (the user, 2026-11-16: "fix the stat balance issue").
+	HardStats   []int `json:"hardStats,omitempty"`
+	HardStatsAt int64 `json:"hardStatsAt,omitempty"`
+
+	Storage         Storage             `json:"storage"`                  // container sizes and the full-stash policy
+	QOL             bool                `json:"qol"`                      // "Using QOL?": Auto Respec sends ".reset skills" / ".reset stats" in the chat (no PlugY buttons, no positions)
+	HuntGoal        int                 `json:"huntGoal"`                 // a gold hunt: the gold every bot must hold; a bot above it hands its surplus to one below it (Gold.js)
+	HuntAreas       []int               `json:"huntAreas"`                // a gold hunt: the area ids the leader clears in full, in order (ClearAnyArea.AreaList; the manager chose them, huntplaces.go)
+	Quartermaster   bool                `json:"quartermaster"`            // the game has the Quartermaster mod: send ".deposit" before stashing (rejuvenation potions and other common items)
+	Plugy           bool                `json:"plugy"`                    // the game uses PlugY (needed for /save, stash pages, the big stash)
+	ReportTasks     bool                `json:"reportTasks"`              // bots say what task they are starting
+	ReportProblems  bool                `json:"reportProblems"`           // bots say when they have a problem
+	Gamble          bool                `json:"gamble"`                   // bots may gamble when they hold a lot of gold
+	Script          string              `json:"script,omitempty"`         // kolbot script to run instead of Follower
+	Goal            string              `json:"goal,omitempty"`           // with Script "Goal": Quest or Farm
+	TeamGoal        string              `json:"teamGoal,omitempty"`       // the team's objective (Quest, Farm), written for EVERY bot: "goal" is only the leader's (its presence means "I lead")
+	Farm            []string            `json:"farm,omitempty"`           // with goal Farm: the kolbot scripts to run, in order
+	Pickit          []string            `json:"pickit,omitempty"`         // the .nip lists this bot loads
+	NoPickup        bool                `json:"noPickup,omitempty"`       // pick nothing up (a follower while a leader bot farms)
+	AutoTown        bool                `json:"autoTown"`                 // bots follow the leader between town and the field by themselves
+	AutoSaveMinutes int                 `json:"autoSaveMinutes"`          // the bot saves (PlugY /save) this often while following; 0 = never
+	Banter          bool                `json:"banter"`                   // bots speak their quotes
+	BanterBubble    bool                `json:"banterBubble"`             // ... with a leading "!" so they show over the bot's head
+	Protect         Protect             `json:"protect"`                  // gear auto-equip must never replace
+	SafeMode        bool                `json:"safeMode"`                 // Safe mode is on: AutoEquip, AutoStat and AutoSkill below are already false, and the bot picks up only consumables and quest items
+	AutoEquip       bool                `json:"autoEquip"`                // let the bot equip better gear (never touches the protected kinds); false in safe mode
+	AutoStat        bool                `json:"autoStat"`                 // let the bot spend its stat points; false in safe mode
+	WatchKills      bool                `json:"watchKills"`               // the bot reports the bosses, uniques and champions it sees die
+	SkillPoints     map[string]int      `json:"skillPoints"`              // skill id -> hard points the save holds now: the game's own skill query adds item bonuses, so AutoSkill counts from this
+	MercWear        MercWear            `json:"mercWear"`                 // which extra slots the mercenary may be given gear for (some mods allow more than helm, armor, weapon)
+	Merc            string              `json:"merc,omitempty"`           // the merc chosen on the bot card (a MercKind ID, "a2-def", ...): MercHire.js replaces one of another kind first thing in a game
+	MercKinds       []MercKind          `json:"mercKinds,omitempty"`      // the mercs of THIS game (its Hireling.txt, or the 1.13d ones): how MercHire.js tells the kind of a merc
+	MercCandidates  map[string][]string `json:"mercCandidates,omitempty"` // "act-difficulty" -> the kinds a hire list entry is rolled among (MercHire.js)
+	MercQolEquip    bool                `json:"mercQolEquip"`             // QOL mod with qol.ini [mercenary] equip=1: mercs take more weapon kinds (Item.mercWeapons)
+	MercDropOnHire  bool                `json:"mercDropOnHire"`           // QOL mod with qol.ini [mercenary] drop_items=1: a replaced merc drops its gear (MercHire.js picks it up)
+	SaveOnChicken   bool                `json:"saveOnChicken"`            // ask for a /save just before leaving a game in danger (a chicken)
+	TeleportTeam    bool                `json:"teleportTeam"`             // the Quests tab option: use a Sorceress party member's Teleport (only when QuestClearAll is false)
+	Regroup         bool                `json:"regroup"`                  // the leader fetches a lost team
+	RegroupSeconds  int                 `json:"regroupSeconds"`           // a teammate lost this long makes the leader fetch the team
+	InventoryLayout bool                `json:"inventoryLayout"`          // the cube, the tomes and the keys keep fixed places in the pack
+	QuestWaypoints  bool                `json:"questWaypoints"`           // Quest mode collects every waypoint of an act before moving on to the next
+	QuestClearAll   bool                `json:"questClearAll"`            // Quest mode clears every area it passes through (false: only the areas a quest needs)
+	AutoSkill       bool                `json:"autoSkill"`                // let the bot spend its skill points; false in safe mode
+	Respec          bool                `json:"respec"`                   // Automation tab, Auto Respec: with PlugY the bot may take its skill points back once (Respec.js decides whether they fit the build)
+	PartySync       bool                `json:"partySync"`                // bot-only run: the party goes to town together, a mate's town chicken trip calls everybody (PartySync.js); false while a human plays
+	Hunt            string              `json:"hunt,omitempty"`           // "gold" or "level" while the team is on a hunt (levelup.go): no waypoint sharing at the start of the game, that waits until the quests resume
+	StatButtons     bool                `json:"statButtons"`              // Qolbot knows where PlugY's stat buttons are (respec.go): without it the stat part of Auto Respec only reports
+	RespecStat      bool                `json:"respecStat"`               // Auto Respec also covers the STAT points (PlugY: Alt click): needs Auto Stat
+	RespecForce     bool                `json:"respecForce"`              // the build was chosen by hand: respec once for it even when the points mostly fit
 }
 
 // Detect decides what a character is and what it should keep doing.
@@ -269,7 +307,7 @@ func Detect(s *Save, templates []Template) Plan {
 }
 
 // custom keeps building what the character already has: its most invested skills first,
-// and stats stay where they are with everything else going into vitality.
+// and strength goes up to 180 (and stays where it is above that), dexterity stays where it is, everything else goes into vitality.
 func custom(p Plan, s *Save, why string) Plan {
 	type kv struct{ id, n int }
 	var list []kv
@@ -293,7 +331,11 @@ func custom(p Plan, s *Save, why string) Plan {
 	if p.Main != 0 {
 		p.Spec = "custom (" + strconv.Itoa(p.Main) + ")"
 	}
-	p.Stats = [][]interface{}{{"strength", s.Str}, {"dexterity", s.Dex}, {"vitality", "all"}}
+	str := s.Str
+	if str < 180 { // every build reaches at least 180 strength (the user, 2026-11-16: an Elite Monarch needs 156)
+		str = 180
+	}
+	p.Stats = [][]interface{}{{"strength", str}, {"dexterity", s.Dex}, {"vitality", "all"}}
 	return p
 }
 
@@ -327,4 +369,14 @@ type MercWear struct {
 	Belts   bool `json:"belts"`
 	Gloves  bool `json:"gloves"`
 	Boots   bool `json:"boots"`
+}
+
+// MercKind is one kind of merc a town sells (an act and a sub-type of the game's Hireling.txt: "Act 2 Desert Mercenary, Def").
+type MercKind struct {
+	ID       string      `json:"id"`       // "a2-def": the act and the sub-type without its difficulty
+	Label    string      `json:"label"`    // for the bot card: "Act 2 Desert Mercenary: Def (Prayer, Jab, Penetrate)"
+	Act      int         `json:"act"`      // 1, 2, 3 or 5
+	Classids []int       `json:"classids"` // the merc's monster class ids
+	Tell     [3]int      `json:"tell"`     // per difficulty (Normal, Nightmare, Hell): a skill id only this kind of its act has; 0 = the act sells one kind
+	Skills   [3][]string `json:"skills"`   // per difficulty: the skill names, for the log
 }

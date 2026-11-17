@@ -1,10 +1,14 @@
+include("common/PlugY.js");
+
 function ForceSave() {
 
 	delay(5000);
 
 	// use plugy command to save
-	say("Saving.");
-	say("/save");
+	if (!Config.QuietChat) { // a task report: only with "Bots report when they engage in tasks" on (the user, 2026-11-15)
+		say(Speech.flavor("Saving."));
+	}
+	PlugY.save();
 	delay(5000);
 
 	// send update

@@ -62,6 +62,7 @@ function Pindleskin() {
 		}
 
 		Attack.kill(526); // Nihlathak
+		Config.Pindleskin.NihlathakKilled = true; // Qolbot: Betrayal of Harrogath then skips its own trip to him
 		//Attack.clear(15, 0, 526);
 		Pickit.pickItems();
 	}

@@ -45,8 +45,9 @@ var Skill = {
 		case 44: // Frost Nova
 		case 240: // Twister
 		case 245: // Tornado
-		case 500: // Summoner
 			return 5;
+		case 500: // Summoner: Qolbot, 2026-11-15: 5 sent the Necromancer (544 life) next to every monster his army fought; he stays back now
+			return 15;
 		case 38: // Charged Bolt
 			return 6;
 		case 48: // Nova
@@ -495,6 +496,67 @@ var Item = {
 	},
 
 	// Equips an item and throws away the old equipped item
+	// Qolbot (the user, 2026-11-14): gear taken off in town was dropped at the vendor, mid-chores, where no teammate looked (8 drops, 0 picked up).
+	// In town it now goes into the pack and is dropped at the portal spot when the chores are done (dropHeldForTeam). gid -> name. UNTESTED live.
+	heldForTeam: {},
+
+	holdForTeam: function (item) {
+		if (me.inTown && Storage.Inventory.CanFit(item) && Storage.Inventory.MoveTo(item)) {
+			this.heldForTeam[item.gid] = item.name;
+			print("Equip: holding " + item.name + " to drop at the portal spot for the others");
+
+			return true;
+		}
+
+		item.drop();
+
+		return false;
+	},
+
+	isHeldForTeam: function (item) {
+		return !!item && this.heldForTeam.hasOwnProperty(item.gid);
+	},
+
+	dropHeldForTeam: function () {
+		var gid, item, any = false;
+
+		for (gid in this.heldForTeam) {
+			if (this.heldForTeam.hasOwnProperty(gid)) {
+				any = true;
+
+				break;
+			}
+		}
+
+		if (!any) {
+			return;
+		}
+
+		if (me.inTown) {
+			try {
+				Town.move("portalspot");
+			} catch (moveError) {
+				print("Equip: could not reach the portal spot (" + moveError + "): dropping here");
+			}
+		}
+
+		me.cancel();
+
+		for (gid in this.heldForTeam) {
+			if (this.heldForTeam.hasOwnProperty(gid)) {
+				item = me.getItem(-1, -1, Number(gid));
+
+				if (item && item.location === 3) {
+					item.drop();
+					delay(me.ping + 200);
+					print("Equip: dropped " + this.heldForTeam[gid] + (me.inTown ? " at the portal spot" : "") + " for the others");
+				}
+
+				delete this.heldForTeam[gid];
+			}
+		}
+	},
+
 	// Qolbot: put an item that is on the cursor (the one just taken off) into the inventory, or, in town, the stash. True when it is stored.
 	putAway: function (item) {
 		if (Storage.Inventory.CanFit(item) && Storage.Inventory.MoveTo(item)) {
@@ -518,7 +580,16 @@ var Item = {
 			return true;
 		}
 
-		var i, cursorItem;
+		var i, cursorItem, keepResult, keepInfo, left;
+
+		// Qolbot: a two-handed weapon needs the left hand free: the shield (not arrows or bolts) comes off first
+		if (bodyLoc === 4 && typeof qolgear === "object" && qolgear.twoHanded(item) && (item.location !== 7 || me.inTown)) {
+			left = this.wornIn(me, 5);
+
+			if (left && [5, 6].indexOf(left.itemType) < 0 && !this.takeOff(5)) {
+				return false;
+			}
+		}
 
 		if (item.location === 7) {
 			if (!me.inTown) { // never make a trip to town just to try an item from the stash: it waits for the next town visit
@@ -543,17 +614,100 @@ var Item = {
 						cursorItem = getUnit(100);
 
 						// Qolbot: the item just taken off may be on the keep list: a better item must never cost a good one
-						if (cursorItem && [1, 2, 3, 5].indexOf(Pickit.checkItem(cursorItem).result) > -1) {
+						if (cursorItem) {
+							keepInfo = Pickit.checkItem(cursorItem);
+							keepResult = keepInfo.result;
+							print("Equip: took off " + cursorItem.name + ": keep rule result " + keepResult + " (1 keeper, 2 cube, 3 runeword, 5 craft)" + (keepInfo.line ? " [" + String(keepInfo.line).substr(0, 70) + "]" : "") + ": " + ([1, 2, 3, 5].indexOf(keepResult) > -1 ? "stored" : "dropped for the others"));
+						}
+
+						if (cursorItem && [1, 2, 3, 5].indexOf(keepResult) > -1) {
 							this.putAway(cursorItem);
 						} else if (cursorItem) {
-							// Qolbot: not on the keep list: drop it. The other bots may try it on (the items trickle down the party)
-							cursorItem.drop();
+							// Qolbot: not on the keep list: drop it. The other bots may try it on (the items trickle down the party). In town it is held
+							// until the chores are done and dropped at the portal spot, where the team gathers (holdForTeam)
+							this.holdForTeam(cursorItem);
 						}
 					}
 
 					return true;
 				}
 			}
+		}
+
+		return false;
+	},
+
+	// The gid of what the mercenary wears in bodyLoc (0: nothing)
+	mercSlotGid: function (bodyLoc) {
+		var merc = me.getMerc(), it;
+
+		if (merc) {
+			it = merc.getItem();
+
+			if (it) {
+				do {
+					if (it.mode === 1 && it.bodylocation === bodyLoc) {
+						return it.gid;
+					}
+				} while (it.getNext());
+			}
+		}
+
+		return 0;
+	},
+
+	// Is the swap done? The item gets a NEW gid on the merc (live 14:52:46 on 2026-11-14: Sankt's, Barabas's and Darius's mercs wore the bow and the circlet,
+	// every one reported "cannot use"): the slot holds something else than before, of this item's class
+	mercSwapped: function (bodyLoc, oldGid, classid) {
+		var merc = me.getMerc(), it;
+
+		if (merc) {
+			it = merc.getItem();
+
+			if (it) {
+				do {
+					if (it.mode === 1 && it.bodylocation === bodyLoc && it.gid !== oldGid && it.classid === classid) {
+						return true;
+					}
+				} while (it.getNext());
+			}
+		}
+
+		return false;
+	},
+
+	// Qolbot: what `owner` (me or the merc) wears in bodyLoc, of this classid when given; null if nothing. An item gets a NEW gid when it is put on (live
+	// 2026-11-14 17:58 and 18:02: the merc wore the Cap and the Breast Plate under new gids), so the item log of an equip looks it up by slot, not by gid.
+	wornIn: function (owner, bodyLoc, classid) {
+		var it = owner ? owner.getItem() : null;
+
+		if (it) {
+			do {
+				if (it.mode === 1 && it.bodylocation === bodyLoc && (classid === undefined || it.classid === classid)) {
+					return copyUnit(it);
+				}
+			} while (it.getNext());
+		}
+
+		return null;
+	},
+
+	// Does the mercenary wear the item `gid` (in bodyLoc)?
+	mercWears: function (gid, bodyLoc) {
+		var merc = me.getMerc(), it;
+
+		if (!merc) {
+			return false;
+		}
+
+		it = merc.getItem();
+
+		if (it) {
+			do {
+				if (it.gid === gid && it.mode === 1 && (bodyLoc === undefined || it.bodylocation === bodyLoc)) {
+					return true;
+				}
+			} while (it.getNext());
 		}
 
 		return false;
@@ -569,7 +723,7 @@ var Item = {
 			return true;
 		}
 
-		var i, cursorItem;
+		var i, cursorItem, keepResult, keepInfo, tick, gid = item.gid, name = item.name, classid = item.classid, oldGid;
 
 		// An item the merc already refused (wrong weapon type for this merc, etc.) is not retried, and neither is
 		// another item of a type it has refused for that slot (a merc that cannot wear rings refuses every ring).
@@ -577,6 +731,11 @@ var Item = {
 		this.mercRejectedType = this.mercRejectedType || {};
 
 		if (this.mercRejected[item.gid + ":" + bodyLoc] || this.mercRejectedType[item.itemType + ":" + bodyLoc]) {
+			return false;
+		}
+
+		// Qolbot: no swap with a dead merc (wait for the revive, no refusal). (The "refusals" of 14:41 were swaps that worked: see mercSwapped.)
+		if (!me.getMerc() || me.getMerc().mode === 0 || me.getMerc().mode === 12) {
 			return false;
 		}
 
@@ -592,10 +751,23 @@ var Item = {
 
 		for (i = 0; i < 3; i += 1) {
 			if (item.toCursor()) {
+				oldGid = this.mercSlotGid(bodyLoc);
 				clickItem(4, bodyLoc);
-				delay(me.ping * 2 + 500);
 
-				if (item.bodylocation === bodyLoc) {
+				// Qolbot: wait for the game's answer up to 3 s (it was one 0.5 s wait: under Wine the swap often came later, and the merc was never equipped in
+				// any log; Darius, 14:21:48 on 2026-11-14: a better Splint Mail "refused"). Worn = the merc has this gid in the slot, or the old item is on the cursor.
+				tick = getTickCount();
+
+				// the item's unit goes stale once the merc wears it (live 14:34:56, Xena's Long War Bow: worn, but reported as "cannot use undefined"): look by the gid kept above
+				while (getTickCount() - tick < 3000 && !this.mercWears(gid, bodyLoc) && !this.mercSwapped(bodyLoc, oldGid, classid)) {
+					if (getCursorType() === 3 && getUnit(100) && getUnit(100).gid !== gid) {
+						break;
+					}
+
+					delay(100);
+				}
+
+				if (this.mercWears(gid, bodyLoc) || this.mercSwapped(bodyLoc, oldGid, classid)) {
 					if (getCursorType() === 3) {
 						//Misc.click(0, 0, me);
 
@@ -603,8 +775,12 @@ var Item = {
 
 						if (cursorItem) {
 							// Qolbot: a keep-list item is stored (inventory, or the stash in town); anything else is dropped for the other bots to try on
-							if ([1, 2, 3, 5].indexOf(Pickit.checkItem(cursorItem).result) === -1 || !this.putAway(cursorItem)) {
-								cursorItem.drop();
+							keepInfo = Pickit.checkItem(cursorItem);
+							keepResult = keepInfo.result;
+							print("Equip: took off the mercenary's " + cursorItem.name + ": keep rule result " + keepResult + " (1 keeper, 2 cube, 3 runeword, 5 craft)" + (keepInfo.line ? " [" + String(keepInfo.line).substr(0, 70) + "]" : "") + ": " + ([1, 2, 3, 5].indexOf(keepResult) > -1 ? "stored" : "dropped for the others"));
+
+							if ([1, 2, 3, 5].indexOf(keepResult) === -1 || !this.putAway(cursorItem)) {
+								this.holdForTeam(cursorItem);
 							}
 						}
 					}
@@ -622,9 +798,10 @@ var Item = {
 					}
 				}
 
-				this.mercRejected[item.gid + ":" + bodyLoc] = true;
-				this.mercRejectedType[item.itemType + ":" + bodyLoc] = true;
-				print("mercEquip: merc cannot use " + item.name + " (slot " + bodyLoc + "), skipping it from now on.");
+				this.mercRejected[gid + ":" + bodyLoc] = true; // this item only: one refusal no longer bars every item of its type for the rest of the game
+				print("mercEquip: merc cannot use " + name + " (slot " + bodyLoc + "), skipping it from now on. Cursor: " + (getUnit(100) ? getUnit(100).name : "empty") +
+					", merc level " + (me.getMerc() ? me.getMerc().charlvl : "?") + ", str " + (me.getMerc() ? me.getMerc().getStat(0) : "?") + ", dex " + (me.getMerc() ? me.getMerc().getStat(2) : "?") +
+					", item needs level " + item.lvlreq + ", str " + item.strreq + ", dex " + item.dexreq);
 
 				return false;
 			}
@@ -805,10 +982,340 @@ var Item = {
 
 	// Qolbot: can the Horadric Cube hold this item? The cube is extra storage for what no longer fits in the stash. Only while the bot
 	// carries a cube and nothing is set up to transmute (a recipe or a runeword would consume what is inside).
+	// The cube is storage only when the stash cannot grow (the user, 2026-11-15: "barabas cube is full of items, so it means when he is in town he is not
+	// doing the job of stashing items"): with PlugY pages that can be added (Config.InfiniteStash, Town.noMorePages not set) a full page gets a new page
+	// instead, and the cube stays free for recipes and quest cubing (Barabas's Partizan and Lance sat in his cube from 14:50 and 15:10).
 	cubeRoom: function (item) {
 		try {
+			if (Config.InfiniteStash && !Town.noMorePages) {
+				return false;
+			}
+
 			return !!me.getItem(549) && !Config.Cubing && !Config.MakeRunewords && !(Config.Recipes && Config.Recipes.length) &&
 				!(Config.Runewords && Config.Runewords.length) && Storage.Cube.CanFit(item);
+		} catch (e) {
+			return false;
+		}
+	},
+
+	// Qolbot: THE CUBE BEFORE A TRIP (the user, 2026-11-15: "make it so trips to town for reason of full inventory happens when bots have maxed out their
+	// cube also"). The pack is full in the field: what a town trip would get rid of (to identify, junk to sell, keepers to stash: tripItem) goes into the
+	// Horadric Cube until `want` fits. Town.unloadCube takes it out again first thing in town, and Cubing.emptyCube empties the cube before any transmute,
+	// so nothing of it becomes part of a recipe. True when `want` fits now. UNTESTED in a game.
+	cubeForRoom: function (want) {
+		var i, items, moved = 0;
+
+		if (me.inTown || !me.getItem(549)) {
+			return false;
+		}
+
+		try {
+			items = (this.botItems() || []).filter(function (it) { return it.gid !== want.gid && it.classid !== 549 && Item.tripItem(it); });
+
+			for (i = 0; i < items.length && !Storage.Inventory.CanFit(want); i += 1) {
+				if (!Storage.Cube.CanFit(items[i])) {
+					continue;
+				}
+
+				if (!Cubing.openCube()) {
+					break;
+				}
+
+				if (Storage.Cube.MoveTo(items[i])) {
+					moved += 1;
+				}
+
+				Storage.Reload();
+			}
+		} catch (cubeError) {
+			print("Cube: " + cubeError);
+		}
+
+		me.cancel();
+
+		if (moved) {
+			print("Cube: moved " + moved + " item(s) from my pack into my cube to make room (the town trip waits until the cube is full too).");
+			this.noteFullPack(want);
+		}
+
+		return Storage.Inventory.CanFit(want);
+	},
+
+	// NO CLEAR 2x4 SPACE (the user, 2026-11-16: "if a char doesn't have a clear 2x4 space, there should be a yellow alert on the activity page"): the biggest items (polearms,
+	// two-handed weapons, staves) are two cells wide and four high, and the pack is four rows. With no such strip free the bot walks past them. Said once per game, after the
+	// chores have tidied the pack (Layout.tidy); Qolbot shows it as the yellow notice. UNTESTED in a game.
+	checkBigSpace: function () {
+		try {
+			if (this.bigSpaceSaid || Storage.Inventory.CanFit({sizex: 2, sizey: 4, gid: -1, classid: -1})) {
+				return true;
+			}
+
+			this.bigSpaceSaid = true;
+			print("Pack: NOTICE: no clear 2x4 space in the pack: " + me.name + " cannot pick up the biggest items (polearms, two-handed weapons). Take a look at " + me.name + "'s inventory and clear a strip two cells wide and the full height.");
+
+			return false;
+		} catch (spaceError) {
+			print("Pack: " + spaceError);
+
+			return true;
+		}
+	},
+
+	// WHY AN ITEM IS KEPT, in words, for the Activity tab's "Stashed" entries (the user, 2026-11-16: "the activity log is stashing items but i don't know why (keeper?)").
+	// The pickit says which rule kept it ("Generated.nip #2" is a number nobody reads): a unique or a set item is kept by the Keeper tab's "[quality] == unique/set", a rune,
+	// gem or charm by its own rule, a quest item because a quest wants it; anything else is named by the kind of rule (keeper, cube recipe, runeword) and its line.
+	stashWhy: function (item) {
+		var res, line = "";
+
+		try {
+			if (QuestItems.keep.indexOf(item.classid) > -1) {
+				return "quest item";
+			}
+
+			res = Pickit.checkItem(item);
+			line = res && res.line ? " (" + res.line + ")" : "";
+
+			if (res && res.result === 2) {
+				return "kept for a cube recipe" + line;
+			}
+
+			if (res && res.result === 3) {
+				return "kept for a runeword" + line;
+			}
+
+			if (item.quality === 7) {
+				return "keeper: unique";
+			}
+
+			if (item.quality === 5) {
+				return "keeper: set";
+			}
+
+			if (item.itemType === 74) {
+				return "keeper: rune";
+			}
+
+			if (/Topaz|Sapphire|Ruby|Emerald|Diamond|Amethyst|Skull/.test(item.name) && item.itemType !== 74) {
+				return "keeper: gem";
+			}
+
+			if (this.isCharm(item)) {
+				return "keeper: charm";
+			}
+
+			if (res && res.result === 1) {
+				return "keeper rule" + line;
+			}
+
+			// An item that is NOT identified, whose rule needs its stats (result -1), and that the Equipment protection list covers: kept as it is rather than sold, so that it
+			// can be looked at (the user, 2026-11-16: "esp since these are non IDed rare items"). Town.wantStash's third clause. Said with what protects it.
+			if (res && res.result === -1 && !item.getFlag(0x10)) {
+				return "not identified, " + this.protectedBy(item) + line;
+			}
+		} catch (whyError) {
+			return "stashed";
+		}
+
+		return "stashed";
+	},
+
+	// what in the Settings > Equipment protection list covers an item (isReplacable says only yes or no)
+	protectedBy: function (item) {
+		var p = Config.Protect || {}, q = item.quality;
+
+		if (p.classIds && p.classIds.indexOf(item.classid) > -1) {
+			return "protected item";
+		}
+
+		if (p.minLevel > 0 && me.charlvl < p.minLevel) {
+			return "kept to look at";
+		}
+
+		if (p.unique && q === 7) { return "protected: unique"; }
+		if (p.set && q === 5) { return "protected: set"; }
+		if (p.crafted && q === 8) { return "protected: crafted"; }
+		if (p.rare && q === 6) { return "protected: rare"; }
+		if (p.magic && q === 4) { return "protected: magic"; }
+		if (p.socketed && item.getStat(194) > 0) { return "protected: socketed"; }
+		if (p.runeword && item.getFlag(0x4000000)) { return "protected: runeword"; }
+		if (p.ethereal && item.getFlag(0x400000)) { return "protected: ethereal"; }
+
+		return "kept to look at";
+	},
+
+	// the items (by id, for this game) whose "Stashed" line the Activity list has already been given, so that a cube item that moves on to the stash is not listed twice
+	stashAnnounced: {},
+
+	// Would an item of this size (sizex, sizey) fit in the pack if everything a town visit takes away (tripItem: to stash, to sell, to identify) were gone? True when it
+	// would NOT: the rest of the pack stays for good. An error counts as "does not fit", so a doubtful case still raises the alert.
+	packStaysFull: function (size) {
+		var w, h, grid = [], items, i, x, y, it, free, sx = (size && size.sizex) || 1, sy = (size && size.sizey) || 1;
+
+		try {
+			w = Storage.Inventory.width;
+			h = Storage.Inventory.height;
+
+			for (y = 0; y < h; y += 1) {
+				grid.push([]);
+
+				for (x = 0; x < w; x += 1) {
+					grid[y].push(0);
+				}
+			}
+
+			items = me.findItems(-1, -1, 3) || [];
+
+			for (i = 0; i < items.length; i += 1) {
+				it = items[i];
+
+				if (this.tripItem(it) && !this.userOwned(it)) {
+					continue; // this one goes to the stash or the shop at the next town visit
+				}
+
+				for (y = it.y; y < it.y + it.sizey && y < h; y += 1) {
+					for (x = it.x; x < it.x + it.sizex && x < w; x += 1) {
+						grid[y][x] = 1;
+					}
+				}
+			}
+
+			for (y = 0; y + sy <= h; y += 1) {
+				for (x = 0; x + sx <= w; x += 1) {
+					free = true;
+
+					for (i = 0; i < sy * sx && free; i += 1) {
+						free = !grid[y + Math.floor(i / sx)][x + (i % sx)];
+					}
+
+					if (free) {
+						return false;
+					}
+				}
+			}
+
+			return true;
+		} catch (stayError) {
+			return true;
+		}
+	},
+
+	// A FULL INVENTORY is a yellow alert on the Activity page (the user, 2026-11-16: "items go in the cube if the inventory is full, and those items in the cube cannot be
+	// IDed but they will all automatically go into the stash ... but it should put an alert on the activity page saying the character has a full inventory"). Said once per
+	// game, the first time the bot puts something in its cube because the pack has no room.
+	//
+	// But only when the pack is full of what STAYS (the user, 2026-11-16: "the yellow 'inventory full' alert should only fire if the items in the inventory are the kind that
+	// will never get moved out -- such as stash or sale"): a pack full of things the next town visit stashes or sells is a normal, passing state. The pack is looked at as it
+	// would be with all of those gone (what stays: charms, tomes, keys, the cube, potions, quest items); the alert is for a pack in which `size` (sizex, sizey) does not fit even then.
+	noteFullPack: function (size) {
+		if (this.fullPackSaid || !this.packStaysFull(size)) {
+			return;
+		}
+
+		this.fullPackSaid = true;
+		print("Pack: NOTICE: " + me.name + " has a full inventory: items go into the cube, are not identified, and all go to the stash. Take a look at " + me.name + "'s inventory and fix that, so this backup is no longer needed.");
+	},
+
+	// PICKUPS STRAIGHT INTO THE CUBE (the user, 2026-11-16: "bots can use their cube to pickup stuff"; "in the event that items begin being placed directly in the cube, put a
+	// yellow alert on the activity page"). Meir walked past loot with a 7x4 cube empty because cubeForRoom moves only the pack's trip items. A pickup that does not fit in
+	// the pack but fits in the cube is picked up (the game puts it on the cursor when the pack has no room) and put into the cube. Town.unloadCube takes it out in town.
+	// cubeTakesPickup says whether the cube may take it (the same rules as cubeRoom: no recipes, no infinite stash), cursorToCube does it. UNTESTED in a game.
+	cubeTakesPickup: function (item) {
+		try {
+			// NOT cubeRoom: its "infinite stash" clause (add stash pages: the stash can still grow) is about stashing, and for Meir (add stash pages true) it said no for every
+			// pickup. The rules are cubeForRoom's: a cube in the pack, in the field, a free spot in it. UNTESTED in a game.
+			return !!me.getItem(549) && !me.inTown && Storage.Cube.CanFit(item);
+		} catch (e) {
+			return false;
+		}
+	},
+
+	cursorToCube: function (gid, name, size) {
+		var cur, placed = false;
+
+		try {
+			cur = getUnit(100);
+
+			if (!cur || cur.gid !== gid) {
+				return !!me.getItem(-1, -1, gid); // it went into the pack after all, or it was not picked up
+			}
+
+			Storage.Reload();
+
+			if (Cubing.openCube()) {
+				cur = getUnit(100) || cur;
+				placed = Storage.Cube.MoveTo(cur);
+			}
+
+			Storage.Reload();
+		} catch (cubeError) {
+			print("Cube: " + cubeError);
+		}
+
+		me.cancel();
+
+		try {
+			if (me.itemoncursor) { // the cube would not take it: it must not stay in the hand
+				print("Cube: could not put " + name + " into the cube: dropping it again.");
+				getUnit(100).drop();
+				placed = false;
+			}
+		} catch (dropError) {
+			print("Cube: " + dropError);
+		}
+
+		if (placed) {
+			print("Cube: picked up " + name + " straight into my cube (no room in the pack).");
+
+			this.noteFullPack(size);
+		}
+
+		return placed;
+	},
+
+	// TRULY FULL (the user, 2026-11-16: "only if the bot truly cannot pick up anything because all their space is full, including their cube"): not one free cell in the
+	// pack, and none in the Horadric Cube either (or no cube). Said once every ten minutes, in a log line Qolbot turns into the red box of the Activity page
+	// (fatal.go, packfull). Pickit calls it where it prints "Not enough room". UNTESTED in a game.
+	reportFull: function (item) {
+		var cell = {sizex: 1, sizey: 1, gid: -1, classid: -1}, cube;
+
+		try {
+			if (Date.now() - (this.fullSaid || 0) < 600000 || Storage.Inventory.CanFit(cell)) {
+				return false;
+			}
+
+			cube = me.getItem(549);
+
+			if (cube && Storage.Cube.CanFit(cell)) {
+				return false;
+			}
+
+			this.fullSaid = Date.now();
+			print("Pack: FULL: no room in the pack and none in the cube" + (cube ? "" : " (no cube)") + ": " + me.name + " cannot pick up anything, not even " + (item && item.name ? item.name : "one item") + ".");
+
+			return true;
+		} catch (fullError) {
+			print("Pack: " + fullError);
+
+			return false;
+		}
+	},
+
+	// an item a town trip gets rid of: to identify, junk to sell, a keeper to stash. Never quest items, gold, potions or scrolls.
+	tripItem: function (it) {
+		try {
+			if (QuestItems.keep.indexOf(it.classid) > -1 || QuestItems.isConsumable(it) || [4, 22, 76, 77, 78].indexOf(it.itemType) > -1) {
+				return false;
+			}
+
+			switch (Pickit.checkItem(it).result) {
+			case -1:
+				return true;
+			case 0:
+			case 4:
+				return Item.sellable(it) && Item.isReplacable(it);
+			default:
+				return Town.canStash(it, true);
+			}
 		} catch (e) {
 			return false;
 		}
@@ -870,7 +1377,10 @@ var Item = {
 				return !entry; // not picked up in this game: the bot's only if it remembers picking it up in an earlier one
 			}
 
-			return [518, 519, 543, 549].indexOf(item.classid) > -1;
+			// the tomes, the keys, the cube and every quest item the quests need on the way (the Staff of Kings, the Amulet of the Viper, the Horadric Staff, Khalim's
+			// parts, the Hellforge hammer ...: QuestItems.keep) stay in the pack, where the bot can reach them in the field (the Horadric Staff goes into the socket
+			// of Tal Rasha's tomb; a bot that had stashed the Staff of Kings could not do that away from town)
+			return [518, 519, 543, 549].indexOf(item.classid) > -1 || (typeof QuestItems === "object" && QuestItems.keep.indexOf(item.classid) > -1);
 		} catch (e) {
 			return false;
 		}
@@ -897,6 +1407,17 @@ var Item = {
 	isReplacable: function (item) {
 		var p = Config.Protect || {unique: true, set: true, crafted: true, socketed: true, runeword: true, classIds: [174]},
 			q = item.quality;
+
+		// the items named by class id (Khalim's Will) are protected at every level
+		if (p.classIds && p.classIds.indexOf(item.classid) > -1) {
+			return false;
+		}
+
+		// Settings, Equipment: the list only protects a character of level p.minLevel or higher (the user, 2026-11-13: a low-level character should be free to
+		// swap its early uniques and rares for better ones); below it nothing on the list is protected
+		if (p.minLevel > 0 && me.charlvl < p.minLevel) {
+			return true;
+		}
 
 		if ((p.unique && q === 7) || (p.set && q === 5) || (p.crafted && q === 8) || (p.rare && q === 6) || (p.magic && q === 4)) {
 			return false;
@@ -1045,11 +1566,77 @@ var Item = {
 			return false;
 		}
 
+		// Qolbot: a build that fights with a weapon in each hand (Frenzy, Double Throw: Gear.js) takes a one-handed weapon in the left hand too
+		if (bodyLoc === 4 && typeof qolgear === "object" && qolgear.dual(item)) {
+			bodyLoc = [4, 5];
+		}
+
 		if (typeof bodyLoc === "number") {
 			bodyLoc = [bodyLoc];
 		}
 
 		return bodyLoc;
+	},
+
+	// Qolbot (2026-11-15, gear by build): what an item must beat in a hand slot. A two-handed weapon frees the left hand too, so it must beat the
+	// weapon AND the shield together (and the shield must be one that may be taken off); a shield, or a second weapon, cannot go next to a
+	// two-handed weapon. Arrows and bolts in the left hand stay where they are (a bow needs them). Other slots: what is worn there.
+	handSlot: function (item, loc) {
+		var worn = this.getEquippedItem(loc), left, right;
+
+		if (typeof qolgear !== "object" || (loc !== 4 && loc !== 5)) {
+			return worn;
+		}
+
+		if (loc === 4 && qolgear.twoHanded(item)) {
+			left = this.wornIn(me, 5);
+
+			if (left && [5, 6].indexOf(left.itemType) < 0) {
+				left = this.getEquippedItem(5);
+
+				return {classid: worn.classid, tier: Math.max(worn.tier, 0) + Math.max(left.tier, 0), isReplacable: worn.isReplacable && left.isReplacable && left.classid !== 174};
+			}
+
+			return worn;
+		}
+
+		if (loc === 5 && [5, 6].indexOf(item.itemType) < 0) {
+			right = this.wornIn(me, 4);
+
+			if (right && qolgear.twoHanded(right)) {
+				return {classid: worn.classid, tier: Infinity, isReplacable: false};
+			}
+		}
+
+		return worn;
+	},
+
+	// Qolbot: take off what is worn in bodyLoc (the shield, before a two-handed weapon goes on): kept when a keep rule wants it, else held for the team
+	// like any gear an upgrade replaced. True when the slot is empty afterwards.
+	takeOff: function (bodyLoc) {
+		var i, cursorItem, keepResult;
+
+		for (i = 0; i < 3 && !getUnit(100); i += 1) {
+			clickItem(0, bodyLoc);
+			delay(me.ping * 2 + 500);
+		}
+
+		cursorItem = getUnit(100);
+
+		if (!cursorItem) {
+			return false;
+		}
+
+		keepResult = Pickit.checkItem(cursorItem).result;
+		print("Equip: took off " + cursorItem.name + " to free both hands: " + ([1, 2, 3, 5].indexOf(keepResult) > -1 ? "stored" : "dropped for the others"));
+
+		if ([1, 2, 3, 5].indexOf(keepResult) > -1) {
+			this.putAway(cursorItem);
+		} else {
+			this.holdForTeam(cursorItem);
+		}
+
+		return !this.wornIn(me, bodyLoc);
 	},
 
 	// Qolbot: the tier of an item for the auto-equip rules. A bare armor slot (helm, body armor, belt, boots, gloves with nothing in it) is
@@ -1071,24 +1658,49 @@ var Item = {
 		return tier;
 	},
 
+	// Qolbot: KEEPER RULES TRUMP AUTOEQUIP RULES (the user, 2026-11-14, after Barabas took an Infernal Cranium, a set Cap, out of his stash and put it on;
+	// "a bot can use anything in stash so long as it's not on a keeper list"):
+	// an identified item a keep rule matches (the pickit's keep lists 1, cubing 2, runeword 3, crafting 5; not GoldSell's "sell" 4, and not the
+	// autoequip tier lines) is kept for the player, never worn by a bot or its merc. An unidentified item is a keeper when a rule keeps it without
+	// needing its stats ("[quality] == unique"): it stays unidentified (keptOutright); one whose rule needs the stats is identified first.
+	isKeeper: function (item) {
+		try {
+			return [1, 2, 3, 5].indexOf(Pickit.checkItem(item).result) > -1;
+		} catch (e) {
+			return false;
+		}
+	},
+
+	// Qolbot (the user, 2026-11-15: "i thought the NIP would qualify all sets and uniques as keepers outright, so no ID is required"): an unidentified
+	// item a keep rule keeps without its stats (the Keeper tab's "[quality] == unique" / "[quality] == set") is stashed as it is, never identified.
+	keptOutright: function (item) {
+		try {
+			return !item.getFlag(0x10) && Pickit.checkItem(item).result === 1;
+		} catch (e) {
+			return false;
+		}
+	},
+
 	autoEquipCheck: function (item) {
 		if (!Config.AutoEquip) {
 			return false;
 		}
 
-		// Qolbot: the protected list (Settings tab) also means: never wear, so never an upgrade
-		if (!this.isReplacable(item)) {
+		// Qolbot: the protected list (Settings tab) also means: never wear, so never an upgrade; and a keeper is kept, not worn
+		if (!this.isReplacable(item) || this.isKeeper(item)) {
 			return false;
 		}
 
-		var i,
+		var i, worn,
 			tier = this.gearTier(item),
 			bodyLoc = this.getBodyLoc(item);
 
 		if (tier > 0 && bodyLoc) {
 			for (i = 0; i < bodyLoc.length; i += 1) {
+				worn = this.handSlot(item, bodyLoc[i]); // Qolbot: both hands for a two-handed weapon
+
 				// Low tier items shouldn't be kept if they can't be equipped
-				if (tier > this.getEquippedItem(bodyLoc[i]).tier && (this.canEquip(item) || !item.getFlag(0x10)) && this.getEquippedItem(bodyLoc[i]).isReplacable) {
+				if (tier > worn.tier && (this.canEquip(item) || !item.getFlag(0x10)) && worn.isReplacable) {
 					return true;
 				}
 			}
@@ -1102,8 +1714,8 @@ var Item = {
 			return false;
 		}
 
-		// Qolbot: the protected list (Settings tab) also means: never wear, so never an upgrade
-		if (!this.isReplacable(item)) {
+		// Qolbot: the protected list (Settings tab) also means: never wear, so never an upgrade; and a keeper is kept, not worn
+		if (!this.isReplacable(item) || this.isKeeper(item)) {
 			return false;
 		}
 
@@ -1135,7 +1747,7 @@ var Item = {
 			return true;
 		}
 
-		var i, j, tier, bodyLoc, tome, gid,
+		var i, j, tier, bodyLoc, tome, gid, mercName, mercGid,
 			items = me.findItems(-1, 0);
 
 		if (!items) {
@@ -1158,7 +1770,7 @@ var Item = {
 
 		// remove items from consideration w/out tier
 		for (i = 0; i < items.length; i += 1) {
-			if (this.gearTier(items[i]) === 0 || !Item.isReplacable(items[i])) { // protected categories are never worn
+			if (this.gearTier(items[i]) === 0 || !Item.isReplacable(items[i]) || this.isKeeper(items[i])) { // protected categories are never worn; keepers stay kept
 				items.splice(i, 1);
 
 				i -= 1;
@@ -1176,7 +1788,9 @@ var Item = {
 				for (j = 0; j < bodyLoc.length; j += 1)
 				{
 					// if ?? and new item is better and old item is not khalims will
-					if ([3, 7].indexOf(items[0].location) > -1 && tier > this.getEquippedItem(bodyLoc[j]).tier && this.getEquippedItem(bodyLoc[j]).classid !== 174 && this.getEquippedItem(bodyLoc[j]).isReplacable)
+					var worn = this.handSlot(items[0], bodyLoc[j]); // Qolbot: both hands for a two-handed weapon
+
+					if ([3, 7].indexOf(items[0].location) > -1 && tier > worn.tier && worn.classid !== 174 && worn.isReplacable)
 					{
 						// if needs identification...
 						if (!items[0].getFlag(0x10))
@@ -1193,10 +1807,15 @@ var Item = {
 						}
 
 						// equip the item
+						var selfName = items[0].name, selfGid = items[0].gid, selfClassid = items[0].classid; // read before: the unit can go stale once worn
+
 						if (this.equip(items[0], bodyLoc[j])) {
-							say("Equipping " + items[0].name + ".");
-							print("Equipped " + items[0].name + " (gear upgrade)");
-							Misc.logItem("Equipped", me.getItem(-1, -1, items[0].gid));
+							if (typeof Speech === "object") {
+								Speech.task("Equipping " + selfName + "."); // said with task reports on, in three ways (Speech.js)
+							}
+							print("Equipped " + selfName + " (gear upgrade)");
+							// the stats for the Activity entry: the worn item by its slot (its gid can change when it is put on)
+							try { Misc.logItem("Equipped", me.getItem(-1, -1, selfGid) || this.wornIn(me, bodyLoc[j], selfClassid)); } catch (selfLogError) { print("Equipped: " + selfLogError); }
 						}
 
 						break;
@@ -1216,11 +1835,24 @@ var Item = {
 	// Every merc: helms, armor, rings, amulets, boots, gloves, belts. A merc class we do not know is not restricted
 	// here (a refused item is simply put back and not retried), so a wrong table can only cost a few tries.
 	mercWeapons: {
-		271: [27, 35],                   // Rogue Scout: bow, crossbow
-		338: [33, 34, 44, 86, 87],       // Desert Guard: spear, polearm, javelin, amazon spear/javelin
-		359: [2, 70, 24, 25, 30, 36, 68], // Iron Wolf: shield, auric shield, scepter, wand, sword, mace, orb
-		560: [28, 30, 31, 36],           // Barbarian: axe, sword, hammer, mace
-		561: [28, 30, 31, 36]
+		// Qolbot, 2026-11-14: the 1.13d rules (the old lists let a Rogue take a crossbow, an Iron Wolf a wand or a mace, a Barbarian an axe: picked up and
+		// kept, never worn). UNTESTED live.
+		271: [27],                       // Rogue Scout: bow (no crossbow, no Amazon bow)
+		338: [33, 34],                   // Desert Guard: spear, polearm (no javelin, no Amazon spear)
+		359: [2, 30],                    // Iron Wolf: shield, sword
+		560: [30],                       // Barbarian: sword
+		561: [30]
+	},
+
+	// QOL mod with qol.ini [mercenary] equip=1 (Config.MercQolEquip; its own words: "Rogue: bows, crossbows; Desert: polearms, spears (also Amazon),
+	// javelins; Iron Wolf: shields, 1H swords, wands, scepters, maces, orbs; Barbarian: swords, axes, maces, hammers, Barbarian helms"). Amazon bows and
+	// javelins are a guess (a refusal bars only that item). UNTESTED live.
+	mercWeaponsQol: {
+		271: [27, 35, 85],               // bow, crossbow, Amazon bow
+		338: [33, 34, 86, 44, 87],       // spear, polearm, Amazon spear, javelin, Amazon javelin
+		359: [2, 30, 25, 24, 36, 68],    // shield, sword, wand, scepter, mace, orb
+		560: [30, 28, 36, 31],           // sword, axe, mace, hammer
+		561: [30, 28, 36, 31]
 	},
 
 	mercCanWear: function (item) {
@@ -1237,7 +1869,8 @@ var Item = {
 		}
 
 		// class gear: primal helms are the Barbarian's (only a Barbarian mercenary wears one), pelts are the Druid's and voodoo heads the Necromancer's
-		if (merc && ((item.itemType === 71 && [560, 561].indexOf(merc.classid) === -1) || item.itemType === 72 || item.itemType === 69)) {
+		// (a Barbarian merc wears a primal helm only in the QOL mod with equip=1; the base game gives it none)
+		if (merc && ((item.itemType === 71 && ([560, 561].indexOf(merc.classid) === -1 || !Config.MercQolEquip)) || item.itemType === 72 || item.itemType === 69)) {
 			return false;
 		}
 
@@ -1245,7 +1878,7 @@ var Item = {
 			return true; // armor and belts are not class restricted
 		}
 
-		allowed = this.mercWeapons[merc.classid];
+		allowed = (Config.MercQolEquip ? this.mercWeaponsQol : this.mercWeapons)[merc.classid];
 
 		if (!allowed) {
 			if (!this.mercClassLogged) {
@@ -1287,7 +1920,7 @@ var Item = {
 
 		// Remove items without tier
 		for (i = 0; i < items.length; i += 1) {
-			if (NTIP.GetMercTier(items[i]) === 0 || !Item.isReplacable(items[i])) {
+			if (NTIP.GetMercTier(items[i]) === 0 || !Item.isReplacable(items[i]) || this.isKeeper(items[i])) {
 				items.splice(i, 1);
 
 				i -= 1;
@@ -1333,10 +1966,12 @@ var Item = {
 						}
 
 						// equip the item
+						var mercName = items[0].name, mercClassid = items[0].classid; // read before: the unit is stale once the merc wears it
+
 						if (this.mercEquip(items[0], bodyLoc[j])) {
-							say("Equipping merc w/ " + items[0].name + ".");
-							print("Equipped " + items[0].name + " on the mercenary");
-							Misc.logItem("Merc Equipped", me.getItem(-1, -1, items[0].gid));
+							say("Equipping merc w/ " + mercName + ".");
+							print("Equipped " + mercName + " on the mercenary");
+							try { Misc.logItem("Merc Equipped", this.wornIn(me.getMerc(), bodyLoc[j], mercClassid)); } catch (mercLogError) { print("Merc Equipped: " + mercLogError); }
 
 							break;
 						}
@@ -1874,7 +2509,87 @@ var Misc = {
 
 	useItemLog: true, // Might be a bit dirty
 
+	// AUDIT of the rule "a bot only touches items it picked up itself" (user, 2026-11-13). Every item the bot picks up is noted (class|quality|item level)
+	// in data/<profile>.picked.json; every sale and every stash step then prints one "Audit:" line saying whether the item is in that record. A line that
+	// ends in "<-- check" is an item the bot sold or stashed without a record of picking it up (yours, bought, or from before the record). Logging only:
+	// nothing is blocked. NOTE: only charms, tomes, keys, the cube and quest items have a "mine or yours" check in the code (userOwned); everything else in a
+	// pack is touched unless its kind is protected on the Settings page, so this is how to see whether that is good enough.
+	pickedSig: function (item) {
+		return item.classid + "|" + item.quality + "|" + item.ilvl;
+	},
+
+	pickedList: function () {
+		var text;
+
+		if (!this.pickedCache) {
+			this.pickedCache = [];
+
+			try {
+				if (FileTools.exists("data/" + me.profile + ".picked.json")) {
+					text = this.fileAction("data/" + me.profile + ".picked.json", 0);
+					this.pickedCache = JSON.parse(text) || [];
+				}
+			} catch (e) {
+				this.pickedCache = [];
+			}
+		}
+
+		return this.pickedCache;
+	},
+
+	pickedSave: function () {
+		try {
+			this.fileAction("data/" + me.profile + ".picked.json", 1, JSON.stringify(this.pickedList()));
+		} catch (e) {
+			print("picked list: " + e);
+		}
+	},
+
+	notePicked: function (item) {
+		var list = this.pickedList();
+
+		list.push(this.pickedSig(item));
+
+		if (list.length > 600) {
+			list.shift();
+		}
+
+		this.pickedSave();
+	},
+
+	auditTouch: function (action, item, text) {
+		var i, how, list;
+
+		if ((action !== "Sold" && action !== "Stashed") || !item || text === "Gambling") { // gambled items were bought, not picked up
+			return;
+		}
+
+		list = this.pickedList();
+		i = list.indexOf(this.pickedSig(item));
+
+		if (typeof Pickit === "object" && Pickit.pickedGids && Pickit.pickedGids[item.gid]) {
+			how = "picked up by me in this game";
+		} else if (i > -1) {
+			how = "picked up by me earlier (the same kind of item is in my record)";
+		} else {
+			how = "NOT IN MY PICK-UP RECORD <-- check";
+		}
+
+		if (action === "Sold" && i > -1) { // it left the pack: one record less
+			list.splice(i, 1);
+			this.pickedSave();
+		}
+
+		print("Audit: " + action + " " + item.name + " (quality " + item.quality + ", ilvl " + item.ilvl + "): " + how);
+	},
+
 	itemLogger: function (action, unit, text) {
+		try {
+			this.auditTouch(action, unit, text);
+		} catch (auditError) {
+			print("Audit: " + auditError);
+		}
+
 		if (!Config.ItemInfo || !this.useItemLog) {
 			return false;
 		}
@@ -1921,6 +2636,12 @@ var Misc = {
 	// Log kept item stats in the manager.
 	logItem: function (action, unit, keptLine) {
 		if (!this.useItemLog) {
+			return false;
+		}
+
+		// an item unit that is no longer valid (it was picked up or moved while the bot was busy) has no name: nothing to log, and the exception ended a whole
+		// script run ("unit.fname is undefined", Pickit.fastPick, 16:28 on 2026-11-13)
+		if (!unit || unit.fname === undefined) {
 			return false;
 		}
 

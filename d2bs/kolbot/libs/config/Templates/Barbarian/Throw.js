@@ -43,7 +43,7 @@ function LoadTemplate()
 	Config.AttackSkill[0] = -1; // Preattack skill.
 	Config.AttackSkill[1] = me.getSkill(140, 1) ? 140 : (me.getSkill(133, 1) ? 133 : 0); // Primary skill for bosses.
 	Config.AttackSkill[2] = -1; // Backup/Immune skill for bosses.
-	Config.AttackSkill[3] = me.getSkill(133, 1) ? 133 : 0; // Primary skill for others.
+	Config.AttackSkill[3] = me.getSkill(140, 1) ? 140 : (me.getSkill(133, 1) ? 133 : 0); // Primary skill for others. 2026-11-15: Double Throw (was Double Swing: the thrower walked in and fought in melee)
 	Config.AttackSkill[4] = -1; // Backup/Immune skill for others.
 
 	Config.LowManaSkill[0] = 0; // Low mana skill.
@@ -70,24 +70,17 @@ function LoadTemplate()
 		[133, 100, false], // double swing
 		[149, 100, false], // battle orders
 		[135, 100, false], // throw mastery
+		[153, 10, false], // natural resistance (2026-11-15: Nightmare and Hell resistances)
 	];
 
 	Config.AutoStat.Enabled = true; // Enable or disable AutoStat system
-	Config.AutoStat.Build = [
-		["s", 12], // stat strength for quilt armor
-		["v", 28], // spend in vitality until it reaches 28 (level 5)
-		["d", 50], // spend in energy until 50 (level 8)
-		["v", 50], // spend more in vitality
-		["s", 15], // get up to 15 strength (level 13)
-		["v", 65], // spend in vitality (level 18)
-		["s", 35], // get up to 25 strength (level 20)
-		["d", 75], // spend in energy (level 25)
-		["v", 75], // level 27
-		["s", 55], // level 31
-		["v", 100], // level 36
-		["s", 80], // level 41
-		["v", 125], // level 46
-		["s", 95], // level 49 (less if done stat quests)
-		["v", "all"], // put rest of the points in vitality
-	];
+	// Qolbot (the user, 2026-11-16: a "ranged melee" category with the same rules as melee; javelins and throwing weapons scale with strength and dexterity):
+	// strength, dexterity and vitality equal, one point at a time, until strength and dexterity reach 180, then all the rest into vitality. Energy gets nothing.
+	Config.AutoStat.Build = [];
+
+	for (var statTarget = 21; statTarget <= 180; statTarget += 1) {
+		Config.AutoStat.Build.push(["s", statTarget], ["d", statTarget], ["v", statTarget]);
+	}
+
+	Config.AutoStat.Build.push(["v", "all"]);
 }

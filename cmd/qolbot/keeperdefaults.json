@@ -1,0 +1,1071 @@
+{
+ "_about": "The Keeper tab as the program's author chose it: what an absent \"pickitRules\" and \"pickit\" in qolbot.json mean. Regenerate by copying those two settings from a qolbot.json.",
+ "lead": [
+  "Autoequip/merc.nip",
+  "QOL/Bases.nip",
+  "QOL/Custom.nip",
+  "QOL/Jewelry.nip",
+  "QOL/Ladder.nip",
+  "QOL/Misc.nip",
+  "QOL/Potions.nip",
+  "QOL/Quest.nip",
+  "QOL/Rares.nip"
+ ],
+ "rules": {
+  "unique": true,
+  "set": true,
+  "runeMin": "Hel",
+  "gemMin": "Flawless",
+  "pandemonium": true,
+  "rejuv": true,
+  "circletMin": "exceptional",
+  "circlets": true,
+  "ethHelm": true,
+  "ethHelmTier": "exceptional",
+  "ethArmor": true,
+  "ethArmorTier": "exceptional",
+  "magicOn": true,
+  "magic": [
+   {
+    "category": "circlet",
+    "magic": false,
+    "rare": true,
+    "crafted": true,
+    "primary": [
+     {
+      "key": "classskills",
+      "min": 2
+     },
+     {
+      "key": "skilltree",
+      "min": 3
+     }
+    ],
+    "primaryNeed": 1,
+    "secondary": [
+     {
+      "key": "fcr",
+      "min": 20
+     },
+     {
+      "key": "fhr",
+      "min": 10
+     },
+     {
+      "key": "life",
+      "min": 30
+     },
+     {
+      "key": "strdex",
+      "min": 20
+     },
+     {
+      "key": "frw",
+      "min": 20
+     },
+     {
+      "key": "sockets",
+      "min": 2
+     }
+    ],
+    "secondaryNeed": 1
+   },
+   {
+    "category": "helm",
+    "magic": false,
+    "rare": true,
+    "crafted": true,
+    "primary": [
+     {
+      "key": "classskills",
+      "min": 2
+     },
+     {
+      "key": "skilltree",
+      "min": 3
+     }
+    ],
+    "primaryNeed": 1,
+    "secondary": [
+     {
+      "key": "fcr",
+      "min": 20
+     },
+     {
+      "key": "fhr",
+      "min": 10
+     },
+     {
+      "key": "life",
+      "min": 30
+     },
+     {
+      "key": "strdex",
+      "min": 20
+     },
+     {
+      "key": "frw",
+      "min": 20
+     },
+     {
+      "key": "sockets",
+      "min": 2
+     }
+    ],
+    "secondaryNeed": 1
+   },
+   {
+    "category": "armor",
+    "magic": false,
+    "rare": true,
+    "crafted": true,
+    "primary": [
+     {
+      "key": "res",
+      "min": 60
+     },
+     {
+      "key": "edef",
+      "min": 190
+     }
+    ],
+    "primaryNeed": 1,
+    "secondary": [
+     {
+      "key": "life",
+      "min": 40
+     },
+     {
+      "key": "sockets",
+      "min": 2
+     },
+     {
+      "key": "durability"
+     },
+     {
+      "key": "fhr",
+      "min": 10
+     }
+    ],
+    "secondaryNeed": 1
+   },
+   {
+    "category": "gloves",
+    "magic": false,
+    "rare": true,
+    "crafted": true,
+    "primary": [
+     {
+      "key": "ias",
+      "min": 20
+     }
+    ],
+    "primaryNeed": 1,
+    "secondary": [
+     {
+      "key": "strdex",
+      "min": 25
+     },
+     {
+      "key": "crush",
+      "min": 8
+     },
+     {
+      "key": "leechsum",
+      "min": 6
+     },
+     {
+      "key": "res",
+      "min": 50
+     }
+    ],
+    "secondaryNeed": 1
+   },
+   {
+    "category": "boots",
+    "magic": false,
+    "rare": true,
+    "crafted": true,
+    "primary": [
+     {
+      "key": "frw",
+      "min": 30
+     },
+     {
+      "key": "fhr",
+      "min": 10
+     }
+    ],
+    "primaryNeed": 1,
+    "secondary": [
+     {
+      "key": "res3",
+      "min": 60
+     },
+     {
+      "key": "mana",
+      "min": 15
+     },
+     {
+      "key": "durability"
+     }
+    ],
+    "secondaryNeed": 1
+   },
+   {
+    "category": "belt",
+    "magic": false,
+    "rare": true,
+    "crafted": true,
+    "primary": [
+     {
+      "key": "fhr",
+      "min": 24
+     }
+    ],
+    "primaryNeed": 1,
+    "secondary": [
+     {
+      "key": "str",
+      "min": 20
+     },
+     {
+      "key": "life",
+      "min": 40
+     },
+     {
+      "key": "fcr",
+      "min": 10
+     }
+    ],
+    "secondaryNeed": 1
+   },
+   {
+    "category": "weapon",
+    "magic": false,
+    "rare": true,
+    "crafted": true,
+    "primary": [
+     {
+      "key": "ed",
+      "min": 250
+     }
+    ],
+    "primaryNeed": 1,
+    "secondary": [
+     {
+      "key": "ias",
+      "min": 20
+     },
+     {
+      "key": "sockets",
+      "min": 2
+     },
+     {
+      "key": "durability"
+     },
+     {
+      "key": "perlevel"
+     }
+    ],
+    "secondaryNeed": 1
+   },
+   {
+    "category": "shield",
+    "magic": false,
+    "rare": true,
+    "crafted": true,
+    "primary": [
+     {
+      "key": "sockets",
+      "min": 4
+     },
+     {
+      "key": "fbr",
+      "min": 30
+     }
+    ],
+    "primaryNeed": 1,
+    "secondary": [
+     {
+      "key": "block",
+      "min": 20
+     },
+     {
+      "key": "edef",
+      "min": 150
+     },
+     {
+      "key": "fhr",
+      "min": 17
+     },
+     {
+      "key": "life",
+      "min": 35
+     }
+    ],
+    "secondaryNeed": 1
+   },
+   {
+    "category": "ring",
+    "magic": false,
+    "rare": true,
+    "crafted": true,
+    "primary": [
+     {
+      "key": "fcr",
+      "min": 10
+     },
+     {
+      "key": "mf",
+      "min": 25
+     },
+     {
+      "key": "strdex",
+      "min": 25
+     },
+     {
+      "key": "leechsum",
+      "min": 10
+     }
+    ],
+    "primaryNeed": 1,
+    "secondary": [
+     {
+      "key": "life",
+      "min": 30
+     },
+     {
+      "key": "res",
+      "min": 40
+     },
+     {
+      "key": "mana",
+      "min": 60
+     },
+     {
+      "key": "ar",
+      "min": 90
+     },
+     {
+      "key": "hpregen",
+      "min": 7
+     }
+    ],
+    "secondaryNeed": 1
+   },
+   {
+    "category": "amulet",
+    "magic": false,
+    "rare": true,
+    "crafted": true,
+    "primary": [
+     {
+      "key": "classskills",
+      "min": 2
+     },
+     {
+      "key": "skilltree",
+      "min": 3
+     }
+    ],
+    "primaryNeed": 1,
+    "secondary": [
+     {
+      "key": "fcr",
+      "min": 10
+     },
+     {
+      "key": "life",
+      "min": 40
+     },
+     {
+      "key": "mana",
+      "min": 60
+     },
+     {
+      "key": "res",
+      "min": 50
+     },
+     {
+      "key": "strdex",
+      "min": 25
+     },
+     {
+      "key": "mf",
+      "min": 25
+     }
+    ],
+    "secondaryNeed": 1
+   },
+   {
+    "category": "jewel",
+    "magic": true,
+    "rare": true,
+    "crafted": false,
+    "primary": [
+     {
+      "key": "ias",
+      "min": 15
+     },
+     {
+      "key": "ed",
+      "min": 40
+     }
+    ],
+    "primaryNeed": 2,
+    "secondaryNeed": 1
+   },
+   {
+    "category": "charm",
+    "type": "small",
+    "magic": true,
+    "rare": false,
+    "crafted": false,
+    "primary": [
+     {
+      "key": "res",
+      "min": 12
+     },
+     {
+      "key": "life",
+      "min": 20
+     },
+     {
+      "key": "fhr",
+      "min": 5
+     }
+    ],
+    "primaryNeed": 1,
+    "secondaryNeed": 1
+   },
+   {
+    "category": "charm",
+    "type": "large",
+    "magic": true,
+    "rare": false,
+    "crafted": false,
+    "primary": [
+     {
+      "key": "res",
+      "min": 20
+     },
+     {
+      "key": "life",
+      "min": 30
+     }
+    ],
+    "primaryNeed": 1,
+    "secondaryNeed": 1
+   },
+   {
+    "category": "charm",
+    "type": "grand",
+    "magic": true,
+    "rare": false,
+    "crafted": false,
+    "primary": [
+     {
+      "key": "res",
+      "min": 40
+     },
+     {
+      "key": "life",
+      "min": 40
+     },
+     {
+      "key": "skilltree",
+      "min": 1
+     }
+    ],
+    "primaryNeed": 1,
+    "secondaryNeed": 1
+   }
+  ],
+  "classItems": true,
+  "classTier": "exceptional",
+  "class": [
+   {
+    "kind": "primalhelm",
+    "need": 1,
+    "skills": [
+     {
+      "key": "battleorders",
+      "min": 3
+     },
+     {
+      "key": "battlecommand",
+      "min": 3
+     }
+    ]
+   },
+   {
+    "kind": "pelt",
+    "need": 1,
+    "skills": [
+     {
+      "key": "hurricane",
+      "min": 3
+     },
+     {
+      "key": "tornado",
+      "min": 3
+     }
+    ]
+   },
+   {
+    "kind": "auricshields",
+    "need": 1,
+    "skills": [
+     {
+      "key": "fanaticism",
+      "min": 3
+     },
+     {
+      "key": "concentration",
+      "min": 3
+     }
+    ]
+   },
+   {
+    "kind": "voodooheads",
+    "need": 1,
+    "skills": [
+     {
+      "key": "bonespear",
+      "min": 3
+     },
+     {
+      "key": "bonespirit",
+      "min": 3
+     },
+     {
+      "key": "poisonnova",
+      "min": 3
+     }
+    ]
+   },
+   {
+    "kind": "orb",
+    "need": 1,
+    "skills": [
+     {
+      "key": "frozenorb",
+      "min": 3
+     },
+     {
+      "key": "meteor",
+      "min": 3
+     },
+     {
+      "key": "blizzard",
+      "min": 3
+     },
+     {
+      "key": "chainlightning",
+      "min": 3
+     }
+    ]
+   },
+   {
+    "kind": "claws",
+    "need": 1,
+    "skills": [
+     {
+      "key": "lightningsentry",
+      "min": 3
+     },
+     {
+      "key": "wakeoffire",
+      "min": 3
+     }
+    ]
+   },
+   {
+    "kind": "amazon",
+    "need": 1,
+    "skills": [
+     {
+      "key": "lightningfury",
+      "min": 3
+     },
+     {
+      "key": "strafe",
+      "min": 3
+     }
+    ]
+   }
+  ],
+  "lenient": true,
+  "magicV": 2,
+  "allJewels": true,
+  "basesOn": true,
+  "bases": [
+   {
+    "nickname": "Breast Plate (Normal)",
+    "code": "brs",
+    "name": "breastplate",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "Cuirass (Exceptional)",
+    "code": "xrs",
+    "name": "cuirass",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "Great Hauberk (Elite)",
+    "code": "urs",
+    "name": "greathauberk",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "Light Plate (Normal)",
+    "code": "ltp",
+    "name": "lightplate",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "Mage Plate (Exceptional)",
+    "code": "xtp",
+    "name": "mageplate",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "Archon Plate (Elite)",
+    "code": "utp",
+    "name": "archonplate",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "Dusk Shroud (Elite)",
+    "code": "uui",
+    "name": "duskshroud",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "Studded Leather (Normal)",
+    "code": "stu",
+    "name": "studdedleather",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "Trellised Armor (Exceptional)",
+    "code": "xtu",
+    "name": "trellisedarmor",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "Wire Fleece (Elite)",
+    "code": "utu",
+    "name": "wirefleece",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "Bone Helm (Normal)",
+    "code": "bhm",
+    "name": "bonehelm",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "Grim Helm (Exceptional)",
+    "code": "xh9",
+    "name": "grimhelm",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "Bone Visage (Elite)",
+    "code": "uh9",
+    "name": "bonevisage",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "Bone Shield (Normal)",
+    "code": "bsh",
+    "name": "boneshield",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "Grim Shield (Exceptional)",
+    "code": "xsh",
+    "name": "grimshield",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "Troll Nest (Elite)",
+    "code": "ush",
+    "name": "trollnest",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "Kite Shield (Normal)",
+    "code": "kit",
+    "name": "kiteshield",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "Dragon Shield (Exceptional)",
+    "code": "xit",
+    "name": "dragonshield",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "Monarch (Elite)",
+    "code": "uit",
+    "name": "monarch",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "War Axe (Normal)",
+    "code": "wax",
+    "name": "waraxe",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "Naga (Exceptional)",
+    "code": "9wa",
+    "name": "naga",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "Berserker Axe (Elite)",
+    "code": "7wa",
+    "name": "berserkeraxe",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "Crystal Sword (Normal)",
+    "code": "crs",
+    "name": "crystalsword",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "Dimensional Blade (Exceptional)",
+    "code": "9cr",
+    "name": "dimensionalblade",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "Phase Blade (Elite)",
+    "code": "7cr",
+    "name": "phaseblade",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "Flamberge (Normal)",
+    "code": "flb",
+    "name": "flamberge",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "Zweihander (Exceptional)",
+    "code": "9fb",
+    "name": "zweihander",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "Colossal Sword (Elite)",
+    "code": "7fb",
+    "name": "colossussword",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "Great Sword (Normal)",
+    "code": "gsd",
+    "name": "greatsword",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "Executioner Sword (Exceptional)",
+    "code": "9gd",
+    "name": "executionersword",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "Colossus Blade (Elite)",
+    "code": "7gd",
+    "name": "colossusblade",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "Two-Handed Sword (Normal)",
+    "code": "2hs",
+    "name": "twohandedsword",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "Espadon (Exceptional)",
+    "code": "92h",
+    "name": "espandon",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "Legend Sword (Elite)",
+    "code": "72h",
+    "name": "legendsword",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "Halberd (Normal)",
+    "code": "hal",
+    "name": "halberd",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "Bec-de-Corbin (Exceptional)",
+    "code": "9h9",
+    "name": "becdecorbin",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "Great Poleaxe (Elite)",
+    "code": "7h7",
+    "name": "greatpoleaxe",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "Poleaxe (Normal)",
+    "code": "pax",
+    "name": "poleaxe",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "Partizan (Exceptional)",
+    "code": "9pa",
+    "name": "partizan",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "Cryptic Axe (Elite)",
+    "code": "7pa",
+    "name": "crypticaxe",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "Scythe (Normal)",
+    "code": "scy",
+    "name": "scythe",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "Battle Scythe (Exceptional)",
+    "code": "9s8",
+    "name": "battlescythe",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "Thresher (Elite)",
+    "code": "7s8",
+    "name": "thresher",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "War Scythe (Normal)",
+    "code": "wsc",
+    "name": "warscythe",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "Grim Scythe (Exceptional)",
+    "code": "9wc",
+    "name": "grimscythe",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "Giant Thresher (Elite)",
+    "code": "7wc",
+    "name": "giantthresher",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "Pike (Normal)",
+    "code": "pik",
+    "name": "pike",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "Lance (Exceptional)",
+    "code": "9p9",
+    "name": "lance",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "War Pike (Elite)",
+    "code": "7p7",
+    "name": "warpike",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "Flail (Normal)",
+    "code": "fla",
+    "name": "flail",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "Knout (Exceptional)",
+    "code": "9fl",
+    "name": "knout",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "Scourge (Elite)",
+    "code": "7fl",
+    "name": "scourge",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "Composite Bow (Normal)",
+    "code": "cbw",
+    "name": "compositebow",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "Double Bow (Exceptional)",
+    "code": "8cb",
+    "name": "doublebow",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "Great Bow (Elite)",
+    "code": "6cb",
+    "name": "greatbow",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "Long War Bow (Normal)",
+    "code": "lwb",
+    "name": "longwarbow",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "Gothic Bow (Exceptional)",
+    "code": "8lw",
+    "name": "gothicbow",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   },
+   {
+    "nickname": "Hydra Bow (Elite)",
+    "code": "6lw",
+    "name": "hydrabow",
+    "quality": "normal",
+    "ethereal": "",
+    "sockets": ""
+   }
+  ],
+  "basesSeeded": true
+ }
+}

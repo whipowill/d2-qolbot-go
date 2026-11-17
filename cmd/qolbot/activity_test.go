@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strings"
 	"testing"
 	"time"
 )
@@ -25,6 +26,7 @@ func TestFriendlyActivity(t *testing.T) {
 		{"Team: Waiting for my team: 0 of 1 in the game (not yet: Temp).", "Waiting on teammates"},
 		{"Follower: Taking portal", "Taking portal"},
 		{"SAY: I cannot reach you. Open a town portal, or I stay in town.", "Waiting for a portal"},
+		{"SAY: I cannot find thee. Open a portal, or I shall bide in town.", "Waiting for a portal"},
 		{"Following Meir.", "Following Meir"},
 		{"Detected hostile monsters.", "Fighting demons"},
 		{"Searching for leader Darius.", "Searching for leader Darius"},
@@ -53,6 +55,24 @@ func TestParseEvent(t *testing.T) {
 	if e, ok := parseEvent("AutoSpec (quiet): Act 2 - #4 - \"Radament's Lair\" is complete."); !ok || e.Kind != "quest" || e.Name != "Radament's Lair" || e.Detail != "Act 2" {
 		t.Errorf("quest: %+v", e)
 	}
+	if e, ok := parseEvent("Team: The team is split up (Xena, Sankt apart, regroup no. 4). Going to town so we all meet."); !ok || e.Kind != "regroup" || e.Name != "Party Regroup" || !strings.Contains(e.Detail, "Xena, Sankt apart") || !strings.Contains(e.Detail, "no. 4") {
+		t.Errorf("regroup: %+v", e)
+	}
+	if e, ok := parseEvent("QuickTravel: took Barabas's portal to waypoint Cold Plains"); !ok || e.Kind != "quicktravel" || e.Name != "Waypoint Portal" || e.Detail != "Cold Plains \u00b7 Barabas's portal" {
+		t.Errorf("waypoint helper portal: %+v ok=%v", e, ok)
+	}
+	if e, ok := parseEvent("QuickTravel: took Meir's portal to andy"); !ok || e.Kind != "quicktravel" || !strings.Contains(e.Detail, "Andariel") || !strings.Contains(e.Detail, "Meir") {
+		t.Errorf("quick travel: %+v", e)
+	}
+	if e, ok := parseEvent("Waypoints: Waypoints synced (3 of 4)."); !ok || e.Kind != "waypointsync" || !strings.HasPrefix(e.Detail, "3 of 4") {
+		t.Errorf("waypoints shared: %+v", e)
+	}
+	if e, ok := parseEvent("Waypoints: all in sync (Darius, Xena, Meir)"); !ok || e.Kind != "waypointsync" || e.Name != "Waypoints In Sync" || e.Detail != "Darius, Xena, Meir" {
+		t.Errorf("waypoints in sync: %+v", e)
+	}
+	if e, ok := parseEvent("Waypoint collected: Stony Field"); !ok || e.Kind != "waypoint" || e.Detail != "Stony Field" {
+		t.Errorf("waypoint: %+v", e)
+	}
 	if e, ok := parseEvent("\xffc7Picked up \xffc9Death Coil Ring \xffc0(ilvl 70) (Generated.nip #12)"); !ok || e.Kind != "item" || e.Quality != "rare" || e.Detail != "Keeper" {
 		t.Errorf("item: %+v", e)
 	}
@@ -61,10 +81,13 @@ func TestParseEvent(t *testing.T) {
 			t.Errorf("%q is not worth listing", skip)
 		}
 	}
+	if e, ok := parseEvent("Hired merc Liaza: a1-ice for 825 gold"); !ok || e.Kind != "merc" || e.Name != "Liaza" || e.Detail != "a1-ice" || e.Count != 825 {
+		t.Errorf("hired merc: %+v %v", e, ok)
+	}
 	if e, ok := parseEvent("Equipped Sash (gear upgrade)"); !ok || e.Kind != "equip" || e.Name != "Sash" {
 		t.Errorf("equip: %+v", e)
 	}
-	if e, ok := parseEvent("Equipped Short Bow on the mercenary"); !ok || e.Kind != "equip" || e.Detail != "Upgrade" {
+	if e, ok := parseEvent("Equipped Short Bow on the mercenary"); !ok || e.Kind != "equip" || e.Detail != "Mercenary" || e.Name != "Short Bow" {
 		t.Errorf("merc equip: %+v", e)
 	}
 	if e, ok := parseEvent("Leveled up to level 16"); !ok || e.Kind != "level" || e.Name != "16" {
@@ -93,24 +116,49 @@ func TestItemDetailsAttachToEvents(t *testing.T) {
 	// the item log entry arrives first, the printed line a moment later
 	m.noteItemDesc("Darius", item)
 	m.addEvent(ActivityEvent{Time: time.Now(), Bot: "Darius", Kind: "item", Name: "Kraken Gaze"})
-	if e := m.recentEvents(1)[0]; e.Desc == "" || e.Title != "Kept Kraken Gaze Diadem" {
+	if e := m.events[len(m.events)-1]; e.Desc == "" || e.Title != "Kept Kraken Gaze Diadem" {
 		t.Errorf("entry first: %+v", e)
 	}
 	// the printed line first, the item log entry after
 	m.addEvent(ActivityEvent{Time: time.Now(), Bot: "Darius", Kind: "equip", Name: "Sash"})
 	m.noteItemDesc("Darius", `{"title":"Equipped Sash","description":"Sash\nDefense: 5"}`)
-	if e := m.recentEvents(1)[0]; e.Desc == "" {
+	if e := m.events[len(m.events)-1]; e.Desc == "" {
 		t.Errorf("line first: %+v", e)
 	}
 	// a potion's entry (no Activity entry) must not be given to the next item
 	m.noteItemDesc("Darius", `{"title":"Kept Light Healing Potion","description":"Light Healing Potion"}`)
 	m.addEvent(ActivityEvent{Time: time.Now(), Bot: "Darius", Kind: "item", Name: "Skull Cap"})
-	if e := m.recentEvents(1)[0]; e.Desc != "" {
+	if e := m.events[len(m.events)-1]; e.Desc != "" {
 		t.Errorf("wrong details attached: %+v", e)
 	}
 	m.noteItemDesc("Darius", `{"title":"Sold Skull Cap","description":"x"}`)
-	if e := m.recentEvents(1)[0]; e.Desc != "" {
-		t.Error("only kept or equipped items carry details")
+	if e := m.events[len(m.events)-1]; e.Desc != "" {
+		t.Error("a sale's details go to the sale, not to the pickup")
+	}
+	// a sale: its report comes just before the "Sold" line
+	m.addEvent(ActivityEvent{Time: time.Now(), Bot: "Darius", Kind: "sale", Name: "Skull Cap"})
+	if e := m.events[len(m.events)-1]; e.Desc != "x" || e.Title != "Sold Skull Cap" {
+		t.Errorf("the sale should carry its report: %+v", e)
+	}
+	// two sales: both reports arrive before the first "Sold" line is read (live 18:56, Sankt's Razor Bow)
+	m.noteItemDesc("Sankt", `{"title":"Sold Demon Song Razor Bow","description":"bow"}`)
+	m.noteItemDesc("Sankt", `{"title":"Sold Platinum Claymore of Self-Repair","description":"sword"}`)
+	m.addEvent(ActivityEvent{Time: time.Now(), Bot: "Sankt", Kind: "sale", Name: "Razor Bow"})
+	m.addEvent(ActivityEvent{Time: time.Now(), Bot: "Sankt", Kind: "sale", Name: "Platinum Claymore of Self-Repair"})
+	if a, b := m.events[len(m.events)-2], m.events[len(m.events)-1]; a.Desc != "bow" || b.Desc != "sword" {
+		t.Errorf("each sale should carry its own report: %q %q", a.Desc, b.Desc)
+	}
+	// a name with the space of a missing prefix or suffix
+	m.noteItemDesc("Sankt", `{"title":"Sold Unearthly Fuscina","description":"spear"}`)
+	m.addEvent(ActivityEvent{Time: time.Now(), Bot: "Sankt", Kind: "sale", Name: "Unearthly Fuscina "})
+	if e := m.events[len(m.events)-1]; e.Desc != "spear" || e.Name != "Unearthly Fuscina" {
+		t.Errorf("trimmed name and its report: %+v", e)
+	}
+	// a stash: the bot's own "Stashed" report
+	m.noteItemDesc("Sankt", `{"title":"Stashed Infernal Cranium Cap","description":"cap"}`)
+	m.addEvent(ActivityEvent{Time: time.Now(), Bot: "Sankt", Kind: "stash", Name: "Cap"})
+	if e := m.events[len(m.events)-1]; e.Desc != "cap" {
+		t.Errorf("the stash should carry its report: %+v", e)
 	}
 }
 
@@ -121,9 +169,8 @@ func TestEventsCarryTheZone(t *testing.T) {
 	m.addEvent(ActivityEvent{Bot: "Darius", Kind: "item", Name: "Buckler", Quality: "set"})
 	m.addEvent(ActivityEvent{Bot: "Darius", Kind: "equip", Name: "Mace"})
 	m.addEvent(ActivityEvent{Bot: "Darius", Kind: "kill", Name: "Andariel"})
-	ev := m.recentEvents(10)
 	zones := map[string]string{}
-	for _, e := range ev {
+	for _, e := range m.events { // all of them: a pickup is kept (hidden) for the entries after it
 		zones[e.Kind] = e.Zone
 	}
 	if zones["item"] != "Black Marsh" || zones["equip"] != "Black Marsh" || zones["kill"] != "" {
@@ -192,16 +239,17 @@ func TestSeveralBotsReportOnce(t *testing.T) {
 	if ev := m.recentEvents(10); len(ev) != 1 {
 		t.Fatalf("three bots, one kill: want 1 entry, got %d: %+v", len(ev), ev)
 	}
-	// a different monster (another id) is a different entry; the same boss printed twice without an id within 30 seconds is one kill
+	// the same name with another id in the same place within 30 seconds is the same pack (a boss's minions carry its name: live 18:10, "Mind Maw the
+	// Slasher" twice per pack); the same boss printed twice without an id is one kill
 	m.addEvent(ActivityEvent{Time: now, Bot: "A", Kind: "kill", Name: "Bonebreak", Key: "k43"})
 	m.addEvent(ActivityEvent{Time: now, Bot: "A", Kind: "kill", Name: "Andariel"})
 	m.addEvent(ActivityEvent{Time: now, Bot: "A", Kind: "kill", Name: "Andariel"})
-	if ev := m.recentEvents(10); len(ev) != 3 {
-		t.Errorf("want 3 entries, got %d", len(ev))
+	if ev := m.recentEvents(10); len(ev) != 2 {
+		t.Errorf("want 2 entries, got %d", len(ev))
 	}
 	// the leader's keyless line and a bot's keyed line for the same boss in the same place are one kill
 	m.addEvent(ActivityEvent{Time: now, Bot: "B", Kind: "kill", Name: "Andariel", Key: "k99"})
-	if ev := m.recentEvents(10); len(ev) != 3 {
+	if ev := m.recentEvents(10); len(ev) != 2 {
 		t.Errorf("a keyed line for a boss the leader already reported should be dropped: %d entries", len(ev))
 	}
 }
@@ -326,5 +374,251 @@ func TestQuestEventsAreNotDoubled(t *testing.T) {
 	m.addEvent(ev) // and the chat line ("SAY: ...") when chat reports are on
 	if len(m.events) != 1 {
 		t.Errorf("got %d events", len(m.events))
+	}
+}
+
+func TestParseEventRespec(t *testing.T) {
+	e, ok := parseEvent("Respec: done, 47 skill points to spend (were 0).")
+	if !ok || e.Kind != "respec" || e.Name != "Respec" || e.Detail != "47 skill points to spend again" {
+		t.Errorf("done: %+v %v", e, ok)
+	}
+	e, ok = parseEvent("Respec: failed: the unspent skill points are still 0. Nothing is tried again for this build.")
+	if !ok || e.Kind != "respec" || e.Name != "Respec failed" {
+		t.Errorf("failed: %+v %v", e, ok)
+	}
+}
+
+func TestParseEventGold(t *testing.T) {
+	e, ok := parseEvent("Gold: gave 800 gold to Xena.")
+	if !ok || e.Kind != "gold" || e.Name != "Gold Shared" || e.Detail != "800 gold to Xena" {
+		t.Errorf("gave: %+v %v", e, ok)
+	}
+	e, ok = parseEvent("Gold: received 1600 gold.")
+	if !ok || e.Kind != "gold" || e.Name != "Gold Received" || e.Detail != "1600 gold from the team" {
+		t.Errorf("received: %+v %v", e, ok)
+	}
+}
+
+func TestParseEventGrail(t *testing.T) {
+	e, ok := parseEvent("Grail: Congratulations! You are 47% complete on your Holy Grail quest.")
+	if !ok || e.Kind != "grail" || e.Name != "Holy Grail" || e.Detail != "47% complete" || e.Key != "grail:Congratulations! You are 47% complete on your Holy Grail quest." {
+		t.Errorf("grail: %+v %v", e, ok)
+	}
+	e, ok = parseEvent("Grail: something else about the Holy Grail")
+	if !ok || e.Detail != "something else about the Holy Grail" {
+		t.Errorf("a line without a percentage is shown as it is: %+v %v", e, ok)
+	}
+}
+
+func TestIdentifiedTextReachesAnEarlierPickup(t *testing.T) {
+	m := &Manager{states: map[string]*State{}}
+	// the pickup entry (an unidentified charm: no stats yet), 5 minutes ago
+	m.events = append(m.events, ActivityEvent{Time: time.Now().Add(-5 * time.Minute), Bot: "Xena", Kind: "item", Name: "Large Charm", Desc: "Large Charm"})
+	m.noteItemDesc("Xena", `{"title":"Kept Large Charm","description":"Large Charm\n+1 Skill Tab\n+30 To Life"}`)
+	if got := m.events[0].Desc; got != "Large Charm\n+1 Skill Tab\n+30 To Life" {
+		t.Errorf("the identified stats must reach the earlier entry: %q", got)
+	}
+	// a shorter or equal text never replaces a fuller one
+	m.noteItemDesc("Xena", `{"title":"Kept Large Charm","description":"Large Charm"}`)
+	if len(m.events[0].Desc) < 20 {
+		t.Error("a poorer text replaced the stats")
+	}
+	// another bot's entry is left alone
+	m.events = append(m.events, ActivityEvent{Time: time.Now(), Bot: "Sankt", Kind: "item", Name: "Large Charm", Desc: "Large Charm"})
+	m.noteItemDesc("Xena", `{"title":"Kept Large Charm","description":"Large Charm\n+1 Skill Tab\n+30 To Life\nmore"}`)
+	if m.events[1].Desc != "Large Charm" {
+		t.Error("Sankt's entry must not get Xena's stats")
+	}
+}
+
+func TestParseEventSold(t *testing.T) {
+	e, ok := parseEvent("Sold Ring for 412 gold.")
+	if !ok || e.Kind != "sale" || e.Name != "Ring" || e.Detail != "412 gold" {
+		t.Errorf("sold: %+v %v", e, ok)
+	}
+	e, ok = parseEvent("Sold Large Charm for 0 gold.")
+	if !ok || e.Name != "Large Charm" || e.Detail != "sold" {
+		t.Errorf("a sale the bot could not price: %+v %v", e, ok)
+	}
+	e, ok = parseEvent("Sold Razor Bow (x) for 1155 gold (no keep rule).")
+	if !ok || e.Name != "Razor Bow (x)" || e.Detail != "1155 gold · no keep rule" {
+		t.Errorf("a sale with its reason: %+v %v", e, ok)
+	}
+}
+
+func TestQuestLine(t *testing.T) {
+	if q, ok := questLine(`Quester: working on "Khalim's Will"`); !ok || q != "Act 3: Khalim's Will" {
+		t.Errorf("working on: %q %v", q, ok)
+	}
+	if q, ok := questLine(`Quester: done with "Khalim's Will"`); !ok || q != "" {
+		t.Errorf("done with: %q %v", q, ok)
+	}
+	if _, ok := questLine("Quester: quest skipped: Den of Evil"); ok {
+		t.Error("another Quester line is not a quest line")
+	}
+}
+
+func TestQuestPickup(t *testing.T) {
+	ev, ok := parseEvent("Picked up Khalim's Eye (ilvl 1)")
+	if !ok || ev.Kind != "questpick" || ev.Name != "Khalim's Eye" {
+		t.Errorf("got %+v %v", ev, ok)
+	}
+	// the raw D2BS line has the item's colour code after "Picked up " (gold looks like a unique): still a quest item (Sankt's Cube, 2026-11-14 10:58)
+	for _, mark := range []string{"\xef\xbf\xbd", "\xff", "\xc3\xbf"} {
+		ev, ok = parseEvent("Picked up " + mark + "c4Horadric Cube (ilvl 13) (Quest.nip #12)")
+		if !ok || ev.Kind != "questpick" || ev.Name != "Horadric Cube" {
+			t.Errorf("coloured line with %q: %+v %v", mark, ev, ok)
+		}
+	}
+	if ev, ok := parseEvent("Picked up Greater Healing Potion (ilvl 1) (Potions.nip #14)"); ok && ev.Kind == "questpick" {
+		t.Error("a potion is not a quest item")
+	}
+}
+
+func TestTeamGaveUp(t *testing.T) {
+	for line, who := range map[string]string{
+		"Team: not waiting any longer for Barabas":                              "Barabas",
+		"Team: not waiting any longer in town for Barabas, Sankt: leaving.":     "Barabas, Sankt",
+		"Party: not waiting any longer for Sankt to go back out.":               "Sankt",
+		"Team: not waiting any longer for Barabas to go out through my portal.": "Barabas",
+	} {
+		ev, ok := parseEvent(line)
+		if !ok || ev.Kind != "regroup" || ev.Name != "Party Regroup" || ev.Detail != "waiting for "+who {
+			t.Errorf("%q: %+v %v", line, ev, ok)
+		}
+	}
+	if _, ok := parseEvent("Team: waiting in town until Barabas are ready: we leave together."); ok {
+		t.Error("a wait in progress is not an event")
+	}
+}
+
+// A "Stashed" line has only the name: the entry gets the stats of the same bot's pickup of that item (the user, 2026-11-14: a ring "picked up keeper" had its
+// stats, the later "stashed" entry did not).
+func TestStashEntryGetsPickupStats(t *testing.T) {
+	m := &Manager{}
+	m.addEvent(ActivityEvent{Time: time.Now(), Bot: "Xena", Kind: "item", Name: "Ring", Quality: "rare", Ilvl: 40, Detail: "Keeper"})
+	m.noteItemDesc("Xena", `{"title":"Kept Dread Turn Ring","description":"Ring\n+20 to Life\n+15 to Dexterity"}`)
+	m.addEvent(ActivityEvent{Time: time.Now(), Bot: "Sankt", Kind: "item", Name: "Ring", Desc: "another bot's ring"})
+	m.addEvent(ActivityEvent{Time: time.Now(), Bot: "Xena", Kind: "stash", Name: "Ring", Quality: "normal", Detail: "Stashed"})
+	if ev := m.recentEvents(10); len(ev) != 1 {
+		t.Fatalf("pickups are not shown, only the stash entry: %+v", ev)
+	}
+	got := m.recentEvents(1)[0]
+	if got.Kind != "stash" || got.Desc != "Ring\n+20 to Life\n+15 to Dexterity" || got.Title != "Kept Dread Turn Ring" || got.Quality != "rare" || got.Ilvl != 40 {
+		t.Fatalf("stash entry = %+v", got)
+	}
+}
+
+// Stats that arrive after the stash (identified in town later) reach the stash entry too.
+func TestLateKeptStatsReachStashEntry(t *testing.T) {
+	m := &Manager{}
+	m.addEvent(ActivityEvent{Time: time.Now(), Bot: "Xena", Kind: "item", Name: "Grand Charm", Desc: "Grand Charm"})
+	m.addEvent(ActivityEvent{Time: time.Now(), Bot: "Xena", Kind: "stash", Name: "Grand Charm", Detail: "Stashed"})
+	m.noteItemDesc("Xena", `{"title":"Kept Grand Charm","description":"Grand Charm\n+1 to Fire Skills"}`)
+	if ev := m.events; ev[1].Desc != "Grand Charm\n+1 to Fire Skills" || ev[0].Desc != "Grand Charm\n+1 to Fire Skills" {
+		t.Fatalf("stash %q, pickup %q", ev[1].Desc, ev[0].Desc)
+	}
+}
+
+// A sale entry gets the stats of the item's pickup too.
+func TestSaleEntryGetsPickupStats(t *testing.T) {
+	m := &Manager{}
+	m.addEvent(ActivityEvent{Time: time.Now(), Bot: "Sankt", Kind: "item", Name: "Light Crossbow", Desc: "Light Crossbow\n+10 to Dexterity"})
+	m.addEvent(ActivityEvent{Time: time.Now(), Bot: "Sankt", Kind: "sale", Name: "Light Crossbow", Detail: "401 gold"})
+	ev := m.recentEvents(10)
+	if len(ev) != 1 || ev[0].Kind != "sale" || ev[0].Desc != "Light Crossbow\n+10 to Dexterity" {
+		t.Fatalf("%+v", ev)
+	}
+}
+
+func TestParseEventQuickSelf(t *testing.T) {
+	e, ok := parseEvent("QuickTravel: opened my own portal to pit: calling the team")
+	if !ok || e.Kind != "quicktravel" || e.Name != "Quick Travel" || !strings.HasSuffix(e.Detail, "own portal") {
+		t.Errorf("own portal: %+v %v", e, ok)
+	}
+}
+
+func TestParseEventRunDone(t *testing.T) {
+	e, ok := parseEvent("Run done: Pit in 254 s")
+	if !ok || e.Kind != "run" || e.Name != "The Pit" || e.Detail != "4:14" {
+		t.Errorf("run done: %+v %v", e, ok)
+	}
+	if _, ok := parseEvent("Run done: ForceSave in 15 s"); ok {
+		t.Error("ForceSave is not a farm run: no card")
+	}
+}
+
+// TestCubeEvent: every item the Horadric Cube makes is one "Cube: <item>" line (Cubing.doCubing, Quester.cubeAndCreate) and one Activity card.
+func TestCubeEvent(t *testing.T) {
+	for _, c := range []struct{ line, name string }{{"Cube: Horadric Staff", "Horadric Staff"}, {"\xffc4Cube: Ist Rune", "Ist Rune"}, {"Cube: Khalim's Will", "Khalim's Will"}} {
+		ev, ok := parseEvent(c.line)
+		if !ok || ev.Kind != "cube" || ev.Name != c.name {
+			t.Errorf("%q: got %+v %v", c.line, ev, ok)
+		}
+	}
+	if _, ok := parseEvent("Cubing: Transmuting: Ral Rune + Ral Rune + Ral Rune"); ok {
+		t.Error("the old Cubing line must not make a card")
+	}
+}
+
+// TestChatHidesDeposit: chat starting with "/" or "." (game and mod commands) is not speech and stays out of the Activity chat box.
+func TestChatHidesDeposit(t *testing.T) {
+	m := &Manager{}
+	m.addChat("Meir", ".deposit")
+	m.addChat("Meir", "!.deposit")
+	m.addChat("Meir", ".reset skills")
+	m.addChat("Meir", "/save")
+	m.addChat("Meir", "We are long past any aid.")
+	if c := m.recentChat(10); len(c) != 1 || c[0].Text != "We are long past any aid." {
+		t.Errorf("chat: %+v", c)
+	}
+}
+
+// The bot's own "Cube: moved N item(s) from my pack into my cube" is storage, not a made item, and gets no Activity card (the user, 2026-11-16).
+func TestCubeStorageLineIsNotAnActivityCard(t *testing.T) {
+	if ev, ok := parseEvent("Cube: moved 2 item(s) from my pack into my cube to make room (the town trip waits until the cube is full too)."); ok {
+		t.Errorf("the cube storage line made an Activity entry: %+v", ev)
+	}
+	if ev, ok := parseEvent("Cube: Rune Upgrade"); !ok || ev.Kind != "cube" {
+		t.Errorf("a real cube recipe must still make a card: %+v ok=%v", ev, ok)
+	}
+}
+
+// Quick Travel places are written with capitals (the user, 2026-11-16: "write the names of the locations properly").
+func TestQuickPlaceIsWrittenProperly(t *testing.T) {
+	for in, want := range map[string]string{"andy": "Andariel", "deadhalls": "Halls of the Dead", "clawviper": "Claw Viper Temple", "tal rasha's tomb": "Tal Rasha's Tomb", "durance of hate": "Durance of Hate"} {
+		if got := quickPlace(in); got != want {
+			t.Errorf("quickPlace(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+// A bot with no room in its pack or its cube raises the red box; it does not stop the team (the user, 2026-11-16).
+func TestPackFullIsARedBox(t *testing.T) {
+	title, msg, ok := packFullFromLog("Meir", "Pack: FULL: no room in the pack and none in the cube: Meir cannot pick up anything, not even Heavy Crossbow.")
+	if !ok || title != "Meir's pack and cube are full" || msg == "" {
+		t.Fatalf("got %q %q %v", title, msg, ok)
+	}
+	if _, _, ok := packFullFromLog("Meir", "Not enough room for Heavy Crossbow"); ok {
+		t.Error("a single item that does not fit is not the red box")
+	}
+}
+
+// A bot whose pack is full and that puts things in its cube raises the yellow notice, not the red box (the user, 2026-11-16).
+func TestFullInventoryIsAYellowNotice(t *testing.T) {
+	kind, title, msg, ok := noticeFromLog("Meir", "Pack: NOTICE: Meir has a full inventory: items go into the cube, are not identified, and all go to the stash.")
+	if !ok || kind != "fullpack" || title != "Meir has a full inventory" || msg == "" {
+		t.Fatalf("got %q %q %q %v", kind, title, msg, ok)
+	}
+	if _, _, ok := packFullFromLog("Meir", "Pack: NOTICE: Meir has a full inventory: x"); ok {
+		t.Error("the notice is not the red box")
+	}
+}
+
+// No clear 2x4 space in the pack is a yellow notice too (the user, 2026-11-16).
+func TestBigSpaceIsAYellowNotice(t *testing.T) {
+	kind, title, msg, ok := noticeFromLog("Meir", "Pack: NOTICE: no clear 2x4 space in the pack: Meir cannot pick up the biggest items.")
+	if !ok || kind != "bigspace" || title != "Meir has no clear 2x4 space in its pack" || msg == "" {
+		t.Fatalf("got %q %q %q %v", kind, title, msg, ok)
 	}
 }

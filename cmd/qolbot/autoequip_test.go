@@ -15,11 +15,11 @@ func TestAutoequipListsAreWellFormed(t *testing.T) {
 	if err != nil {
 		t.Skip("no autoequip folder")
 	}
-	want := map[string]string{"caster.nip": "[tier] ==", "melee.nip": "[tier] ==", "merc.nip": "[merctier] =="}
+	want := map[string]string{"gear.nip": "[tier] ==", "merc.nip": "[merctier] =="}
 	for _, e := range entries {
 		key, ok := want[e.Name()]
 		if !ok {
-			t.Errorf("unexpected file in Autoequip: %s (only caster.nip, melee.nip and merc.nip are used)", e.Name())
+			t.Errorf("unexpected file in Autoequip: %s (only gear.nip and merc.nip are used)", e.Name())
 			continue
 		}
 		b, _ := os.ReadFile(filepath.Join(dir, e.Name()))
@@ -51,22 +51,17 @@ func TestAutoequipListsAreWellFormed(t *testing.T) {
 	}
 }
 
-// Casters and attackers are ranked differently: the two lists must really differ in what they count.
-func TestAutoequipCasterVersusMelee(t *testing.T) {
-	dir := filepath.Join("..", "..", "d2bs", "kolbot", "pickit", "Autoequip")
-	c, err1 := os.ReadFile(filepath.Join(dir, "caster.nip"))
-	a, err2 := os.ReadFile(filepath.Join(dir, "melee.nip"))
-	if err1 != nil || err2 != nil {
+// One list for every class: its rule asks the build-aware scorer (libs/common/Gear.js), whose name must be lowercase (the parser lowercases lines).
+func TestAutoequipByBuild(t *testing.T) {
+	b, err := os.ReadFile(filepath.Join("..", "..", "d2bs", "kolbot", "pickit", "Autoequip", "gear.nip"))
+	if err != nil {
 		t.Skip("no autoequip folder")
 	}
-	if !strings.Contains(string(c), "getStatEx(105)") || strings.Contains(string(c), "getStatEx(93)") {
-		t.Error("casters count fast cast rate and ignore attack speed")
+	if !strings.Contains(string(b), "[tier] == qolgear.tier(item)") {
+		t.Error("gear.nip must rank with qolgear.tier(item)")
 	}
-	if !strings.Contains(string(a), "getStatEx(93)") || strings.Contains(string(a), "getStatEx(105)") {
-		t.Error("attackers count attack speed and ignore fast cast rate")
-	}
-	for class, want := range map[string]string{"Sorceress": "caster", "Necromancer": "caster", "Druid": "caster", "Amazon": "melee", "Paladin": "melee", "Barbarian": "melee", "Assassin": "melee"} {
-		if got := autoequipFile(class); got != "Autoequip/"+want+".nip" {
+	for _, class := range []string{"Sorceress", "Necromancer", "Druid", "Amazon", "Paladin", "Barbarian", "Assassin"} {
+		if got := autoequipFile(class); got != "Autoequip/gear.nip" {
 			t.Errorf("%s uses %s", class, got)
 		}
 	}

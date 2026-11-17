@@ -179,15 +179,29 @@ function Cows() {
 			throw new Error("Failed to cube leg and tome");
 		}
 
-		transmute();
-		delay(500);
+		// Qolbot: wait longer, and transmute once more if the leg is still in the cube (live 21:48:30, Meir: "Portal not found" 3 s after the leg and the
+		// tome went into the cube; the log could not say whether the transmute happened). Says what it found. UNTESTED.
+		for (var attempt = 0; attempt < 2; attempt += 1) {
+			transmute();
+			delay(500);
 
-		for (i = 0; i < 10; i += 1) {
-			if (Pather.getPortal(39)) {
-				return true;
+			for (i = 0; i < 25; i += 1) {
+				if (Pather.getPortal(39)) {
+					return true;
+				}
+
+				delay(200);
 			}
 
-			delay(200);
+			var cowLeg = me.getItem(88);
+
+			print("Cows: no portal after the transmute (try " + (attempt + 1) + "); Wirt's Leg " + (!cowLeg ? "is gone" : cowLeg.location === 6 ? "is still in the cube" : "is in location " + cowLeg.location) + ", cube open " + getUIFlag(0x1A));
+
+			if (!cowLeg || cowLeg.location !== 6) {
+				break;
+			}
+
+			Cubing.openCube();
 		}
 
 		throw new Error("Portal not found");

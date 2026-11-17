@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -105,10 +106,8 @@ func (m *Manager) handleCopyData(msg wire.Msg) {
 	p := r.Profile
 	m.update(p, func(s *State) { s.rpcSeen = true })
 	switch r.Func {
-	case "heartBeat", "setProfile":
+	case "heartBeat", "setProfile", "vitals":
 		// heartbeats are too frequent to log; setProfile carries a password
-	case "inventory":
-		// a big JSON list of items: not worth a log line
 	case "updateStatus":
 		if !strings.HasPrefix(arg(0), "Game:") { // the in-game clock ticks every second: not worth a log line
 			m.dbgf(p, "D2Bot.%s %.300v", r.Func, r.Args)
@@ -119,10 +118,6 @@ func (m *Manager) handleCopyData(msg wire.Msg) {
 	switch r.Func {
 	case "heartBeat":
 		m.update(p, func(s *State) { s.Heartbeat = time.Now() })
-	case "inventory":
-		if len(arg(0)) < 1<<20 { // a bot carries at most a few hundred items
-			m.update(p, func(s *State) { s.Inv, s.InvAt = arg(0), time.Now() })
-		}
 	case "printToConsole":
 		var o struct {
 			Msg   string `json:"msg"`
@@ -145,6 +140,10 @@ func (m *Manager) handleCopyData(msg wire.Msg) {
 			m.watchJoin(p)
 		}
 		m.noteStarterStatus(p, arg(0))
+	case "vitals":
+		if n, err := strconv.Atoi(arg(0)); err == nil && n >= 0 && n <= 100 {
+			m.update(p, func(s *State) { s.Life, s.LifeAt = n, time.Now() })
+		}
 	case "zone":
 		m.update(p, func(s *State) {
 			if s.Zone != "" && s.Zone != arg(0) { // what the bot was last reported doing belongs to the place it left
@@ -155,6 +154,25 @@ func (m *Manager) handleCopyData(msg wire.Msg) {
 				s.Difficulty = d
 			}
 		})
+	case "respec":
+		// the bot asks for PlugY's "Unassign all skills points" button to be clicked (auto respec, Respec.js); the position is in respecButton
+		if respecButton[0] == 0 && respecButton[1] == 0 {
+			m.logf(0, p, "respec: not done, the position of PlugY's unassign button is not known yet")
+			break
+		}
+		m.logf(0, p, "respec: clicking PlugY's unassign button at %d,%d", respecButton[0], respecButton[1])
+		m.sendBridge(wire.Msg{T: "input", Profile: p, Data: fmt.Sprintf("respec %d %d", respecButton[0], respecButton[1])})
+	case "respecstat":
+		// the bot asks for N points of one stat to be taken back with PlugY's Alt click (Respec.js, stats part of Auto Respec)
+		stat := arg(0)
+		n, _ := strconv.Atoi(arg(1))
+		pos, known := statButtons[stat]
+		if !known || (pos[0] == 0 && pos[1] == 0) || n <= 0 || n > 250 {
+			m.logf(0, p, "respec: stat points not taken back (%s x%d): the position of that stat button is not known yet", stat, n)
+			break
+		}
+		m.logf(0, p, "respec: taking %d point(s) back from %s (button at %d,%d)", n, stat, pos[0], pos[1])
+		m.sendBridge(wire.Msg{T: "input", Profile: p, Data: fmt.Sprintf("unassign %d %d %d %d", pos[0], pos[1], n/10, n%10)})
 	case "saved":
 		m.markSaved(p)
 	case "updateRuns":
@@ -162,6 +180,8 @@ func (m *Manager) handleCopyData(msg wire.Msg) {
 	case "updateChickens":
 		zone := ""
 		m.update(p, func(s *State) { s.Chickens++; zone = s.Zone })
+		m.noteChickenTime(p)
+		m.huntPayChicken()
 		m.addEvent(ActivityEvent{Time: time.Now(), Bot: p, Kind: "chicken", Name: "Chickened", Detail: zone})
 		m.noteSetback(p, "chicken")
 	case "updateDeaths":

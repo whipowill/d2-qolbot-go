@@ -14,14 +14,15 @@ func init() {
 }
 
 func TestQuestTableMatchesWhatTheQuesterPlays(t *testing.T) {
-	if len(questTable) != 25 {
-		t.Errorf("the Quester plays 25 quests, the table has %d", len(questTable))
+	if len(questTable) != 26 {
+		t.Errorf("the Quester plays 26 quests, the table has %d", len(questTable))
 	}
-	for _, id := range []int{20, 21} {
-		for _, q := range questTable {
-			if q.ID == id {
-				t.Errorf("quest %d is in the table but not played: it must not be on the sheets", id)
-			}
+	if len(questAll) != 27 {
+		t.Errorf("the game has 27 quests in its log, the table has %d", len(questAll))
+	}
+	for _, q := range questTable {
+		if q.ID == 21 {
+			t.Error("the Blackened Temple has no script: it is done by the Council kill, not played")
 		}
 	}
 	got := map[int]string{}

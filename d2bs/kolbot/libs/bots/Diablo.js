@@ -99,7 +99,7 @@ function Diablo() {
 
 			if (seal.mode) { // for pubbies
 				if (warn) {
-					say(Config.Diablo.SealWarning);
+					// Qolbot: legacy public callout for other players' bots, off (the user, 2026-11-15) // say(Config.Diablo.SealWarning);
 				}
 
 				return true;
@@ -444,7 +444,7 @@ function Diablo() {
 
 			if (Config.PublicMode) {
 				Pather.makePortal();
-				say(Config.Diablo.EntranceTP);
+				// Qolbot: legacy public callout for other players' bots, off (the user, 2026-11-15) // say(Config.Diablo.EntranceTP);
 			}
 
 			Pather.moveTo(7790, 5544);
@@ -461,7 +461,7 @@ function Diablo() {
 
 	if (Config.PublicMode) {
 		Pather.makePortal();
-		say(Config.Diablo.StarTP);
+		// Qolbot: legacy public callout for other players' bots, off (the user, 2026-11-15) // say(Config.Diablo.StarTP);
 	}
 
 	Attack.clear(30, 0, false, this.sort);
@@ -483,7 +483,7 @@ function Diablo() {
 
 
 	if (Config.PublicMode) {
-		say(Config.Diablo.DiabloMsg);
+		// Qolbot: legacy public callout for other players' bots, off (the user, 2026-11-15) // say(Config.Diablo.DiabloMsg);
 	}
 
 	this.diabloPrep();

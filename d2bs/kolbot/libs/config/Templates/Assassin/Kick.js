@@ -66,29 +66,34 @@ function LoadTemplate()
 
 	Config.AutoSkill.Enabled = true; // Enable or disable AutoSkill system
 	Config.AutoSkill.Build = [
+		// 2026-11-15: the list ended at Death Sentry 10, so from level 45 on every point stayed unspent (Xena, level 55, 14 points banked), and
+		// the UseBoS/UseFade/UseVenom this template turns on had no points. Now: Dragon Talon maxed (kicks), Burst of Speed and Fade as they open
+		// (speed; resistances and less physical damage), Venom 1, and the traps that do the killing in Nightmare (Config.Traps: lightning and
+		// death sentries). Dragon Flight went (nothing casts it)
 		[255, 1, false], // dragon talon
-		[275, 1, false], // dragon flight
+		[258, 1, false], // burst of speed (level 6; with claw mastery)
+		[255, 10, false], // dragon talon
+		[267, 1, false], // fade (level 18)
+		[271, 5, false], // lightning sentry (level 24; with fire blast, shock web, charged bolt sentry)
 		[255, 20, false], // max dragon talon, the main attack
-		[271, 10, false], // lightning sentry (laid by Config.Traps)
-		[276, 10, false], // death sentry (laid by Config.Traps)
+		[278, 1, false], // venom (level 30)
+		[276, 10, false], // death sentry (level 30)
+		[271, 20, false], // max lightning sentry
+		[267, 10, false], // fade
+		[276, 20, false], // max death sentry
+		[256, 20, false], // shock web (lightning sentry synergy)
+		[261, 20, false], // charged bolt sentry (lightning sentry synergy)
 	];
 
 	Config.AutoStat.Enabled = true; // Enable or disable AutoStat system
-	Config.AutoStat.Build = [
-		["s", 12], // stat strength for quilt armor
-		["v", 28], // spend in vitality until it reaches 28 (level 5)
-		["d", 50], // spend in energy until 50 (level 8)
-		["v", 50], // spend more in vitality
-		["s", 15], // get up to 15 strength (level 13)
-		["v", 65], // spend in vitality (level 18)
-		["s", 35], // get up to 25 strength (level 20)
-		["d", 75], // spend in energy (level 25)
-		["v", 75], // level 27
-		["s", 55], // level 31
-		["v", 100], // level 36
-		["s", 80], // level 41
-		["v", 125], // level 46
-		["s", 95], // level 49 (less if done stat quests)
-		["v", "all"], // put rest of the points in vitality
-	];
+	// Qolbot (the user, 2026-11-16: "for melee fighters, the stat allocation should be balanced between str, dex, and vit ... keep them equal up until str and dex
+	// about 180, then all other points go to vit"; "balanced each allocation"): every point goes to the lowest of the three, one at a time (the targets go up by one:
+	// strength, dexterity and vitality each to 21, each to 22, ... to 180), then all the rest into vitality. Energy gets nothing.
+	Config.AutoStat.Build = [];
+
+	for (var statTarget = 21; statTarget <= 180; statTarget += 1) {
+		Config.AutoStat.Build.push(["s", statTarget], ["d", statTarget], ["v", statTarget]);
+	}
+
+	Config.AutoStat.Build.push(["v", "all"]);
 }

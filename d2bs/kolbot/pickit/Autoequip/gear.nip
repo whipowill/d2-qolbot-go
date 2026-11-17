@@ -1,0 +1,11 @@
+// .................................................
+// QOL AutoEquip: what each piece of gear is worth to THIS character's build
+// by whipowill, kept up to date with the QOL bot
+// .................................................
+//
+// The scoring is in libs/common/Gear.js (qolgear.tier): it reads the build Qolbot chose for the character (data/<profile>.spec.json)
+// and ranks weapons, shields and armor for that build: a Hammerdin is a caster, a Zealot a fighter with a shield, a Whirlwind
+// Barbarian uses the weapon kind of his mastery, a Kick Assassin's boots count for their kick damage. 0 means: not for this build.
+// It replaces caster.nip and melee.nip (by class only), 2026-11-15. The merc keeps merc.nip.
+
+[quality] >= 1 # # [tier] == qolgear.tier(item)

@@ -86,14 +86,14 @@ function LoadTemplate()
 	];;
 
 	Config.AutoStat.Enabled = true; // Enable or disable AutoStat system
-	Config.AutoStat.Build = [
-		["s", 60], // strength
-		["v", 60], // vitality
-		["d", 50], // dexterity for gear
-		["s", 150], // strength: scales Fury damage
-		["v", 120], // vitality
-		["d", 80], // dexterity for attack rating
-		["s", 250], // strength
-		["v", "all"], // rest into vitality
-	];
+	// Qolbot (the user, 2026-11-16: "for melee fighters, the stat allocation should be balanced between str, dex, and vit ... keep them equal up until str and dex
+	// about 180, then all other points go to vit"; "balanced each allocation"): every point goes to the lowest of the three, one at a time (the targets go up by one:
+	// strength, dexterity and vitality each to 21, each to 22, ... to 180), then all the rest into vitality. Energy gets nothing.
+	Config.AutoStat.Build = [];
+
+	for (var statTarget = 21; statTarget <= 180; statTarget += 1) {
+		Config.AutoStat.Build.push(["s", statTarget], ["d", statTarget], ["v", statTarget]);
+	}
+
+	Config.AutoStat.Build.push(["v", "all"]);
 };

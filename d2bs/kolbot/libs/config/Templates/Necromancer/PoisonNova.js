@@ -43,18 +43,19 @@ function LoadTemplate()
 	// 95	Revive
 
 	Config.AttackSkill[0] = -1; // Preattack skill.
-	Config.AttackSkill[1] = me.getSkill(92, 1) ? 92 : me.getSkill(73, 1) ? 73 : 0; // Primary skill to bosses.
+	Config.AttackSkill[1] = me.getSkill(92, 1) ? 92 : me.getSkill(67, 1) ? 67 : 0; // Primary skill to bosses. Teeth until Poison Nova (was Poison Dagger, melee)
 	Config.AttackSkill[2] = -1; // Primary untimed skill to bosses. Keep at -1 if Config.AttackSkill[1] is untimed skill.
-	Config.AttackSkill[3] = me.getSkill(92, 1) ? 92 : me.getSkill(73, 1) ? 73 : 0; // Primary skill to others.
+	Config.AttackSkill[3] = me.getSkill(92, 1) ? 92 : me.getSkill(67, 1) ? 67 : 0; // Primary skill to others. Teeth until Poison Nova
 	Config.AttackSkill[4] = -1; // Primary untimed skill to others. Keep at -1 if Config.AttackSkill[3] is untimed skill.
-	Config.AttackSkill[5] = 0; // Secondary skill if monster is immune to primary.
+	Config.AttackSkill[5] = -1; // Secondary skill if monster is immune to primary. 2026-11-15: was 0, the plain Attack: the Necromancer walked up to poison immunes (many in Hell) and punched them
 	Config.AttackSkill[6] = -1; // Secondary untimed skill if monster is immune to primary untimed.
 
 	Config.LowManaSkill[0] = -1; // Timed low mana skill.
 	Config.LowManaSkill[1] = -1; // Untimed low mana skill.
 
-	Config.Curse[0] = 66; // Boss curse. Use skill number or set to 0 to disable.
-	Config.Curse[1] = 0; // Other monsters curse. Use skill number or set to 0 to disable.
+	// Lower Resist is the poison curse (2026-11-15: it was Amplify Damage, which only adds to physical damage, and nothing on the others)
+	Config.Curse[0] = me.getSkill(91, 1) ? 91 : 66; // Boss curse. Use skill number or set to 0 to disable.
+	Config.Curse[1] = me.getSkill(91, 1) ? 91 : 0; // Other monsters curse. Use skill number or set to 0 to disable.
 
 	Config.ExplodeCorpses = 83; // Explode corpses. Use skill number or 0 to disable. 74 = Corpse Explosion, 83 = Poison Explosion
 	Config.Golem = "None"; // Golem. 0 or "None" = don't summon, 1 or "Clay" = Clay Golem, 2 or "Blood" = Blood Golem, 3 or "Fire" = Fire Golem
@@ -71,33 +72,30 @@ function LoadTemplate()
 
 	Config.AutoSkill.Enabled = true; // Enable or disable AutoSkill system
 	Config.AutoSkill.Build = [
-		[73, 1, false], // poison dagger
-		[92, 1, false], // poison nova
-		[83, 1, false], // poison explosion
+		// 2026-11-15: Teeth is the attack until Poison Nova opens at 30 (before, levels 6-29 fought with Poison Dagger, in melee); Lower Resist
+		// (the poison curse) as soon as it opens; then Poison Nova and its synergies Poison Explosion and Poison Dagger maxed
+		[67, 1, false], // teeth
 		[66, 1, false], // amplify damage
 		[68, 1, false], // bone armor
+		[67, 10, false], // teeth: the attack until poison nova
+		[92, 1, false], // poison nova (level 30; with poison dagger and poison explosion)
+		[91, 1, false], // lower resist (level 30; with weaken, terror, decrepify, dim vision, confuse, life tap)
 		[92, 20, false], // poison nova
-		[73, 20, false], // poison dagger
-		[83, 20, false], // poison explosion
-		[91, 1, false], // lower resist
+		[83, 20, false], // poison explosion (synergy, and the corpse blast)
+		[73, 20, false], // poison dagger (synergy)
+		[91, 10, false], // lower resist
+		[68, 20, false], // bone armor
 	];
 
 	Config.AutoStat.Enabled = true; // Enable or disable AutoStat system
-	Config.AutoStat.Build = [
-		["s", 12], // strength for quilt armor
-		["v", 28], // vitality (level 5)
-		["e", 50], // energy (level 8)
-		["v", 50], // vitality
-		["s", 15], // strength
-		["v", 65], // vitality
-		["s", 35], // strength
-		["e", 75], // energy
-		["v", 75], // vitality
-		["s", 55], // strength
-		["v", 100], // vitality
-		["s", 80], // strength
-		["v", 125], // vitality
-		["s", 95], // strength
-		["v", "all"], // rest into vitality
-	];
+	// Qolbot (the user, 2026-11-16: the casters, "equal str/eng/vit until 180"): strength, energy and vitality equal, one point at a time (the targets go up by one:
+	// each to 21, each to 22, ... to 180), then all the rest into vitality. Dexterity gets nothing. (The order before: vitality first, strength up to 95-100, and
+	// energy only for the Hammerdin, 30.)
+	Config.AutoStat.Build = [];
+
+	for (var statTarget = 21; statTarget <= 180; statTarget += 1) {
+		Config.AutoStat.Build.push(["s", statTarget], ["e", statTarget], ["v", statTarget]);
+	}
+
+	Config.AutoStat.Build.push(["v", "all"]);
 }

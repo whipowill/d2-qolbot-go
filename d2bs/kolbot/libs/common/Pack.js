@@ -6,18 +6,21 @@
 include("common/Plan.js");
 include("common/Report.js");
 include("common/Saver.js");
+include("common/PlugY.js");
 
 var Pack = {
 	// the book-keeping after an item went to the stash (or the cube)
 	stashed: function (item) {
 		Misc.itemLogger("Stashed", item);
+		Item.stashAnnounced[item.gid] = true; // the Activity list has this one (Town.js: the cube to the stash)
 
 		if (Item.isCharm(item)) {
 			Item.forgetCharm(item);
 		}
 
 		if (typeof Pickit === "object") {
-			print("\xFFc7Stashed " + Pickit.itemColor(item) + item.name); // read by Qolbot's Activity list
+			Misc.logItem("Stashed", item); // the stats for the Activity card ("Stashed: <name>"): the stashed item's own report, not one borrowed from an earlier entry
+			print("\xFFc7Stashed " + Pickit.itemColor(item) + item.name + " [" + Item.stashWhy(item) + "]"); // read by Qolbot's Activity list
 		}
 	},
 
@@ -49,6 +52,17 @@ var Pack = {
 
 		if (!plan || !plan.storage || plan.storage.clearOnLoad === false || !me.inTown) {
 			return true;
+		}
+
+		// Qolbot (the user, 2026-11-16: "why are bots not running .deposit and instead are depositing runes into stash"): with the Quartermaster mod the pack's runes, gems and
+		// potions go in with ".deposit", not by hand to the stash. This step moved them itself at every game start (Xena, Sankt and Darius stashed Tal, Ral, Ort and El runes by
+		// hand at 13:23:45-53, with no .deposit before), because only the chores' stash step sent it first. Now the same call, first. UNTESTED in a game.
+		if (typeof Quartermaster === "object") {
+			try {
+				Quartermaster.deposit(true);
+			} catch (depositError) {
+				print("Quartermaster: " + depositError);
+			}
 		}
 
 		items = Item.botItems();
@@ -105,11 +119,7 @@ var Pack = {
 			if (!Storage.Stash.CanFit(item)) {
 				if (plan.storage.addStashPages) {
 					Report.problem("Pack", "My stash is full. Adding a stash page.");
-					say("/insertpage");
-					delay(1000);
-					say("/swappage 1"); // only works with PlugY v14
-					delay(1000);
-					Storage.Reload();
+					PlugY.newStashPage(); // a fresh page in view: "/insertpage", "/swappage 1", the first page button (PlugY.js)
 				} else {
 					Report.fail("Pack", "my stash is full and I cannot make room (" + (plan.plugy === false ? "the game does not use PlugY, so I cannot add a stash page" : "adding stash pages is off") + "). Stopping.");
 					D2Bot.stop(me.profile, true);

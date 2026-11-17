@@ -130,7 +130,7 @@ into one. It gets a custom plan:
   handled automatically by `AutoSkill`.
 - **Main attack skill:** the most-invested attack skill, but only if it has at least 5 points (1 to 4 points is usually
   a prerequisite, not a main skill).
-- **Stats:** strength and dexterity stay where they are, everything else goes to vitality.
+- **Stats:** strength goes up to 180 (it stays where it is above that), dexterity stays where it is, everything else goes to vitality.
 
 ## Skill points
 
@@ -146,28 +146,97 @@ Points are spent when a game starts, so points earned during a game are spent at
 
 Done by `AutoStat` from the template's `Config.AutoStat.Build` (strength, dexterity, energy and vitality, as
 absolute targets, ending with the rest into vitality). New templates use a caster plan (strength for armour, then
-vitality and energy) or a melee plan (strength and dexterity for gear, rest vitality).
+vitality; no energy: 2026-11-13 the Necromancer, Sorceress, Summon Druid and Javazon templates lost their energy lines, which had put 50 points into energy, as on Sankt, whose
+life was 187 at level 25) or a melee plan (strength and dexterity for gear, rest vitality). Vitality is what keeps these bots alive. Points already spent stay spent.
 
-### Not built yet: respeccing with PlugY
+### Stat rules by build kind (the user, 2026-11-16)
 
-An idea, not a feature: with Auto Stat on, a bot standing in town could use PlugY to take back all its points and let Auto Stat and Auto
-Skill spend them again along its spec (for a character whose points do not fit the build Qolbot chose). Nothing in the project does this
-yet. What is known: this install's `PlugY.ini` has `ActiveStatsUnassignment=1` (hold the key `KeyUsed=18`) and `ActiveSkillsUnassignment=1`
-(`ActiveSkillsUnassignmentOneForOne=0`), so un-assigning points is possible in the game; the bots only use PlugY's `/save`, `/insertpage`
-and `/swappage` today. Because points are spent when a game starts, a reset in town would be re-spent at the next game's start, not at once.
-It would need a rule for when a respec is worth it (the build was re-chosen, or the character is far off its spec) so a bot never resets by
-accident.
+Every build ends with at least 180 strength (an Elite Monarch needs 156). "Equal" means one point at a time to whichever of the listed stats is lowest, so they stay equal at
+every level; the templates generate the order in a loop (`Config.AutoStat.Build.push(["s", n], ["d", n], ["v", n])` for n from 21 to 180, then `["v", "all"]`). Equal means equal
+totals, not equal points added (the lowest catch up first).
+
+| Kind | Builds | Equal stats, up to 180 each | After 180 | Energy | Dexterity |
+|---|---|---|---|---|---|
+| Melee | Whirlwind and Frenzy Barbarian, Zeal and Smiter Paladin, Kick Assassin, Fury Druid | strength, dexterity, vitality | all vitality | none | yes |
+| Ranged melee | Javazon, Throw Barbarian, Bowazon | strength, dexterity, vitality | all vitality | none | yes |
+| Summoners | Summon Druid, Summon Necromancer | strength, vitality | all vitality | none | none |
+| Casters (every other build) | the five Sorceress builds, Bone and Poison Nova Necromancer, Trapsin, Fire and Wind Druid, Hammerdin | strength, energy, vitality | all vitality | yes | none |
+| Custom (no template fits) | built from the character's own skills | strength goes up to 180 first | all vitality | none | stays where it is |
+
+A new build gets one of these four kinds; say which when adding it. The tests (`internal/spec/plan_test.go`) accept the generated order as long as it ends with the `["v", "all"]` push.
+
+### Game mods: one module each
+
+Everything a bot asks of a mod is in a class of its own under `d2bs/kolbot/libs/common/`, so it can be controlled in one place (the user, 2026-11-16). Nothing else in the bot
+scripts sends these commands: `scripts/jstest.sh` has tests for each module, and a grep for `say("/save`, `say(".reset`, `say(".deposit` outside these files finds nothing.
+
+| Module | The mod | Settings, Game checkbox | What it does |
+|---|---|---|---|
+| `PlugY.js` (`PlugY`) | PlugY | "Using PlugY?" (`plan.plugy`, `Config.UsesPlugy`) | `/save` (Saver, ForceSave, the leader's "save" order), `/insertpage`, `/swappage n`, the first-page click, `newStashPage()` (Pack, Cubing) |
+| `Qol.js` (`Qol`) | the user's QOL mod (qol.dll) | "Using QOL?" (`plan.qol`, `Config.UsesQol`) | `.reset stats`, `.reset skills` (Respec); the mercenary options `equip` and `drop_items` count only with it on |
+| `Quartermaster.js` (`Quartermaster`) | Quartermaster (Quartermaster.dll) | "Using Quartermaster?" (`plan.quartermaster`, `Config.UsesQuartermaster`) | `.deposit` (on arrival in town, in the chores' stash step, at the start of a game in `Pack.freePickupArea`) |
+
+With a mod's box unchecked its module sends nothing and says so once in the log. A new command for one of these mods goes into its module, not into the script that needs it.
+
+**`.deposit` never fires from two bots at the same moment.** Every send takes a lock first (`Quartermaster.lock`): one small file per bot, `data/qm.<profile>.json`, written by that bot alone
+(`req` when it asked, `busy` while it holds the lock, `done` when it last finished, `at` a heartbeat). A bot sends only when no other bot is sending, none finished within 1.2 s, and no
+other bot asked before it (order by request time, then name); after taking the lock it waits 0.4 s and looks again, and gives it back if a bot ahead of it took it too. A bot whose heartbeat
+is 10 s old (crashed, left the game) is ignored; a bot that waits 45 s (20 s on an emergency visit) skips this deposit. Five bots arriving together are through in about 15 s, at least 3 s apart.
+`scripts/jstest/quartermaster_test.js` simulates five bots reading the files at the same instants, 300 random starts: each sends once, never two together.
+
+### Auto Respec (PlugY)
+
+Settings tab, Automation, **AutoRespec** (off by default; needs AutoSkill and PlugY). A bot in town whose skill points are badly placed takes
+them all back once, and AutoSkill spends them again along the build. Only skill points: PlugY's stat un-assign needs a held key.
+
+**Warning (2026-11-16):** with the user's own mod (`.reset stats`) it also takes back STAT points that sit above the template's plan, once per character and build, and spends them again by the template. Stats you set by hand that the template would not choose are undone: Barabas's 145/141/146/18 became 84/69/222/10 on 2026-11-16 (run 7 start). Uncheck AutoRespec once a character's stats are as you want them, or make the template match what you want first.
+
+How a bot judges it (`libs/common/Respec.js`): it runs AutoSkill's own allocator on paper, with all the points it has (spent and unspent), at its
+current level, and compares that with where its points are. Points the paper plan would have put elsewhere are *misplaced*. It respecs when at least
+6 points are misplaced and they are a quarter of its points or more, and the paper plan can place at least 60% of the points; or, when you chose the
+build by hand on the Bots page, when at least 3 are misplaced. A bot whose points match no build (custom mode) is left alone unless you chose a build
+by hand. One try per character and build (`data/<profile>.respec.json`), whatever came of it. The click is PlugY's X button at the top right of the
+skill page (T), sent through the bridge; the bot checks that its unspent points went up and says so in the Activity list ("Respec" or "Respec failed").
+
+### Gold
+
+Bots keep gold in the pack (pays for scrolls, potions, repairs) and in PlugY's stash gold. Before the town chores a bot takes gold out of its stash
+up to 2000 in the pack. A bot in town with under 400 gold in total asks the team in chat; every other bot in the same town with at least 1000 gold (a bot
+under 1000 gives nothing) drops 200 to 1000 of it beside the asker (half of what is above a 600 reserve, once per request), and the asker picks it up. A gold pickup mod that
+takes dropped gold back in town defeats this: the donor logs "came straight back to me". PlugY's shared gold is not used (this install has
+`ActiveSharedStashInMultiPlayer=0`, so it does not exist in the bots' TCP/IP games).
+
+When nobody is playing and the objective is Quest, two **hunts** can interrupt the quests, and the leader's card says which one it is leading
+("Leading level hunt", "Leading gold hunt"; "Leading waypoint hunt" while the team shares waypoints at the start of a game; otherwise "Leading quest"):
+
+- **Level hunt:** the chicken limit tripped. The team levels on an easy Farm run until its weakest bot has gained 3 levels, then goes back to the
+  quests. If the limit trips again during the hunt, everybody stops (a fatal event, red box on the Activity page).
+- **Gold hunt:** the team holds under 1000 gold per bot (pack plus stash, the team's total divided by its bots; every bot writes its purse to
+  `data/<profile>.purse.json`). It runs the same easy Farm list until EVERY bot holds at least 10000, with no time limit, and not again within an
+  hour of the last one. On the way to each boss it clears every area it passes through (Forgotten Tower and Tower Cellar 1-4 for the Countess,
+  Catacombs 3 for Andariel): more kills, more gold. Who picks up what, while nobody is playing (in Farm and in Quest mode): the **leader** picks up the keepers and the quest items; the followers, and the
+leader on a gold hunt, also pick up what `pickit/GoldSell.nip` lists, to sell it in town: every ring and amulet, rare and crafted gear, and magic gear
+of any item level (from level 1: before 2026-11-14 only item level 60 or more). The leader loads the file only on a gold hunt (normally it picks up whatever might be a keeper or an upgrade and sells the rest anyway); the
+followers load it always. The file is plain NIP, edit it freely. It is read after every keep list, so a keeper is kept as always (and stashed); a bot's upgrade is put on; a
+kind the Equipment tab protects is not picked up at all. Each follower therefore earns its own gold. Room: a quest item gets room from every bot (it makes
+space for it); a keeper that does not fit on the leader sends it to town to sell the gold items first, so gold items never keep out a keeper. If nobody has town portal scrolls or the gold for any, everybody stops instead (a fatal event).
+
+The leader is never a bot with no scrolls and under 150 gold, if another can lead. Repairs never take the last 300 gold of a bot that has fewer than 5
+scrolls.
 
 ## Gear
 
 Auto-equip is on by default (turn it off for every bot with `"autoEquip": false` in `qolbot.json`, on the web page's
-Settings tab, Automation, or use safe mode). The bot looks through its inventory and stash (while in town) and equips an item when
+Settings tab, Advancement, or use safe mode). The bot looks through its inventory and stash (while in town) and equips an item when
 it beats what is in that slot.
 
-- **What counts as better:** the rules are in `pickit/Autoequip/caster.nip` (Sorceress, Necromancer, Druid: skills, cast rate, resists) or `melee.nip` (everyone else: attack speed, leech, damage, resists), and `merc.nip` for the mercenary. Candidates
-  are normal, magic and rare, non-ethereal, non-runeword items, ranked by the four resistances plus the all-resist stat,
-  plus defense (and maximum damage for the class's weapon type). Unidentified items are identified with a Tome of
-  Identify first if the bot has one.
+- **What counts as better:** each piece is scored for the character's build, not just its class (`libs/common/Gear.js`, used by
+  `pickit/Autoequip/gear.nip`; `merc.nip` for the mercenary). A Hammerdin is ranked as a caster (skills, cast rate), a Zealot as a fighter
+  with a one-handed weapon and a shield, a Bowazon wants a bow and no shield. A Whirlwind or Frenzy Barbarian wants the weapon kind of his
+  mastery, and a Kick Assassin's boots count for their kick damage. Every score adds resistances, the build's skills (all, class, its skill
+  trees, its own skills), its stats, then defense. Weapons and shields the build does not use score 0. A two-handed weapon must beat the
+  weapon and the shield together; the shield comes off first. Unidentified items are identified with a Tome of Identify first if the bot
+  has one.
 - **What is never replaced is configurable.** The defaults are the rules you asked for: **unique, set, crafted, and
   anything socketed or runeword**, plus Khalim's Will. Change them on the web page (**Settings** tab) or in
   `qolbot.json`:
@@ -318,7 +387,7 @@ upgrade" (`"autoEquip"`), "Bots can auto spend stat points" (`"autoStat"`) and "
 upgrade.
 
 The **Safe Mode** checkbox on the Bots page (`"safeMode"`) says "Bots are prohibited from AutoEquip, AutoStat, and
-AutoSkill": it switches all three off whatever the Automation tab says. It also limits what they pick up to potions, scrolls, tomes, keys, gold and the quest items they keep (nothing else, whatever the
+AutoSkill": it switches all three off whatever the Advancement tab says. It also limits what they pick up to potions, scrolls, tomes, keys, gold and the quest items they keep (nothing else, whatever the
 keeper rules say). Qolbot
 folds it into the plan it writes for each bot, and the plan is applied after the template loads, so no template can switch
 any of it back on. It only affects bots started after you change it.
@@ -367,6 +436,22 @@ Switch it off with `autoTown: false` in the plan. Town chores only run the parts
 potions when low, repair/sell/stash when the bag is full or gear is worn, spend points when there are any); the
 first visit of a game does the full round. Gear pickup and selling follow the rules in "What bots do with items" below.
 
+## Using Quartermaster?
+
+Settings tab, Game, checkbox **Using Quartermaster?** (off by default). Quartermaster is a mod that takes chat commands; `.deposit` stores the common
+items a character carries, rejuvenation potions above all, in the mod's own storage. The bots' pickit takes every rejuvenation potion it sees and
+nothing else ever moves them, so the pack fills up with them (seen 2026-11-13). With the box checked a bot sends `.deposit` (as chat, the way it
+sends PlugY's `/save`) every time it is in town: once on arrival, and again at the start of its stash step, at most every 20 seconds. The bots take turns, because the mod may misbehave when two of them send it at the same moment and they all arrive together at the
+start of a game: a bot's turn is its place in the sorted list of the team's profile names times 4 seconds after it arrived, plus a small offset of its own. The pack filled
+because the stash step skipped potions and the Keeper tab keeps every rejuvenation potion the leader sees; rejuvenation potions are now stashed.
+The mod also prints "Congratulations! You are __% complete on your Holy Grail quest." when an item is new to the quest. That is not a chat message, and
+reading it might crash a bot, so the bots do NOT listen for it and the Activity list does not show it.
+Every bot deposits, whatever its belt. A bot with a small belt keeps spare healing and mana potions in its pack, so a deposit takes them and the next
+chores would buy them again, which cost one bot about 850 gold in a single visit. So a bot with Quartermaster on keeps no spare potions in the pack at all (the belt is
+its supply and is refilled when a column is half empty). One safeguard: if a deposit takes potions out of the BELT the bot says so and stops using it for
+that game. Gems, runes and essences are no problem: bots never craft, and nothing else needs them in the pack.
+`libs/common/Quartermaster.js`, called from the Follower main loop, the team wait and `Town.stash`; the plan carries `quartermaster`, AutoSpec sets `Config.UsesQuartermaster`.
+
 ## Is this PlugY?
 
 The Settings tab has an "Is this PlugY?" checkbox. Unchecked, anything that needs PlugY (extra stash pages, `/save`
@@ -381,8 +466,17 @@ Rows of running bots are tinted green, starting/stopping bots amber.
 
 The bot reads the belt it wears and sets its own potion rules each time it checks town chores: it buys when a belt
 column is half empty (so a big belt full of potions needs no trip), keeps spare healing/mana potions in the inventory
-while the belt is tiny (a fresh level-2 character), and lowers the gold it needs before shopping at low levels.
-Nothing to configure.
+while the belt is tiny (a fresh level-2 character: 4 healing spares with a 1-row belt, 2 with 2 rows, none with 3 or 4; casters keep 1 spare mana
+potion more), and lowers the gold it needs before shopping at low levels (100 gold under level 15, else 1000). The belt columns are healing, mana,
+mana, rejuvenation. Nothing to configure.
+
+What a bot picks up: the QOL potion list takes up to 3 of each healing and mana kind (the kinds that fit its level: minor up to level 12, light up to 24,
+normal up to 36, greater up to 48, super always) and up to 3 rejuvenation potions (full rejuvenation always, plain up to level 48), counting the belt and
+the pack. Separately the Keeper tab's "Bots pick up rejuvenation potions" (on by default) keeps EVERY rejuvenation potion the leader sees, with no limit.
+Healing and mana spares in the pack above the bot's own buffer are used up in town. Rejuvenation potions serve two purposes, and the bot tells them apart by COUNT: it keeps 4 of them on hand (belt plus pack, a
+full belt column) so it has one when it is about to die, and every one beyond that is accumulation and goes to the stash. When it is below 4 it takes
+the difference out of the stash in town. (They used to be on the list of things the stash step never touches, so they piled up.) With Quartermaster the
+`.deposit` command may store the reserve as well; the bots have no way to take those back.
 
 ## Quest NPCs
 

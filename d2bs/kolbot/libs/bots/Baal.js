@@ -193,7 +193,7 @@ function Baal() {
 			string += " Dolls in area.";
 		}
 
-		say(string);
+		// Qolbot: legacy public callout for other players' bots, off (the user, 2026-11-15) // say(string);
 	};
 
 	Town.doChores();
@@ -216,23 +216,23 @@ function Baal() {
 
 	Pather.moveTo(15095, 5029);
 
-	if (Config.Baal.DollQuit && getUnit(1, 691)) {
-		say("Dolls found! NG.");
+	if (Config.Baal.DollQuit && getUnit(1, 691)) { // stock kolbot, off in the config files
+		// Qolbot: legacy public callout for other players' bots, off (the user, 2026-11-15) // say("Dolls found! NG.");
 
 		return true;
 	}
 
 	if (Config.Baal.SoulQuit && getUnit(1, 641)) {
-		say("Souls found! NG.");
+		// Qolbot: legacy public callout for other players' bots, off (the user, 2026-11-15) // say("Souls found! NG.");
 
 		return true;
 	}
 
 	if (Config.PublicMode) {
-		this.announce();
+		// Qolbot: legacy public callout for other players' bots, off (the user, 2026-11-15) // this.announce();
 		Pather.moveTo(15118, 5002);
 		Pather.makePortal();
-		say(Config.Baal.HotTPMessage);
+		// Qolbot: legacy public callout for other players' bots, off (the user, 2026-11-15) // say(Config.Baal.HotTPMessage);
 		Attack.clear(15);
 	}
 
@@ -241,7 +241,7 @@ function Baal() {
 	if (Config.PublicMode) {
 		Pather.moveTo(15118, 5045);
 		Pather.makePortal();
-		say(Config.Baal.SafeTPMessage);
+		// Qolbot: legacy public callout for other players' bots, off (the user, 2026-11-15) // say(Config.Baal.SafeTPMessage);
 		Precast.doPrecast(true);
 	}
 
@@ -312,7 +312,7 @@ MainLoop:
 
 	if (Config.Baal.KillBaal) {
 		if (Config.PublicMode) {
-			say(Config.Baal.BaalMessage);
+			// Qolbot: legacy public callout for other players' bots, off (the user, 2026-11-15) // say(Config.Baal.BaalMessage);
 		}
 
 		Pather.moveTo(15090, 5008);

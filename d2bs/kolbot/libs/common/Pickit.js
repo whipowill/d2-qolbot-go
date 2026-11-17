@@ -17,6 +17,26 @@ var Pickit = {
 	// A follower of a leader bot picks up nothing except the quest consumables (the Book of Skill, the Potion of Life, ...): every character has to
 	// take and use its own, the leader cannot do it for them. Set by AutoSpec.apply for a bot that has plan.noPickup.
 	questOnly: false,
+
+	// A follower of a leader bot (questOnly) takes the quest consumables AND what GoldSell.nip lists: the followers make their own gold (the user,
+	// 2026-11-13: the leader loots the keepers, the followers pursue the gold, everybody frees room for a quest item). A match in GoldSell.nip is result 4.
+	sellItem: function (item) {
+		try {
+			return this.checkItem(item).result === 4;
+		} catch (sellError) {
+			return false;
+		}
+	},
+	// A follower (questOnly) also takes what would be an upgrade for itself or its mercenary (the user, 2026-11-14: "seems like bots still aren't auto equiping
+	// their merc weapons (or themselves) much at all"): before, only GoldSell.nip's rares got past questOnly, so a normal or magic bow for the Rogue, or a
+	// better helm, was walked past. UNTESTED live.
+	upgradeItem: function (item) {
+		try {
+			return Item.takeable(item) && (Item.autoEquipCheck(item) || Item.autoMercEquipCheck(item));
+		} catch (upgradeError) {
+			return false;
+		}
+	},
 	safeKinds: [4, 18, 22, 38, 39, 41, 76, 77, 78, 79, 80, 81],
 	safeQuestIds: [87, 89, 90, 91, 92, 173, 174, 521, 524, 525, 545, 546, 547, 548, 549, 551, 552, 553, 554, 555, 644, 646],
 	safeQuestCodes: ["pk1", "pk2", "pk3", "dhn", "bey", "mbr", "toa", "tes", "ceh", "bet", "fed"],
@@ -48,6 +68,15 @@ var Pickit = {
 	checkItem: function (unit, is_include_tiered_items = false) {
 		// A bot following a player never takes the Pandemonium keys (or the organs, token and essences): they are the player's
 		if (Config.Leader && ["pk1", "pk2", "pk3", "dhn", "bey", "mbr", "toa", "tes", "ceh", "bet", "fed"].indexOf(unit.code) > -1) {
+			return {
+				result: 0,
+				line: null
+			};
+		}
+
+		// Wirt's Leg is only for the cow portal (the user, 2026-11-14: "they don't have to pick it up, only if they want to do cow level"): the Cows run
+		// takes it itself (Cows.getLeg calls Pickit.pickItem directly), nobody picks it up otherwise (a follower must not take the leg from the leader)
+		if (unit.classid === 88) {
 			return {
 				result: 0,
 				line: null
@@ -87,6 +116,14 @@ var Pickit = {
 
 		// If total gold is less than 10k pick up anything worth 10 gold per
 		// square to sell in town.
+		// Qolbot: a match in GoldSell.nip (loaded only on a gold hunt, after every keep list) is picked up to be SOLD, never kept. Only gear a bot may sell
+		// (Item.takeable: never a kind the Equipment tab protects, which would be picked up and then never sold, clogging the pack).
+		if (rval.result === 1 && rval.line && String(rval.line).indexOf("GoldSell.nip") === 0) {
+			return Item.takeable(unit) ? {result: 4, line: rval.line} : {result: 0, line: null};
+		}
+
+		// If total gold is less than 10k pick up anything worth 10 gold per
+		// square to sell in town.
 		if (rval.result === 0 && Town.ignoredItemTypes.indexOf(unit.itemType) === -1 && me.gold < Config.LowGold && unit.itemType !== 39) {
 			// Gold doesn't take up room, just pick it up
 			if (unit.classid === 523) {
@@ -108,7 +145,7 @@ var Pickit = {
 	},
 
 	pickItems: function () {
-		var status, status_tiers, item, canFit, profit, gidNow, name, consumable,
+		var status, status_tiers, item, canFit, intoCube, cubeGid, cubeName, cubeSize, profit, gidNow, name, consumable,
 			needMule = false,
 			pickList = [];
 
@@ -126,7 +163,7 @@ var Pickit = {
 
 		if (item) {
 			do {
-				if ((item.mode === 3 || item.mode === 5) && getDistance(me, item) <= Config.PickRange && (!this.questOnly || QuestItems.isConsumable(item))) {
+				if ((item.mode === 3 || item.mode === 5) && !this.leaveForPlayer(item) && getDistance(me, item) <= Config.PickRange && (!this.questOnly || QuestItems.isConsumable(item) || QuestItems.isShared(item) || this.sellItem(item) || this.upgradeItem(item))) {
 					pickList.push(copyUnit(item));
 				}
 			} while (item.getNext());
@@ -156,6 +193,7 @@ var Pickit = {
 				// picks up a possible upgrade (to try on, or to sell if it is not one) outside those categories (Item.takeable).
 				// if you can pick the item, and the item is keepable, or item is equipable...
 				if (this.canPick(pickList[0]) && (status.result || ((status_tiers.result || Item.gearTier(pickList[0]) > 0) && Item.takeable(pickList[0]) && (Item.autoEquipCheck(pickList[0]) || Item.autoMercEquipCheck(pickList[0]))))) {
+					intoCube = false;
 					// Override canFit for scrolls, potions and gold
 					canFit = Storage.Inventory.CanFit(pickList[0]) || [4, 22, 76, 77, 78].indexOf(pickList[0].itemType) > -1;
 
@@ -169,6 +207,17 @@ var Pickit = {
 						return this.pickItems();
 					}
 
+					// Qolbot: the cube first: a town trip for a full pack only once the cube is full too (Item.cubeForRoom)
+					if (!canFit && Item.cubeForRoom(pickList[0])) {
+						canFit = true;
+					}
+
+					// Qolbot: the cube takes the pickup itself when the pack has no room (Item.cursorToCube, after the pickup below)
+					if (!canFit && Item.cubeTakesPickup(pickList[0])) {
+						canFit = true;
+						intoCube = true;
+					}
+
 					// Try to make room by selling items in town
 					if (!canFit) {
 						// Check if any of the current inventory items can be stashed or need to be identified and eventually sold to make room
@@ -179,12 +228,14 @@ var Pickit = {
 							if (Town.visitTown()) {
 								// Recursive check after going to town. We need to remake item list because gids can change.
 								// Called only if room can be made so it shouldn't error out or block anything.
-								Town.doChores(); // do this to actually make room? -whipowill
+								// (no second Town.doChores() here: visitTown did the chores and is back in the field, and doChores in the field goes to town and stays:
+								// live 13:36:34 Barabas went back through the portal, at once "Going back to town" again, and Terror's End looked for seal 392 in town)
 								return this.pickItems();
 							}
 
 							// Town visit failed - abort
 							print("ÿc7Not enough room for " + this.itemColor(pickList[0]) + pickList[0].name);
+							Item.reportFull(pickList[0]); // the red box, when the cube is full too
 
 							return false;
 						}
@@ -192,12 +243,17 @@ var Pickit = {
 						// Can't make room - trigger automule
 						Misc.itemLogger("No room for", pickList[0]);
 						print("ÿc7Not enough room for " + this.itemColor(pickList[0]) + pickList[0].name);
+						Item.reportFull(pickList[0]); // the red box, when the cube is full too
 
 						needMule = true;
 					}
 
 					// Item can fit - pick it up
 					if (canFit) {
+						cubeGid = pickList[0].gid;
+						cubeName = pickList[0].name;
+						cubeSize = {sizex: pickList[0].sizex, sizey: pickList[0].sizey};
+
 						if (profit) {
 							gidNow = pickList[0].gid;
 							name = pickList[0].name;
@@ -214,6 +270,10 @@ var Pickit = {
 								QuestItems.useAll(); // read it at once: a chicken before the next town visit must not take the points with it
 							}
 						}
+
+						if (intoCube) {
+							Item.cursorToCube(cubeGid, cubeName, cubeSize);
+						}
 					}
 				}
 			}
@@ -222,7 +282,7 @@ var Pickit = {
 		}
 
 		// Quit current game and transfer the items to mule
-		if (needMule && AutoMule.getInfo() && AutoMule.getInfo().hasOwnProperty("muleInfo") && AutoMule.getMuleItems().length > 0) {
+		if (needMule && typeof AutoMule === "object" && AutoMule.getInfo() && AutoMule.getInfo().hasOwnProperty("muleInfo") && AutoMule.getMuleItems().length > 0) {
 			scriptBroadcast("mule");
 			scriptBroadcast("quit");
 		}
@@ -232,6 +292,35 @@ var Pickit = {
 
 	// Check if we can even free up the inventory
 	pickedGids: {}, // items this bot picked up in this game (item ids are only good for one game)
+
+	// Qolbot: WITH YOU LEADING ("I'm playing": the plan's partySync is off), a quest item (QuestItems.keep: the Gidbinn, the Horadric Malus, Khalim's parts ...)
+	// is left on the ground for you unless another copy of it lies there too (the user, 2026-11-15: "if only one item drops, then I need to be the one to pick it
+	// up for quest progression ... let's suppose the Gidbinn for example only drops one knife, i don't want the bots to pick it up bc i'm the one to do it").
+	// One copy per player: each bot takes one while two or more are left, the last one is yours. Two bots that look at the same moment could both take
+	// one; the leader bot of a bot-led run is not affected. UNTESTED in a game.
+	leaveForPlayer: function (item) {
+		var n = 0, u;
+
+		try {
+			if (QuestItems.keep.indexOf(item.classid) < 0 || typeof Plan !== "object" || !Plan.get() || Plan.get().partySync || (typeof Team === "object" && Team.isLeader())) {
+				return false;
+			}
+
+			u = getUnit(4, item.classid);
+
+			if (u) {
+				do {
+					if (u.mode === 3 || u.mode === 5) {
+						n += 1;
+					}
+				} while (u.getNext());
+			}
+
+			return n < 2;
+		} catch (e) {
+			return false;
+		}
+	},
 
 	canMakeRoom: function () {
 		if (!Config.MakeRoom) {
@@ -278,7 +367,7 @@ var Pickit = {
 			return false;
 		}
 
-		if (this.questOnly && !QuestItems.isConsumable(unit)) {
+		if (this.questOnly && !QuestItems.isConsumable(unit) && !QuestItems.isShared(unit) && !this.sellItem(unit) && !this.upgradeItem(unit)) {
 			return false;
 		}
 
@@ -387,6 +476,12 @@ MainLoop:
 		if (stats.picked) {
 			this.pickedGids[gid] = true; // Item.userOwned: a charm picked up here is the bot's, not yours
 
+			try {
+				Misc.notePicked(me.getItem(-1, -1, gid) || unit); // the audit record (Misc.auditTouch)
+			} catch (noteError) {
+				print("picked list: " + noteError);
+			}
+
 			if (Item.isCharm(unit) && me.getItem(-1, -1, gid)) {
 				Item.rememberCharm(me.getItem(-1, -1, gid)); // and remembered for after a restart
 			}
@@ -490,7 +585,7 @@ MainLoop:
 			return false;
 		}
 
-		if (this.questOnly && !QuestItems.isConsumable(unit)) {
+		if (this.questOnly && !QuestItems.isConsumable(unit) && !QuestItems.isShared(unit) && !this.sellItem(unit) && !this.upgradeItem(unit)) {
 			return false;
 		}
 
@@ -699,7 +794,7 @@ MainLoop:
 			gid = this.gidList.shift();
 			item = getUnit(4, -1, -1, gid);
 
-			if (item && (item.mode === 3 || item.mode === 5) && Town.ignoredItemTypes.indexOf(item.itemType) === -1 && getDistance(me, item) <= Config.PickRange && (!this.questOnly || QuestItems.isConsumable(item))) {
+			if (item && (item.mode === 3 || item.mode === 5) && !this.leaveForPlayer(item) && Town.ignoredItemTypes.indexOf(item.itemType) === -1 && getDistance(me, item) <= Config.PickRange && (!this.questOnly || QuestItems.isConsumable(item) || QuestItems.isShared(item) || this.sellItem(item) || this.upgradeItem(item))) {
 				itemList.push(copyUnit(item));
 			}
 		}

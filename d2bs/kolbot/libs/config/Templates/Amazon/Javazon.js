@@ -41,9 +41,9 @@ function LoadTemplate()
 	// 35	Lightning Fury
 
 	Config.AttackSkill[0] = -1; // Preattack skill.
-	Config.AttackSkill[1] = me.getSkill(24, 1) ? 24 : 0; // Primary skill to bosses.
+	Config.AttackSkill[1] = me.getSkill(24, 1) ? 24 : (me.getSkill(14, 1) ? 14 : 0); // Primary skill to bosses. Power Strike until Charged Strike
 	Config.AttackSkill[2] = -1; // Primary untimed skill to bosses. Keep at -1 if Config.AttackSkill[1] is untimed skill.
-	Config.AttackSkill[3] = me.getSkill(35, 1) ? 35 : (me.getSkill(24, 1) ? 24 : 0); // Primary skill to others.
+	Config.AttackSkill[3] = me.getSkill(35, 1) ? 35 : (me.getSkill(24, 1) ? 24 : (me.getSkill(14, 1) ? 14 : 0)); // Primary skill to others.
 	Config.AttackSkill[4] = -1; // Primary untimed skill to others. Keep at -1 if Config.AttackSkill[3] is untimed skill.
 	Config.AttackSkill[5] = 0; // Secondary skill if monster is immune to primary.
 	Config.AttackSkill[6] = 0; // Secondary untimed skill if monster is immune to primary untimed.
@@ -59,29 +59,30 @@ function LoadTemplate()
 
 	Config.AutoSkill.Enabled = true; // Enable or disable AutoSkill system
 	Config.AutoSkill.Build = [
-		[35, 100, false], // lightning fury
-		[24, 100, false], // charged strike
-		[34, 100, false], // lightning strike
-		[20, 100, false], // lightning bolt
-		[14, 100, false], // power strike
+		// 2026-11-15, the usual 1.13 Javazon: Power Strike and Charged Strike until Lightning Fury (30), then Lightning Fury and Charged Strike maxed,
+		// a Valkyrie to tank (it had none, nor Dodge/Avoid/Evade), then the synergies. The old list began with Lightning Fury (level 30)
+		[14, 1, false], // power strike (level 6; with jab)
+		[20, 1, false], // lightning bolt (level 12; with poison javelin)
+		[24, 1, false], // charged strike (level 18)
+		[14, 5, false], // power strike: the attack until charged strike
+		[24, 10, false], // charged strike: the attack until lightning fury
+		[35, 1, false], // lightning fury (level 30; with plague javelin)
+		[32, 1, false], // valkyrie (level 30; with inner sight, slow missiles, decoy, dodge, avoid, evade)
+		[35, 20, false], // lightning fury
+		[24, 20, false], // charged strike (bosses)
+		[14, 20, false], // power strike (synergy)
+		[20, 20, false], // lightning bolt (synergy)
+		[34, 20, false], // lightning strike (synergy)
 	];
 
 	Config.AutoStat.Enabled = true; // Enable or disable AutoStat system
-	Config.AutoStat.Build = [
-		["s", 12], // stat strength for quilt armor
-		["v", 28], // spend in vitality until it reaches 28 (level 5)
-		["e", 50], // spend in energy until 50 (level 8)
-		["v", 50], // spend more in vitality
-		["s", 15], // get up to 15 strength (level 13)
-		["v", 65], // spend in vitality (level 18)
-		["s", 35], // get up to 25 strength (level 20)
-		["e", 75], // spend in energy (level 25)
-		["v", 75], // level 27
-		["s", 55], // level 31
-		["v", 100], // level 36
-		["s", 80], // level 41
-		["v", 125], // level 46
-		["s", 95], // level 49 (less if done stat quests)
-		["v", "all"], // put rest of the points in vitality
-	];
+	// Qolbot (the user, 2026-11-16: a "ranged melee" category with the same rules as melee; javelins and throwing weapons scale with strength and dexterity):
+	// strength, dexterity and vitality equal, one point at a time, until strength and dexterity reach 180, then all the rest into vitality. Energy gets nothing.
+	Config.AutoStat.Build = [];
+
+	for (var statTarget = 21; statTarget <= 180; statTarget += 1) {
+		Config.AutoStat.Build.push(["s", statTarget], ["d", statTarget], ["v", statTarget]);
+	}
+
+	Config.AutoStat.Build.push(["v", "all"]);
 }

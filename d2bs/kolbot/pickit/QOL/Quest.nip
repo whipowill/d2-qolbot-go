@@ -15,8 +15,8 @@
 [name] == horadricstaff # # [maxquantity] == 1
 
 // act3
-//[name] == ajadefigurine # # [maxquantity] == 1
-//[name] == thegoldenbird # # [maxquantity] == 1
+[name] == ajadefigurine # # [maxquantity] == 1
+[name] == thegoldenbird # # [maxquantity] == 1
 [name] == potionoflife # # [maxquantity] == 1
 //[name] == thegidbinn # # [maxquantity] == 1
 //[name] == lamesen'stome # # [maxquantity] == 1
@@ -28,7 +28,7 @@
 [name] == mephisto'ssoulstone # # [maxquantity] == 1
 
 // act4
-//[name] == hellforgehammer # # [maxquantity] == 1
+[name] == hellforgehammer # # [maxquantity] == 1
 
 // act5
 //[name] == malah'spotion # # [maxquantity] == 1

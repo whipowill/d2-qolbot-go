@@ -47,7 +47,7 @@ function LoadTemplate()
 	Config.AttackSkill[2] = me.getSkill(122, 1) ? 122 : (me.getSkill(98, 1) ? 98 : -1); // Primary aura to bosses
 	Config.AttackSkill[3] = me.getSkill(121, 1) ? 121 : me.getSkill(97, 1) ? 97 : 0; // Primary skill to others.
 	Config.AttackSkill[4] = me.getSkill(122, 1) ? 122 : (me.getSkill(98, 1) ? 98 : -1); // Primary aura to others.
-	Config.AttackSkill[5] = 0; // Secondary skill if monster is immune to primary.
+	Config.AttackSkill[5] = me.getSkill(97, 1) ? 97 : -1; // Secondary skill if monster is immune to primary. 2026-11-15: Smite, as the header says (was 0, a plain swing)
 	Config.AttackSkill[6] = -1; // Secondary aura.
 
 	Config.LowManaSkill[0] = 0; // Low mana skill.
@@ -73,20 +73,20 @@ function LoadTemplate()
 		[117, 20, false], // holy shield
 		[97, 10, false], // smite
 		[122, 10, false], // fanaticism
+		// 2026-11-15: the list ran out around level 70. Not Fanaticism or Smite past 10: with them at 20 a Zealot (Darius: Fanaticism 20, Smite
+		// 10) matched this template as well as Zeal's, and internal/spec Detect took the Smiter (TestDetectRealCharacters)
+		[110, 20, false], // resist lightning (its passive bonus counts with another aura on)
 	];
 
 	Config.AutoStat.Enabled = true; // Enable or disable AutoStat system
-	Config.AutoStat.Build = [
-		["s", 30], // strength for gear
-		["v", 40], // vitality
-		["d", 30], // dexterity
-		["v", 60], // vitality
-		["s", 60], // strength
-		["v", 90], // vitality
-		["d", 60], // dexterity
-		["s", 90], // strength
-		["v", 120], // vitality
-		["d", 90], // dexterity
-		["v", "all"], // rest into vitality
-	];
+	// Qolbot (the user, 2026-11-16: "for melee fighters, the stat allocation should be balanced between str, dex, and vit ... keep them equal up until str and dex
+	// about 180, then all other points go to vit"; "balanced each allocation"): every point goes to the lowest of the three, one at a time (the targets go up by one:
+	// strength, dexterity and vitality each to 21, each to 22, ... to 180), then all the rest into vitality. Energy gets nothing.
+	Config.AutoStat.Build = [];
+
+	for (var statTarget = 21; statTarget <= 180; statTarget += 1) {
+		Config.AutoStat.Build.push(["s", statTarget], ["d", statTarget], ["v", statTarget]);
+	}
+
+	Config.AutoStat.Build.push(["v", "all"]);
 }

@@ -55,11 +55,31 @@ var D2Bot = {
 		sendCopyData(null, this.handle, 0, JSON.stringify(obj));
 	},
 
-	inventory: function (json) { // tells Qolbot what this bot carries (shown when you click its card on the Status tab); json is a string
+	vitals: function (lifePct) { // tells Qolbot how much life this bot has (percent): the face on its card on the Activity tab
 		var obj = {
 				profile: me.profile,
-				func: "inventory",
-				args: [json]
+				func: "vitals",
+				args: [String(lifePct)]
+			};
+
+		sendCopyData(null, this.handle, 0, JSON.stringify(obj));
+	},
+
+	respec: function () { // Auto Respec: asks Qolbot to click PlugY's button that takes all the skill points back (Respec.js)
+		var obj = {
+				profile: me.profile,
+				func: "respec",
+				args: []
+			};
+
+		sendCopyData(null, this.handle, 0, JSON.stringify(obj));
+	},
+
+	respecstat: function (stat, n) { // Auto Respec, the stat points: asks Qolbot to take n points back from one stat (Alt click, Respec.js)
+		var obj = {
+				profile: me.profile,
+				func: "respecstat",
+				args: [String(stat), String(n)]
 			};
 
 		sendCopyData(null, this.handle, 0, JSON.stringify(obj));

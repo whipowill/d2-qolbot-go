@@ -144,6 +144,19 @@ var Attack = {
 	},
 
 	// Kill a monster based on its classId, can pass a unit as well
+	gathered: {},
+
+	gatherBeforeBoss: function (target) {
+		var key = me.area + ":" + target.classid, now = Date.now();
+
+		if (me.inTown || typeof Team !== "object" || (this.gathered[key] && now - this.gathered[key] < 180000)) {
+			return;
+		}
+
+		this.gathered[key] = now;
+		Team.holdAndGather(Team.limits.boss);
+	},
+
 	kill: function (classId) {
 		if (Config.AttackSkill[1] < 0) {
 			return false;
@@ -171,6 +184,15 @@ var Attack = {
 		killName = target.name;
 
 		print("Engaging " + killName);
+
+		// Qolbot (the user, 2026-11-14: "make sure all of these procedural steps are fixed for all quests and all farms"): every boss fight of every quest and farm
+		// script goes through here, so the leader gathers the team first: "hold", wait (at most 60 s) until every teammate is in the area, "go". A follower, a
+		// bot without an objective and a bot in town skip it (Team.holdAndGather). Once per boss and area every 3 minutes. UNTESTED in a game.
+		try {
+			this.gatherBeforeBoss(target);
+		} catch (gatherError) {
+			print("Attack.kill: gathering the team: " + gatherError);
+		}
 
 		if (Config.MFLeader) {
 			Pather.makePortal();
@@ -309,6 +331,15 @@ var Attack = {
 		if (Config.MFLeader && !!bossId) {
 			Pather.makePortal();
 			say("clear " + bossId);
+		}
+
+		// Qolbot: a clear aimed at a named boss (bossId) waits for the team like Attack.kill does (gatherBeforeBoss)
+		if (bossId) {
+			try {
+				this.gatherBeforeBoss({classid: String(bossId)});
+			} catch (gatherError) {
+				print("Attack.clear: gathering the team: " + gatherError);
+			}
 		}
 
 		if (range === undefined) {
@@ -534,6 +565,15 @@ var Attack = {
 		var i, target, result, monsterList,
 			gidAttack = [],
 			attackCount = 0;
+
+		// Qolbot: a list of named monsters (the Council, a boss and its guards) is a fight for the whole team too: gathered once per area every 3 minutes
+		try {
+			if (typeof mainArg === "function" || (mainArg && mainArg.length)) {
+				this.gatherBeforeBoss({classid: "list"});
+			}
+		} catch (gatherError) {
+			print("Attack.clearList: gathering the team: " + gatherError);
+		}
 
 		switch (typeof mainArg) {
 		case "function":
@@ -773,7 +813,7 @@ var Attack = {
 			say("clearlevel " + getArea().name);
 		}
 
-		var room, result, rooms, myRoom;
+		var room, result, rooms, myRoom, unreachable = [];
 
 		function RoomSort(a, b) {
 			return getDistance(myRoom[0], myRoom[1], a[0], a[1]) - getDistance(myRoom[0], myRoom[1], b[0], b[1]);
@@ -812,10 +852,22 @@ var Attack = {
 			rooms.sort(RoomSort);
 			room = rooms.shift();
 
+			// Qolbot: a room next to one I could not walk to is cut off too (the far side of a river or the map's edge): each such room cost three failed
+			// walks, about 15 seconds (Sankt, Flayer Jungle, 2026-11-14: a dozen in a row)
+			if (unreachable.some(function (u) { return getDistance(room[0], room[1], u[0], u[1]) < 35; })) {
+				continue;
+			}
+
 			result = Pather.getNearestWalkable(room[0], room[1], 18, 3);
 
 			if (result) {
-				Pather.moveTo(result[0], result[1], 3, spectype);
+				if (!Pather.moveTo(result[0], result[1], 3, spectype) && getDistance(me, result[0], result[1]) > 12) {
+					unreachable.push([room[0], room[1]]);
+					print("clearLevel: cannot reach the room at " + room[0] + "," + room[1] + ": skipping the rooms around it");
+					room = [me.x, me.y]; // the next room is the nearest to where I really am (the top of the loop takes myRoom from it)
+					continue;
+				}
+
 				//this.countUniques();
 
 				// deletect curses...
@@ -1464,6 +1516,22 @@ AuraLoop: // Skip monsters with auras
 	},
 
 	// Find an optimal attack position and move or walk to it
+	// Qolbot: how many monsters other than `except` stand within `range` of (x, y). A caster that has to pick a spot to cast from (or to teleport to)
+	// takes the one with the fewest monsters around it, so it does not land in the middle of the pack.
+	crowd: function (x, y, range, except) {
+		var count = 0, monster = getUnit(1);
+
+		if (monster) {
+			do {
+				if (monster.gid !== except.gid && Attack.checkMonster(monster) && getDistance(monster.x, monster.y, x, y) <= range) {
+					count += 1;
+				}
+			} while (monster.getNext());
+		}
+
+		return count;
+	},
+
 	getIntoPosition: function (unit, distance, coll, walk) {
 		if (!unit || !unit.x || !unit.y) {
 			return false;
@@ -1514,6 +1582,15 @@ AuraLoop: // Skip monsters with auras
 
 			if (coords.length > 0) {
 				coords.sort(Sort.units);
+
+				// Qolbot: a ranged attacker (casting distance 10 or more) picks, among the nearest spots, the one with the fewest monsters around it
+				if (distance >= 10 && !me.inTown && coords.length > 1) {
+					coords = coords.slice(0, 8).map(function (c, k) {
+						return {x: c.x, y: c.y, k: k, crowd: Attack.crowd(c.x, c.y, 8, unit)};
+					}).sort(function (a, b) {
+						return a.crowd - b.crowd || a.k - b.k;
+					}).concat(coords.slice(8));
+				}
 
 				for (i = 0; i < coords.length; i += 1) {
 					// Valid position found

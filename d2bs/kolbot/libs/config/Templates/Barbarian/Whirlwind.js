@@ -41,9 +41,9 @@ function LoadTemplate()
 	// 155	Battle Command
 
 	Config.AttackSkill[0] = -1; // Preattack skill.
-	Config.AttackSkill[1] = me.getSkill(151, 1) ? 151 : 0; // Primary skill for bosses.
+	Config.AttackSkill[1] = me.getSkill(151, 1) ? 151 : (me.getSkill(144, 1) ? 144 : 0); // Primary skill for bosses (Concentrate until Whirlwind).
 	Config.AttackSkill[2] = 0; // Backup/Immune skill for bosses.
-	Config.AttackSkill[3] = me.getSkill(151, 1) ? 151 : 0; // Primary skill for others.
+	Config.AttackSkill[3] = me.getSkill(151, 1) ? 151 : (me.getSkill(144, 1) ? 144 : 0); // Primary skill for others (Concentrate until Whirlwind).
 	Config.AttackSkill[4] = 0; // Backup/Immune skill for others.
 
 	Config.LowManaSkill[0] = 0; // Low mana skill.
@@ -56,35 +56,55 @@ function LoadTemplate()
 	Config.DodgeRange = 15; // Distance to keep from monsters.
 
 	Config.AutoSkill.Enabled = true; // Enable or disable AutoSkill system
+	// The weapon mastery: the one that already has points, else the one for the weapon in the right hand (sword when unknown). Whirlwind hits with
+	// the weapon, and without a mastery it missed a lot (Barabas, level 55: Whirlwind 20, Battle Command 15, no mastery, 2026-11-15).
+	var mastery = (function () {
+		var ids = [127, 128, 129, 134, 136], i, w, kinds = {30: 127, 28: 128, 29: 129, 31: 129, 36: 129, 34: 134, 33: 136};
+
+		for (i = 0; i < ids.length; i += 1) {
+			if (me.getSkill(ids[i], 0)) {
+				return ids[i];
+			}
+		}
+
+		w = me.getItem(-1, 1);
+
+		if (w) {
+			do {
+				if (w.bodylocation === 4 && kinds[w.itemType]) {
+					return kinds[w.itemType];
+				}
+			} while (w.getNext());
+		}
+
+		return 127;
+	}());
+
+	// 2026-11-15, the usual 1.13 Whirlwind Barbarian: Whirlwind, the weapon mastery and Battle Orders maxed, Natural Resistance for Nightmare and
+	// Hell; Concentrate is the attack until level 30. Battle Command/Cry and Shout come last (they had 37 points before the mastery had one)
 	Config.AutoSkill.Build = [
-		[153, 1, false], // natural resistance
-		[145, 1, false], // iron skin
-		[141, 1, false], // stamina
-		[132, 1, false], // leap
-		[149, 1, false], // battle orders
-		[151, 100, false], // whirlwind
-		[155, 100, false], // battle command (+all skills)
-		[149, 100, false], // battle orders (life and mana)
-		[146, 100, false], // battle cry
-		[138, 100, false], // shout
+		[144, 1, false], // concentrate (level 18; with bash and stun): the attack until whirlwind
+		[149, 1, false], // battle orders (level 24; with howl and shout)
+		[144, 4, false], // concentrate
+		[151, 20, false], // whirlwind (level 30): AutoSkill keeps points for it when it is 5 levels or less away, else they go down the list
+		[mastery, 10, false], // weapon mastery: attack rating and damage
+		[153, 5, false], // natural resistance (with iron skin)
+		[mastery, 20, false], // weapon mastery
+		[149, 20, false], // battle orders (life and mana for the whole party)
+		[153, 20, false], // natural resistance
+		[138, 20, false], // shout (defense; battle orders synergy)
+		[155, 20, false], // battle command
 	];
 
 	Config.AutoStat.Enabled = true; // Enable or disable AutoStat system
-	Config.AutoStat.Build = [
-		["s", 12], // stat strength for quilt armor
-		["v", 28], // spend in vitality until it reaches 28 (level 5)
-		["d", 50], // spend in energy until 50 (level 8)
-		["v", 50], // spend more in vitality
-		["s", 15], // get up to 15 strength (level 13)
-		["v", 65], // spend in vitality (level 18)
-		["s", 35], // get up to 25 strength (level 20)
-		["d", 75], // spend in energy (level 25)
-		["v", 75], // level 27
-		["s", 55], // level 31
-		["v", 100], // level 36
-		["s", 80], // level 41
-		["v", 125], // level 46
-		["s", 95], // level 49 (less if done stat quests)
-		["v", "all"], // put rest of the points in vitality
-	];
+	// Qolbot (the user, 2026-11-16: "for melee fighters, the stat allocation should be balanced between str, dex, and vit ... keep them equal up until str and dex
+	// about 180, then all other points go to vit"; "balanced each allocation"): every point goes to the lowest of the three, one at a time (the targets go up by one:
+	// strength, dexterity and vitality each to 21, each to 22, ... to 180), then all the rest into vitality. Energy gets nothing.
+	Config.AutoStat.Build = [];
+
+	for (var statTarget = 21; statTarget <= 180; statTarget += 1) {
+		Config.AutoStat.Build.push(["s", statTarget], ["d", statTarget], ["v", statTarget]);
+	}
+
+	Config.AutoStat.Build.push(["v", "all"]);
 }

@@ -19,6 +19,7 @@
 */
 
 include("NTItemAlias.dbl");
+include("common/Gear.js"); // Qolbot: qolgear.tier, the auto-equip score by build (pickit/Autoequip/gear.nip)
 
 var NTIP = {},
 	NTIP_CheckList = [],
@@ -640,12 +641,12 @@ NTIP.ParseLineInt = function (input, info) {
 				break;
 			case "tier":
 				value = p_section[i].split("==")[1];
-				p_result[2].Tier = value.replace(/getstatex/g, "getStatEx");
+				p_result[2].Tier = value.replace(/getstatex/g, "getStatEx").replace(/math\./g, "Math."); // Qolbot: the line was lowercased; "math.max" threw in eval and the tier was silently -1 (merc.nip's weapon line: no merc weapon was ever equipped, 2026-11-14)
 
 				break;
 			case "merctier":
 				value = p_section[i].split("==")[1];
-				p_result[2].MercTier = value.replace(/getstatex/g, "getStatEx");
+				p_result[2].MercTier = value.replace(/getstatex/g, "getStatEx").replace(/math\./g, "Math."); // Qolbot: the line was lowercased; "math.max" threw in eval and the tier was silently -1 (merc.nip's weapon line: no merc weapon was ever equipped, 2026-11-14)
 
 				break;
 			default:

@@ -479,7 +479,100 @@ const AutoStat = new function () {
 	};
 
 	// return stat values excluding stat bonuses from sets and/or items
+	// Qolbot (the user, 2026-11-16: "fix the stat balance issue ... you just didn't implement a system as I had articulated it"): the points REALLY spent in each stat, as
+	// the character's save has them. The estimate below (the stat as the game shows it, minus what the worn items, the charms and the sets add) was 11 strength, 6
+	// dexterity and 8 energy too high on Barabas (live 2026-11-16: it thought 95/75/222/18 where the save said 84/69/222/10), so the balanced order stopped adding strength
+	// too early and he ended on 113/118/144 instead of 125 each. The numbers come from Qolbot, which reads the save before the game and writes them into the plan
+	// (hardStats: strength, dexterity, vitality, energy); every point this script spends is counted and kept in data/<profile>.hard.json (a later game of the same run starts
+	// from it, not from the older plan); a respec sets them back to the class's base stats. Without any of it the old estimate is used. UNTESTED in a game.
+	this.hard = null; // stat id -> points
+	this.hardLoaded = false;
+
+	this.hardPath = function () {
+		return "data/" + me.profile + ".hard.json";
+	};
+
+	this.loadHard = function () {
+		if (this.hardLoaded) {
+			return;
+		}
+
+		this.hardLoaded = true;
+
+		let plan = typeof Plan === "object" ? Plan.get() : null;
+		let planAt = plan && plan.hardStatsAt ? plan.hardStatsAt : 0;
+		let rec = null, from = null;
+
+		try {
+			rec = FileTools.exists(this.hardPath()) ? JSON.parse(FileTools.readText(this.hardPath())) : null;
+		} catch (readError) {
+			rec = null;
+		}
+
+		if (rec && rec.at >= planAt) { // the record of this script's own spending is newer than the save Qolbot read at the start
+			from = rec.v && rec.v.length === 4 ? rec.v.slice(0) : null;
+		} else if (plan && plan.hardStats && plan.hardStats.length === 4) {
+			from = plan.hardStats.slice(0);
+		}
+
+		if (!from) {
+			return;
+		}
+
+		this.setHard(from);
+
+		// sanity: a stat can not be lower in the game than its points without gear (a hand respec the record did not see)
+		if ([sdk.stats.Strength, sdk.stats.Dexterity, sdk.stats.Vitality, sdk.stats.Energy].some((t) => me.getStat(t) + 20 < this.hard[t])) {
+			print("AutoStat: the recorded stat points do not fit the character (" + from.join("/") + "): using the estimate from the gear.");
+			this.hard = null;
+		}
+	};
+
+	// from: [strength, dexterity, vitality, energy]
+	this.setHard = function (from) {
+		this.hard = {};
+		this.hard[sdk.stats.Strength] = from[0];
+		this.hard[sdk.stats.Dexterity] = from[1];
+		this.hard[sdk.stats.Vitality] = from[2];
+		this.hard[sdk.stats.Energy] = from[3];
+	};
+
+	this.saveHard = function () {
+		try {
+			FileTools.writeText(this.hardPath(), JSON.stringify({
+				v: this.hard ? [this.hard[sdk.stats.Strength], this.hard[sdk.stats.Dexterity], this.hard[sdk.stats.Vitality], this.hard[sdk.stats.Energy]] : null,
+				at: Date.now()
+			}));
+		} catch (writeError) {
+			print("AutoStat: cannot keep the stat points: " + writeError);
+		}
+	};
+
+	// after a full reset: every point is unspent again and the stats are the class's base
+	this.resetHard = function (base) {
+		this.hardLoaded = true;
+		this.setHard(base);
+		this.saveHard();
+	};
+
+	// after a partial take-back that cannot be counted: nothing is known until the estimate runs
+	this.forgetHard = function () {
+		this.hardLoaded = true;
+		this.hard = null;
+		this.saveHard();
+	};
+
 	this.getHardStats = function (type) {
+		this.loadHard();
+
+		if (this.hard && this.hard.hasOwnProperty(type)) {
+			return this.hard[type];
+		}
+
+		return this.estimateHardStats(type);
+	};
+
+	this.estimateHardStats = function (type) {
 		let i, statID;
 		let addedStat = 0;
 		let items = me.getItems();
@@ -582,6 +675,14 @@ const AutoStat = new function () {
 		while (getTickCount() - tick < 3000) {
 			if (currStat > me.getStat(sdk.stats.StatPts)) {
 				print("AutoStat: Using " + (currStat - me.getStat(sdk.stats.StatPts)) + " stat points in " + statIDToString[type]);
+
+				this.loadHard();
+
+				if (this.hard && this.hard.hasOwnProperty(type)) { // counted, and kept for the next game
+					this.hard[type] += currStat - me.getStat(sdk.stats.StatPts);
+					this.saveHard();
+				}
+
 				return true;
 			}
 

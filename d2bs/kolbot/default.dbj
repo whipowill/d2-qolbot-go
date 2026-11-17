@@ -25,6 +25,7 @@ include("common/Storage.js");
 include("common/Town.js");
 include("common/Saver.js");
 include("common/Team.js");
+include("common/Waypoints.js");
 include("common/QuickTravel.js");
 include("common/Quester.js");
 include("common/Banter.js");
@@ -105,6 +106,13 @@ function main() {
 			while (true) {
 				delay(500);
 			}
+		}
+
+		if (mode === 0 && typeof msg === "string" && msg.indexOf("say:") === 0) { // testing aid (POST /api/say): the bot says that text in the game chat, as if it were typed
+			print("Test: saying " + msg.substr(4));
+			say(msg.substr(4));
+
+			return;
 		}
 
 		if (mode === 0 && msg === "save") { // qolbot is about to stop this bot: save the character first
@@ -209,12 +217,44 @@ function main() {
 	}
 
 	// Auto skill and stat
+	// Auto Respec for a LEADER too (user, 2026-11-13: Sankt led and kept 50 points of energy; only the Follower script called Respec): points that do not
+	// fit the build are taken back once (PlugY or the QOL chat commands), then the init calls below spend them again
 	if (Config.AutoSkill.Enabled && include("common/AutoSkill.js")) {
+		try {
+			if (include("common/Respec.js") && me.inTown) {
+				Respec.maybe();
+			}
+		} catch (leaderRespecError) {
+			print("Respec: " + leaderRespecError);
+			me.cancel();
+		}
+
 		AutoSkill.init(Config.AutoSkill.Build, Config.AutoSkill.Save);
 	}
 
 	if (Config.AutoStat.Enabled && include("common/AutoStat.js")) {
+		try {
+			if (include("common/Respec.js") && me.inTown) {
+				Respec.maybeStats();
+			}
+		} catch (leaderRespecStatError) {
+			print("Respec: " + leaderRespecStatError);
+			me.cancel();
+		}
+
 		AutoStat.init(Config.AutoStat.Build, Config.AutoStat.Save, Config.AutoStat.BlockChance, Config.AutoStat.UseBulk);
+	}
+
+	// The merc chosen on the bot card (the user, 2026-11-14): one of another kind is replaced first thing, like Auto Respec. STEP 1: it only reads the hire list.
+	if (Config.MercChoice && me.inTown) {
+		try {
+			if (include("common/MercHire.js")) {
+				MercHire.maybe();
+			}
+		} catch (mercHireError) {
+			print("MercHire: " + mercHireError);
+			me.cancel();
+		}
 	}
 
 	// a leader bot playing its objective saves itself every few minutes (a follower does it in the Follower script)
@@ -222,9 +262,44 @@ function main() {
 		load("tools/AutoSaveThread.js");
 	}
 
+	// a hunt starts in the act of its first place: everybody goes there first, together (Team.firstActHop), before the chores
+	if (Config.WaitForTeam && me.inTown && typeof Team === "object") {
+		try {
+			Team.firstActHop();
+		} catch (hopError) {
+			print("Team: " + hopError);
+			me.cancel();
+		}
+	}
+
+	// a leader bot does its town chores once at the start of each game (scrolls, potions, repairs, selling), the way a follower does in Follower.js.
+	// Without this the leader never restocked: it started with no town portal scrolls and left again, game after game (Barabas, 2026-11-13).
+	if (Config.WaitForTeam && me.inTown) {
+		try {
+			if (typeof Gold === "object") {
+				Gold.topUp(2000); // the stash may hold what the pack lacks
+			}
+
+			Town.doChores();
+		} catch (choresError) {
+			print("Leader chores: " + choresError);
+			me.cancel();
+		}
+	}
+
 	// a leader bot waits for the whole team before it starts its run
 	if (Config.WaitForTeam) {
 		Team.wait();
+
+		if (typeof Gold === "object") {
+			try { Gold.settle(45000); } catch (settleError) { print("Gold: " + settleError); }
+		}
+
+		// Behavior > Quests > Waypoint Collection: the team shares its waypoints before the run begins. NOT on a hunt (gold or level): sharing needs town
+		// portal scrolls, and a team that is broke has none; it happens when the quests resume (the gold hunt comes before the waypoint hunt).
+		if (!(typeof Plan === "object" && Plan.get() && Plan.get().hunt)) {
+			Waypoints.sync();
+		}
 	}
 
 	// Go

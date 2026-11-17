@@ -166,9 +166,10 @@ func (m *Manager) writeBotNames() {
 	player := m.cfg.Player
 	team := append([]string{}, m.expectTeam...)
 	m.mu.Unlock()
+	firstAct := m.firstActNow(team) // the run starts in this act: everybody goes there first, once, in any mode (Team.firstActHop)
 	sort.Strings(names)
 	sort.Strings(sorcs)
-	b, _ := json.Marshal(map[string]any{"leader": player, "bots": names, "team": team, "sorcs": sorcs})
+	b, _ := json.Marshal(map[string]any{"leader": player, "bots": names, "team": team, "sorcs": sorcs, "firstAct": firstAct})
 	path := filepath.Join(m.root, "d2bs", m.cfg.ScriptPath, "data", "bots.json")
 	os.MkdirAll(filepath.Dir(path), 0o755)
 	if err := os.WriteFile(path, b, 0o660); err != nil {
@@ -176,4 +177,44 @@ func (m *Manager) writeBotNames() {
 		return
 	}
 	m.dbgf("", "bots.json = %s", b)
+}
+
+// firstActNow is the act the run starts in, whatever the mode (the user, 2026-11-14: the team sync rules apply "universally all the time, regardless of mode"):
+// a hunt: the act of its first place; Quest: the act of the next quest of the furthest-behind bot (the leader's); Farm: the act of the first farm script.
+// 0 when nobody plays-for-nobody (a human plays) or it is not known: nobody hops first then. The bots go there at the start of the game before their chores
+// (Team.firstActHop), so a team saved in different acts does not hop to the leader's old act and then again.
+func (m *Manager) firstActNow(team []string) int {
+	m.mu.Lock()
+	lu, goal, notPlaying := m.levelUp, m.cfg.Goal, m.cfg.NotPlaying
+	var farm []string
+	if lu == nil && goal != "Quest" {
+		farm = m.farmSelection()
+	}
+	m.mu.Unlock()
+	switch {
+	case !notPlaying:
+		return 0
+	case lu != nil:
+		return lu.Act
+	case goal == "Quest":
+		idx, _ := m.questProgress(team)
+		first := -1
+		for _, i := range idx {
+			if first < 0 || i < first {
+				first = i
+			}
+		}
+		if first >= 0 && first < len(questTable) {
+			return questTable[first].Act
+		}
+	default:
+		if len(farm) > 0 {
+			for _, f := range farmAll {
+				if f.Name == farm[0] {
+					return f.Act
+				}
+			}
+		}
+	}
+	return 0
 }

@@ -53,16 +53,32 @@ function Tristram() {
 	//Attack.clear(15, 0, getLocaleString(2872)); // Rakanishu (error if he is already dead)
 	Attack.clear(20);
 
-	while (!me.getQuest(4, 4)) {
+	// Qolbot: the stone loop ends when every stone is open too, or after 60 s, and pauses each round; the portal loop gives up after 60 s. Live 19:06 on
+	// Nightmare: Darius stood at the stones for 2.5 minutes without a log line until the stuck guard ended the game (a loop with no exit and no delay).
+	var stoneTick = getTickCount(), portalTick;
+
+	while (!me.getQuest(4, 4) && getTickCount() - stoneTick < 60000) {
+		if (stones.every(function (stone) { return !stone || stone.mode; })) {
+			break; // all open (the quest flag may come later, or never for this character): the portal is next
+		}
+
 		stones.forEach(function (stone) {
-			if (!stone.mode) {
+			if (stone && !stone.mode) {
 				Attack.securePosition(stone.x, stone.y, 10, me.ping * 2);
 				Misc.click(0, 0, stone);
 			}
 		});
+		delay(250);
 	}
 
+	print("Tristram: stones " + (me.getQuest(4, 4) ? "done (quest flag)" : "open: " + stones.filter(function (stone) { return stone && stone.mode; }).length + " of " + stones.length));
+	portalTick = getTickCount();
+
 	while (!Pather.usePortal(38)) {
+		if (getTickCount() - portalTick > 60000) {
+			throw new Error("Tristram: no portal to Tristram after 60 s at the Cairn Stones");
+		}
+
 		Attack.securePosition(me.x, me.y, 10, 1000);
 	}
 

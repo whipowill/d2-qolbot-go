@@ -136,7 +136,7 @@ function Mephisto() {
 	if (typeof QuickTravel === "object" && QuickTravel.portal("meph", 102)) {
 		Precast.doPrecast(true);
 	} else {
-		Pather.useWaypoint(101);
+		Pather.toDurance(); // Qolbot: the Level 2 waypoint, or without it from Travincal (the waypoint taken on the way)
 		Precast.doPrecast(true);
 
 		if (!Pather.moveToExit(102, true)) {

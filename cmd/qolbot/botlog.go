@@ -1,6 +1,7 @@
 package main
 
 import (
+	"d2qolbot/internal/wire"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -57,10 +58,18 @@ func isProblemLine(text string) bool {
 	if strings.Contains(text, "Strict Warning") { // D2BS's own style warnings: noisy and harmless, kept in the file only
 		return false
 	}
+	if strings.Contains(text, "task dropped (back in town from a trip)") { // a follower abandoning its field task on purpose (Follower.js dropError), not a problem
+		return false
+	}
 	return reProblem.MatchString(text)
 }
 
 // scriptStarted returns the script name from "Starting script: X".
+// isErrorBox: D2BS prints this when Game.exe puts up an error dialog (the cause is not known; the dialog blocks the game for good).
+func isErrorBox(text string) bool {
+	return strings.Contains(text, `Error message box, caption: "Diablo II Error"`)
+}
+
 func scriptStarted(text string) string {
 	if m := reScriptName.FindStringSubmatch(text); m != nil {
 		return m[1]
@@ -84,6 +93,8 @@ type ActivityEvent struct {
 	Title    string    `json:"title,omitempty"`    // the item's full name as the bot saw it, when its details were reported
 	Verified string    `json:"verified,omitempty"` // a quest entry checked against the character file after the bot saved: "saved" (the file says complete) or "notsaved" (it does not)
 	Desc     string    `json:"desc,omitempty"`     // the item's stat text (colour codes included); empty if it was never reported (not identified, or not logged)
+	borrowed bool      // Desc was copied from an earlier entry of the item: the bot's own report of it, when it comes, replaces it
+	hidden   bool      // kept for its stats, not shown: a pickup (the user, 2026-11-14: "maybe don't show pickups, only show stashed or auto equip or sale")
 }
 
 // parsePicked reads the pickit's "Picked up <colour><name> (ilvl N)" line. Gold, keys and scrolls (counts like "(3/12)") are not items
@@ -98,9 +109,16 @@ func parseStashed(text string) (ActivityEvent, bool) {
 	it, ok := parseItemLine(text, "Stashed ", "stash")
 	if ok {
 		it.Detail = "Stashed"
+		// "Stashed Cap [keeper: unique]": why the bot keeps it (Item.stashWhy in Misc.js), shown on the Activity card instead of the bare word (the user, 2026-11-16:
+		// "the activity's don't include any rationale for why this was kept, and previously these alerts did")
+		if mm := reStashWhy.FindStringSubmatch(it.Name); mm != nil {
+			it.Name, it.Detail = strings.TrimSpace(mm[1]), "Stashed \u00b7 "+mm[2]
+		}
 	}
 	return it, ok
 }
+
+var reStashWhy = regexp.MustCompile(`^(.*?)\s*\[([^\]]+)\]$`) // "Cap [keeper: unique]": the name and the reason (Item.stashWhy)
 
 func parseItemLine(text, marker, kind string) (ActivityEvent, bool) {
 	i := strings.Index(text, marker)
@@ -204,6 +222,7 @@ func (m *Manager) followBotLogs() {
 			if name == "" {
 				continue
 			}
+			m.update(name, func(s *State) { s.OutputAt = time.Now() })
 			fh := files[name]
 			if fh == nil {
 				os.MkdirAll(filepath.Join(m.root, "logs"), 0o755)
@@ -215,6 +234,30 @@ func (m *Manager) followBotLogs() {
 			}
 			if fh != nil {
 				fmt.Fprintf(fh, "%s %s\n", time.Now().Format("2006-01-02 15:04:05"), text)
+			}
+			if strings.HasPrefix(text, "SAY: ") {
+				m.addChat(name, strings.TrimPrefix(text, "SAY: "))
+			}
+			switch {
+			case strings.HasPrefix(text, "Waypoints: Syncing the team's waypoints"):
+				m.update(name, func(s *State) { s.Phase = "waypoint hunt" })
+			case strings.HasPrefix(text, "Cube hunt: I have no"):
+				m.update(name, func(s *State) { s.Phase = "cube hunt" })
+			case strings.HasPrefix(text, "Cube hunt:"): // finished, or failed
+				m.update(name, func(s *State) { s.Phase = "" })
+			case strings.HasPrefix(text, "Waypoints: Waypoints synced"), strings.HasPrefix(text, "Waypoints: all in sync"), strings.HasPrefix(text, "Starting script"), strings.HasPrefix(text, "Run duration"):
+				m.update(name, func(s *State) { s.Phase = "" })
+			}
+			if kind, title, msg, isNotice := noticeFromLog(name, text); isNotice {
+				m.raiseNotice(kind, name, title, msg)
+			}
+			if title, msg, isFull := packFullFromLog(name, text); isFull {
+				m.raiseFatal("packfull", name, title, msg) // the red box only: nobody is stopped (the pack is the bot's own to clear, the team can go on)
+			}
+			if kind, title, msg, isFatal := fatalFromLog(name, text); isFatal {
+				if m.raiseFatal(kind, name, title, msg) {
+					go m.stopForNotReady()
+				}
 			}
 			ev, ok := parseEvent(rawD2BSText(l)) // the raw line first: an item's colour says what quality it is
 			if !ok {
@@ -237,8 +280,27 @@ func (m *Manager) followBotLogs() {
 					}
 				})
 			}
+			if q, ok := questLine(text); ok {
+				m.update(name, func(s *State) { s.Quest = q })
+			}
+			if strings.HasPrefix(text, "Run duration") {
+				m.huntPayClose(name)
+			}
 			if sc := scriptStarted(text); sc != "" {
-				m.update(name, func(s *State) { s.Doing = sc })
+				m.huntPayStart(name, sc)
+				m.update(name, func(s *State) { s.Doing, s.Quest = sc, "" })
+			}
+			if isErrorBox(text) { // the game shows a modal "Diablo II Error" and the bot sits frozen behind it: restart it
+				// One restart per game PROCESS (pid), not per minute: Xena's restarted game showed a second box 30 s after the first and, with a per-minute limit, was
+				// ignored and sat frozen behind it (2026-11-13 21:18). The lines of one box still restart it only once.
+				ebKey := fmt.Sprintf("%s%derrorbox", name, pid)
+				if t, ok := seen[ebKey]; !ok || time.Since(t) > time.Minute {
+					seen[ebKey] = time.Now()
+					m.logf(9, name, "the game showed a \"Diablo II Error\" box and cannot go on: restarting the bot")
+					m.addEvent(ActivityEvent{Time: time.Now(), Bot: name, Kind: "restart", Name: "Game error", Detail: "restarting"})
+					m.update(name, func(s *State) { s.Restarts++ })
+					m.sendBridge(wire.Msg{T: "kill", Profile: name}) // onExit restarts (Wanted stays true)
+				}
 			}
 			if isProblemLine(text) {
 				if t, ok := seen[name+text]; !ok || time.Since(t) > time.Minute {
@@ -256,7 +318,20 @@ func (m *Manager) followBotLogs() {
 
 // addEvent keeps the newest events in memory (they are gone after a restart: the bots' own logs keep the full history).
 func (m *Manager) addEvent(it ActivityEvent) {
+	// item.name has a space where a magic item has no prefix or suffix (" Splint Mail of Thorns", "Unearthly Fuscina "): the card showed it, and a
+	// trailing space kept the entry from matching its own report (no stats)
+	it.Name = strings.TrimSpace(it.Name)
 	m.mu.Lock()
+	if it.Kind == "grail" && it.Key != "" { // a Grail item is news once (the user, 2026-11-14), however long ago it was shown and whoever reports it
+		if m.grailSeen == nil {
+			m.grailSeen = map[string]bool{}
+		}
+		if m.grailSeen[it.Key] {
+			m.mu.Unlock()
+			return
+		}
+		m.grailSeen[it.Key] = true
+	}
 	if it.Key != "" { // several bots report the same kill or drop: show it once
 		for i := len(m.events) - 1; i >= 0 && i >= len(m.events)-80; i-- {
 			if m.events[i].Key == it.Key && time.Since(m.events[i].Time) < 2*time.Minute {
@@ -265,9 +340,11 @@ func (m *Manager) addEvent(it ActivityEvent) {
 			}
 		}
 	}
-	if it.Kind == "kill" { // the leader's script prints no id: the same boss in the same place within 30 seconds is the same kill
+	// The same boss name in the same place within 30 seconds is one kill: the leader's script prints no id, and a boss's minions carry its name with ids of
+	// their own (live 18:10, "Mind Maw the Slasher" twice per pack from each follower)
+	if it.Kind == "kill" {
 		for i := len(m.events) - 1; i >= 0 && i >= len(m.events)-80; i-- {
-			if e := m.events[i]; e.Kind == "kill" && e.Name == it.Name && e.Detail == it.Detail && (e.Key == "" || it.Key == "") && time.Since(e.Time) < 30*time.Second {
+			if e := m.events[i]; e.Kind == "kill" && e.Name == it.Name && e.Detail == it.Detail && time.Since(e.Time) < 30*time.Second {
 				m.mu.Unlock()
 				return
 			}
@@ -311,9 +388,23 @@ func (m *Manager) addEvent(it ActivityEvent) {
 	if st := m.states[it.Bot]; st != nil && it.Zone == "" && (it.Kind == "item" || it.Kind == "equip" || it.Kind == "stash") { // where the item was picked up or stashed / the gear put on
 		it.Zone = st.Zone
 	}
-	if p, ok := m.pendingDesc[it.Bot]; ok && (it.Kind == "item" || it.Kind == "equip") && time.Since(p.at) < 20*time.Second && strings.Contains(strings.ToLower(p.title), strings.ToLower(it.Name)) {
+	if p, ok := m.takePending(it.Bot, it.Kind, it.Name); ok {
 		it.Title, it.Desc = p.title, p.desc
-		delete(m.pendingDesc, it.Bot)
+	}
+	// A "Stashed" line has only the name: the stats are those of the same bot's latest entry of that item (the user, 2026-11-14: "a ring showed as picked
+	// up "keeper" and displayed its full stats. but the later "stashed" log does not show its stats").
+	if it.Kind == "stash" && it.Desc == "" { // only until the bot's own "Stashed" report comes (Pack.stashed sends it first, so normally it is here already)
+		copyItemDesc(&it, m.events)
+		it.borrowed = it.Desc != ""
+	}
+	// Gear put on without its own report (a merc's, or an item already kept): the stats of the same bot's latest entry of it
+	// (a sale's own report comes just before its "Sold" line: the pending one, below; the borrowed stats are only what it has without one)
+	if (it.Kind == "equip" || it.Kind == "sale") && it.Desc == "" {
+		copyItemDesc(&it, m.events) // no report of its own waiting (takePending above found none)
+		it.borrowed = it.Desc != ""
+	}
+	if it.Kind == "item" { // a pickup: what happens to the item next (stashed, worn, sold) is the entry; this one only lends it the stats
+		it.hidden = true
 	}
 	m.events = append(m.events, it)
 	if len(m.events) > 200 {
@@ -328,7 +419,9 @@ func (m *Manager) recentEvents(n int) []ActivityEvent {
 	defer m.mu.Unlock()
 	var out []ActivityEvent
 	for i := len(m.events) - 1; i >= 0 && len(out) < n; i-- {
-		out = append(out, m.events[i])
+		if !m.events[i].hidden {
+			out = append(out, m.events[i])
+		}
 	}
 	return out
 }
@@ -339,7 +432,7 @@ type pendingDesc struct {
 }
 
 // itemActions are the item log titles that go with an Activity entry ("Kept Sash", "Equipped Sash").
-var itemActions = []string{"Field Kept", "Runeword Kept", "Cubing Kept", "Merc Equipped", "Equipped", "Kept", "Gambled", "Shopped"}
+var itemActions = []string{"Field Kept", "Runeword Kept", "Cubing Kept", "Cubed", "Merc Equipped", "Equipped", "Kept", "Gambled", "Shopped", "Sold", "Stashed"}
 
 // noteItemDesc takes the item log entry a bot sends right after it keeps or equips something (title, stat text, quality) and attaches it
 // to that item's Activity entry. The entry comes from the bot's printed line a moment later (or came just before), so it is matched by bot,
@@ -366,15 +459,89 @@ func (m *Manager) noteItemDesc(bot, raw string) {
 	defer m.mu.Unlock()
 	for i := len(m.events) - 1; i >= 0 && i > len(m.events)-8; i-- {
 		e := &m.events[i]
-		if e.Bot == bot && e.Desc == "" && (e.Kind == "item" || e.Kind == "equip") && time.Since(e.Time) < 20*time.Second && strings.Contains(strings.ToLower(o.Title), strings.ToLower(e.Name)) {
-			e.Title, e.Desc = o.Title, o.Description
+		if e.Bot == bot && (e.Desc == "" || e.borrowed) && descFits(o.Title, e.Kind) && time.Since(e.Time) < 20*time.Second && strings.Contains(strings.ToLower(o.Title), strings.ToLower(e.Name)) {
+			e.Title, e.Desc, e.borrowed = o.Title, o.Description, false
 			return
 		}
 	}
-	if m.pendingDesc == nil {
-		m.pendingDesc = map[string]pendingDesc{}
+	// A charm, jewel or rare is picked up UNIDENTIFIED (its text has no stats) and identified in town minutes later, when the "Kept ..." line arrives
+	// with the stats (2026-11-13: a Large Charm's Activity entry said "stats unknown"). The fuller text goes to that bot's most recent entry of the
+	// same item within the last hour, when it is longer than what the entry has.
+	if strings.HasPrefix(o.Title, "Kept ") {
+		for i := len(m.events) - 1; i >= 0 && i > len(m.events)-200; i-- {
+			e := &m.events[i]
+			if e.Bot == bot && (e.Kind == "item" || e.Kind == "equip" || e.Kind == "stash") && time.Since(e.Time) < time.Hour && strings.Contains(strings.ToLower(o.Title), strings.ToLower(e.Name)) {
+				if len(o.Description) > len(e.Desc) {
+					e.Title, e.Desc = o.Title, o.Description
+				}
+				if e.Kind != "stash" { // the stash entry after it (if any) took the old text: give it the new one too, then stop at the pickup
+					return
+				}
+			}
+		}
 	}
-	m.pendingDesc[bot] = pendingDesc{o.Title, o.Description, time.Now()}
+	if m.pendingDesc == nil {
+		m.pendingDesc = map[string][]pendingDesc{}
+	}
+	// several reports can wait at once: a bot selling two items sends the second report before Qolbot has read the first "Sold" line (live 18:56,
+	// Sankt: the Razor Bow's report was replaced by the Claymore's, and the Razor Bow card had no stats)
+	var keep []pendingDesc
+	for _, p := range m.pendingDesc[bot] {
+		if time.Since(p.at) < 20*time.Second {
+			keep = append(keep, p)
+		}
+	}
+	if len(keep) >= 8 {
+		keep = keep[len(keep)-7:]
+	}
+	m.pendingDesc[bot] = append(keep, pendingDesc{o.Title, o.Description, time.Now()})
+}
+
+// takePending removes and returns the oldest waiting report of this bot that fits an entry of this kind and item name (m.mu is held).
+func (m *Manager) takePending(bot, kind, name string) (pendingDesc, bool) {
+	list := m.pendingDesc[bot]
+	for i, p := range list {
+		if descFits(p.title, kind) && time.Since(p.at) < 20*time.Second && strings.Contains(strings.ToLower(p.title), strings.ToLower(name)) {
+			m.pendingDesc[bot] = append(list[:i:i], list[i+1:]...)
+			return p, true
+		}
+	}
+	return pendingDesc{}, false
+}
+
+// descFits: an item report's title goes with an entry of this kind: "Sold ..." with a sale only, "Stashed ..." with a stash only, the others (kept, equipped) with a pickup or an equip
+func descFits(title, kind string) bool {
+	if strings.HasPrefix(title, "Sold ") {
+		return kind == "sale"
+	}
+	if strings.HasPrefix(title, "Stashed ") {
+		return kind == "stash"
+	}
+	if strings.HasPrefix(title, "Cubed ") { // what the Horadric Cube made (Cubing.doCubing): its "Cube: X" entry shows these stats when clicked
+		return kind == "cube"
+	}
+	return kind == "item" || kind == "equip"
+}
+
+// copyItemDesc gives an entry without stats the title, stats and quality of the same bot's most recent entry of the same item (by name) that has them,
+// from the last few hours.
+func copyItemDesc(it *ActivityEvent, events []ActivityEvent) {
+	for i := len(events) - 1; i >= 0; i-- {
+		e := events[i]
+		if e.Bot != it.Bot || time.Since(e.Time) > 6*time.Hour {
+			continue
+		}
+		if e.Desc != "" && (e.Kind == "item" || e.Kind == "equip" || e.Kind == "stash") && (strings.EqualFold(e.Name, it.Name) || strings.Contains(strings.ToLower(e.Title), strings.ToLower(it.Name))) {
+			it.Title, it.Desc = e.Title, e.Desc
+			if it.Quality == "" || it.Quality == "normal" {
+				it.Quality = e.Quality
+			}
+			if it.Ilvl == 0 {
+				it.Ilvl = e.Ilvl
+			}
+			return
+		}
+	}
 }
 
 // shorten cuts a log line to n characters for the Activity list.
@@ -408,4 +575,42 @@ func (m *Manager) noteLevel(bot, level string) {
 			s.Char = &c
 		}
 	})
+}
+
+// ChatLine is something a bot said in the game's chat (a quote, a report, a call for a portal): the Activity tab shows the latest ones in its chat box.
+type ChatLine struct {
+	Time time.Time `json:"time"`
+	Bot  string    `json:"bot"`
+	Text string    `json:"text"`
+}
+
+// addChat records a line of game chat. Slash commands (/save) are not speech, and a leading "!" only makes the game show the line in a bubble.
+func (m *Manager) addChat(bot, text string) {
+	text = strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(text), "!"))
+	// game and mod commands are not speech (the user, 2026-11-15: "hide any chat that starts with / or ."): "/save", Quartermaster's ".deposit",
+	// PlugY's ".reset skills"; nor are the bots' hold/go signals
+	if text == "" || strings.HasPrefix(text, "/") || strings.HasPrefix(text, ".") || text == "hold" || text == "go" {
+		return
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for i := len(m.chat) - 1; i >= 0 && i >= len(m.chat)-6; i-- {
+		if m.chat[i].Bot == bot && m.chat[i].Text == text && time.Since(m.chat[i].Time) < 3*time.Second {
+			return // the same words twice in a row
+		}
+	}
+	m.chat = append(m.chat, ChatLine{Time: time.Now(), Bot: bot, Text: text})
+	if len(m.chat) > 60 {
+		m.chat = m.chat[len(m.chat)-40:]
+	}
+}
+
+// recentChat is the newest n lines of chat, oldest first.
+func (m *Manager) recentChat(n int) []ChatLine {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if len(m.chat) > n {
+		return append([]ChatLine{}, m.chat[len(m.chat)-n:]...)
+	}
+	return append([]ChatLine{}, m.chat...)
 }

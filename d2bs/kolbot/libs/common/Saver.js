@@ -13,6 +13,7 @@
 
 include("OOG.js");
 include("common/Plan.js");
+include("common/PlugY.js");
 
 var Saver = {
 
@@ -28,7 +29,7 @@ var Saver = {
 
 	// Save and wait for the file to be written (5 seconds). acknowledge = true when Qolbot asked for it because it is about to stop this bot.
 	now: function (acknowledge) {
-		say("/save");
+		PlugY.save();
 		this.lastSave = Date.now();
 		delay(5000);
 
@@ -47,8 +48,25 @@ var Saver = {
 		}
 
 		print("Saver: saving the character (" + reason + ")");
-		say("/save");
+		PlugY.save();
 		this.lastSoon = this.lastSave = Date.now();
+
+		return true;
+	},
+
+	// The "save before a chicken" setting (Settings, Saving; off by default): a bot that is about to leave a game in danger asks for a save first and
+	// gives it about a second to start. Leaving the game does not save by itself, so without this everything since the last save is lost.
+	beforeLeaving: function () {
+		var plan = Plan.get();
+
+		if (!plan || !plan.saveOnChicken || !this.minutes()) {
+			return false;
+		}
+
+		print("Saver: saving the character before leaving (a chicken)");
+		PlugY.save();
+		this.lastSave = Date.now();
+		delay(1200);
 
 		return true;
 	},

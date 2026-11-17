@@ -60,6 +60,26 @@ func TestDetectRealCharacters(t *testing.T) {
 	}
 }
 
+// The Whirlwind template names its weapon mastery as a variable ([mastery, 20, false]): a Barbarian built by it, here with Axe Mastery,
+// must still be detected as Whirlwind and not fall out to a custom build because 20 points sit in the masteries tree.
+func TestWhirlwindMasteryCounts(t *testing.T) {
+	ts := LoadTemplates(libsDir, 4)
+	var ww *Template
+	for i := range ts {
+		if ts[i].Name == "Whirlwind" {
+			ww = &ts[i]
+		}
+	}
+	if ww == nil || ww.Key[masteryStandIn] != 20 {
+		t.Fatalf("Whirlwind template: mastery entry not parsed: %+v", ww)
+	}
+	s := &Save{Name: "B", Class: 4, Level: 55, Skills: map[int]int{
+		126: 1, 139: 1, 144: 4, 130: 1, 138: 1, 149: 1, 132: 1, 143: 1, 151: 20, 128: 20, 145: 1, 153: 4}}
+	if p := Detect(s, ts); p.Spec != "Whirlwind" {
+		t.Errorf("got %q (%s), want Whirlwind", p.Spec, p.Reason)
+	}
+}
+
 func TestFreshCharacterGetsDefault(t *testing.T) {
 	for c := range ClassNames {
 		s := &Save{Name: "X", Class: c, Level: 1, Skills: map[int]int{}}
@@ -140,6 +160,10 @@ func TestTemplatesAreWellFormed(t *testing.T) {
 			}
 			m := regexp.MustCompile(`(?s)Config\.AutoStat\.Build\s*=\s*\[(.*?)\n\s*\];`).FindStringSubmatch(src)
 			if m == nil {
+				// the melee templates generate the order in a loop (balanced strength, dexterity and vitality, one point at a time) and end it with the "all" entry
+				if strings.Contains(src, "Config.AutoStat.Build = [];") && strings.Contains(src, `Config.AutoStat.Build.push(["v", "all"]);`) {
+					continue
+				}
 				t.Errorf("%s: no AutoStat.Build", name)
 				continue
 			}
@@ -224,5 +248,18 @@ func TestStorageDefaultsAndRules(t *testing.T) {
 	off.ClearOnLoad = &f
 	if off.Normalize().ClearOnLoad == nil || *off.Normalize().ClearOnLoad {
 		t.Error("an explicit false for clearOnLoad must survive Normalize")
+	}
+}
+
+// AutoStat reads the base stats from the plan under these names (libs/common/AutoStat.js loadHard): strength, dexterity, vitality, energy, and when.
+func TestPlanCarriesTheSavesBaseStats(t *testing.T) {
+	b, err := json.Marshal(Plan{Name: "X", HardStats: []int{84, 69, 222, 10}, HardStatsAt: 1700000000000})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{`"hardStats":[84,69,222,10]`, `"hardStatsAt":1700000000000`} {
+		if !strings.Contains(string(b), want) {
+			t.Errorf("the plan JSON lacks %s: %s", want, b)
+		}
 	}
 }

@@ -47,7 +47,7 @@ function LoadTemplate()
 	Config.AttackSkill[2] = me.getSkill(64, 1) ? 64 : me.getSkill(47, 1) ? 47 : 0; // Primary untimed skill to bosses. Keep at -1 if Config.AttackSkill[1] is untimed skill.
 	Config.AttackSkill[3] = me.getSkill(56, 1) ? 56 : me.getSkill(64, 1) ? 64 : 0; // Primary skill to others.
 	Config.AttackSkill[4] = me.getSkill(64, 1) ? 64 : me.getSkill(47, 1) ? 47 : 0; // Primary untimed skill to others. Keep at -1 if Config.AttackSkill[3] is untimed skill.
-	Config.AttackSkill[5] = me.getSkill(64, 1) ? 64 : 0; // Secondary skill if monster is immune to primary.
+	Config.AttackSkill[5] = me.getSkill(64, 1) ? 64 : -1; // Secondary skill if monster is immune to primary. (2026-11-15: -1, not 0: a Sorceress does not punch)
 	Config.AttackSkill[6] = -1; // Secondary untimed skill if monster is immune to primary untimed.
 	Config.ClearPath = false; // means don't use teleport
 
@@ -77,21 +77,14 @@ function LoadTemplate()
 	];
 
 	Config.AutoStat.Enabled = true; // Enable or disable AutoStat system
-	Config.AutoStat.Build = [
-		["s", 12], // strength for quilt armor
-		["v", 28], // vitality (level 5)
-		["e", 50], // energy (level 8)
-		["v", 50], // vitality
-		["s", 15], // strength
-		["v", 65], // vitality
-		["s", 35], // strength
-		["e", 75], // energy
-		["v", 75], // vitality
-		["s", 55], // strength
-		["v", 100], // vitality
-		["s", 80], // strength
-		["v", 125], // vitality
-		["s", 95], // strength
-		["v", "all"], // rest into vitality
-	];
+	// Qolbot (the user, 2026-11-16: the casters, "equal str/eng/vit until 180"): strength, energy and vitality equal, one point at a time (the targets go up by one:
+	// each to 21, each to 22, ... to 180), then all the rest into vitality. Dexterity gets nothing. (The order before: vitality first, strength up to 95-100, and
+	// energy only for the Hammerdin, 30.)
+	Config.AutoStat.Build = [];
+
+	for (var statTarget = 21; statTarget <= 180; statTarget += 1) {
+		Config.AutoStat.Build.push(["s", statTarget], ["e", statTarget], ["v", statTarget]);
+	}
+
+	Config.AutoStat.Build.push(["v", "all"]);
 }

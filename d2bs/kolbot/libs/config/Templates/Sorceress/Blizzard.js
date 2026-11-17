@@ -41,10 +41,12 @@ function LoadTemplate()
 	// 65	Cold Mastery
 
 	Config.AttackSkill[0] = -1; // Preattack skill.
-	Config.AttackSkill[1] = me.getSkill(59, 1) ? 59 : 0; // Primary skill to bosses.
-	Config.AttackSkill[2] = me.getSkill(55, 1) ? 55 : 0; // Primary untimed skill to bosses. Keep at -1 if Config.AttackSkill[1] is untimed skill.
-	Config.AttackSkill[3] = me.getSkill(59, 1) ? 59 : 0; // Primary skill to others.
-	Config.AttackSkill[4] = me.getSkill(55, 1) ? 55 : 0; // Primary untimed skill to others. Keep at -1 if Config.AttackSkill[3] is untimed skill.
+	// 2026-11-15: before Blizzard (level 24) and Glacial Spike (18) the attacks were 0, the plain Attack: a level 1-23 Blizzard Sorceress punched.
+	// Now Ice Blast, then Ice Bolt, until they open
+	Config.AttackSkill[1] = me.getSkill(59, 1) ? 59 : (me.getSkill(45, 1) ? 45 : (me.getSkill(39, 1) ? 39 : 0)); // Primary skill to bosses.
+	Config.AttackSkill[2] = me.getSkill(55, 1) ? 55 : (me.getSkill(45, 1) ? 45 : -1); // Primary untimed skill to bosses. Keep at -1 if Config.AttackSkill[1] is untimed skill.
+	Config.AttackSkill[3] = me.getSkill(59, 1) ? 59 : (me.getSkill(45, 1) ? 45 : (me.getSkill(39, 1) ? 39 : 0)); // Primary skill to others.
+	Config.AttackSkill[4] = me.getSkill(55, 1) ? 55 : (me.getSkill(45, 1) ? 45 : -1); // Primary untimed skill to others. Keep at -1 if Config.AttackSkill[3] is untimed skill.
 	Config.AttackSkill[5] = -1; // Secondary skill if monster is immune to primary.
 	Config.AttackSkill[6] = -1; // Secondary untimed skill if monster is immune to primary untimed.
 	Config.ClearPath = false; // means don't use teleport
@@ -60,30 +62,29 @@ function LoadTemplate()
 
 	Config.AutoSkill.Enabled = true; // Enable or disable AutoSkill system
 	Config.AutoSkill.Build = [
-		[54, 1, false], // teleport
-		//[58, 1, false], // energy shield
-		[65, 100, false], // cold mastery
-		[59, 100, false], // blizzard
-		[55, 100, false], // glacial spike
-		[37, 100, false], // warmth
+		// 2026-11-15, the usual 1.13 Blizzard Sorceress: Blizzard maxed, then its synergies Glacial Spike, Ice Blast and Ice Bolt, Cold Mastery last.
+		// The old list began with Cold Mastery (level 30) and Blizzard (24), so the early points went down to Warmth (100) and nothing could attack
+		[39, 1, false], // ice bolt
+		[45, 8, false], // ice blast (level 6): the attack until blizzard
+		[54, 1, false], // teleport (level 18)
+		[55, 1, false], // glacial spike (level 18)
+		[59, 20, false], // blizzard (level 24)
+		[55, 20, false], // glacial spike
+		[45, 20, false], // ice blast
+		[65, 5, false], // cold mastery (level 30)
+		[39, 20, false], // ice bolt
+		[65, 20, false], // cold mastery
 	];
 
 	Config.AutoStat.Enabled = true; // Enable or disable AutoStat system
-	Config.AutoStat.Build = [
-		["s", 12], // stat strength for quilt armor
-		["v", 28], // spend in vitality until it reaches 28 (level 5)
-		["e", 50], // spend in energy until 50 (level 8)
-		["v", 50], // spend more in vitality
-		["s", 15], // get up to 15 strength (level 13)
-		["v", 65], // spend in vitality (level 18)
-		["s", 35], // get up to 25 strength (level 20)
-		["e", 75], // spend in energy (level 25)
-		["v", 75], // level 27
-		["s", 55], // level 31
-		["v", 100], // level 36
-		["s", 80], // level 41
-		["v", 125], // level 46
-		["s", 95], // level 49 (less if done stat quests)
-		["v", "all"], // put rest of the points in vitality
-	];
+	// Qolbot (the user, 2026-11-16: the casters, "equal str/eng/vit until 180"): strength, energy and vitality equal, one point at a time (the targets go up by one:
+	// each to 21, each to 22, ... to 180), then all the rest into vitality. Dexterity gets nothing. (The order before: vitality first, strength up to 95-100, and
+	// energy only for the Hammerdin, 30.)
+	Config.AutoStat.Build = [];
+
+	for (var statTarget = 21; statTarget <= 180; statTarget += 1) {
+		Config.AutoStat.Build.push(["s", statTarget], ["e", statTarget], ["v", statTarget]);
+	}
+
+	Config.AutoStat.Build.push(["v", "all"]);
 }

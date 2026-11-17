@@ -121,7 +121,14 @@ var Loader = {
 											this.copy(Scripts[i], Config);
 										}
 
+										var runStart = getTickCount();
+
 										global[i]();
+
+										// Qolbot: the Activity card for a finished run (cmd/qolbot activity.go): a run with no boss (the Pit, a full clear) said nothing at its end
+										if (i !== "Follower" && i !== "Test") {
+											print("Run done: " + i + " in " + Math.round((getTickCount() - runStart) / 1000) + " s");
+										}
 
 										if (reconfiguration) {
 											print("ÿc2Reverting back unmodified config properties.");

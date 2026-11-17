@@ -4,6 +4,8 @@
 *	@desc		transmute Horadric Cube recipes
 */
 
+include("common/PlugY.js"); // the stash page commands (newStashPage)
+
 var Roll = {
 	All: 0,
 	Eth: 1,
@@ -958,6 +960,12 @@ IngredientLoop:
 				items = me.findItems(-1, -1, 6);
 
 				if (items) {
+					// what the recipe made, one line per item: the Activity list shows each as a "Cube" card (cmd/qolbot/activity.go reCubed)
+					for (j = 0; j < items.length; j += 1) {
+						Misc.logItem("Cubed", items[j]); // its stats, for the "Cube" card (clicked in the Activity list); sent first, the card's line follows
+						print("Cube: " + String(items[j].name).replace(/\xFFc./g, "").trim());
+					}
+
 					for (j = 0; j < items.length; j += 1) {
 						result = Pickit.checkItem(items[j]);
 
@@ -1057,6 +1065,15 @@ IngredientLoop:
 		return false;
 	},
 
+	// A NEW STASH PAGE: the commands and the click are PlugY's, in PlugY.js (the user, 2026-11-16: the mods' functions live in classes of their own); the old name stays for the callers.
+	newStashPage: function () {
+		return PlugY.newStashPage();
+	},
+
+	stashFirstPage: function () {
+		return PlugY.firstPage();
+	},
+
 	emptyCube: function () {
 		var cube = me.getItem(549),
 			items = me.findItems(-1, -1, 6);
@@ -1069,12 +1086,24 @@ IngredientLoop:
 			return true;
 		}
 
+		var pageAdded = false;
+
 		while (items.length) {
 			if (Storage.Inventory.CanFit(items[0])) {
 				Storage.Inventory.MoveTo(items[0]);
 			} else if (Storage.Stash.CanFit(items[0])) {
 				Storage.Stash.MoveTo(items[0]);
+			} else if (Config.InfiniteStash && !pageAdded) {
+				// the stash page is full (Pack keeps keepers in the cube once it is): a new PlugY page, as Pack does, then this item again (2026-11-15: Darius
+				// failed the Horadric Staff five times on "Failed to empty cube", a 2x4 bill and three more keepers in the cube, one full stash page)
+				print("Cubing: the stash is full: adding a stash page to empty the cube.");
+				this.newStashPage();
+				pageAdded = true;
+
+				continue;
 			} else {
+				print("Cubing: cannot empty the cube: no room for " + items[0].name + " in the pack or the stash.");
+
 				return false;
 			}
 

@@ -47,7 +47,7 @@ function LoadTemplate()
 	Config.AttackSkill[2] = me.getSkill(113, 1) ? 113 : (me.getSkill(98, 1) ? 98 : -1); // Primary aura to bosses
 	Config.AttackSkill[3] = me.getSkill(112, 1) ? 112 : me.getSkill(97, 1) ? 97 : 0; // Primary skill to others.
 	Config.AttackSkill[4] = me.getSkill(113, 1) ? 113 : (me.getSkill(98, 1) ? 98 : -1); // Primary aura to others.
-	Config.AttackSkill[5] = 0; // Secondary skill if monster is immune to primary.
+	Config.AttackSkill[5] = me.getSkill(97, 1) ? 97 : -1; // Secondary skill if monster is immune to primary. 2026-11-15: Smite for magic immunes (was 0, a plain swing)
 	Config.AttackSkill[6] = -1; // Secondary aura.
 
 	Config.LowManaSkill[0] = 0; // Low mana skill.
@@ -76,17 +76,14 @@ function LoadTemplate()
 	];
 
 	Config.AutoStat.Enabled = true; // Enable or disable AutoStat system
-	Config.AutoStat.Build = [
-		["s", 25], // strength for gear
-		["v", 40], // vitality
-		["e", 30], // energy: a little mana while leveling
-		["d", 40], // dexterity for block
-		["v", 65], // vitality
-		["s", 60], // strength
-		["d", 70], // dexterity
-		["v", 100], // vitality
-		["s", 100], // strength for gear
-		["d", 90], // dexterity (block with Holy Shield)
-		["v", "all"], // everything else into vitality (energy stays low: mana comes from gear)
-	];
+	// Qolbot (the user, 2026-11-16: the casters, "equal str/eng/vit until 180"): strength, energy and vitality equal, one point at a time (the targets go up by one:
+	// each to 21, each to 22, ... to 180), then all the rest into vitality. Dexterity gets nothing. (The order before: vitality first, strength up to 95-100, and
+	// energy only for the Hammerdin, 30.)
+	Config.AutoStat.Build = [];
+
+	for (var statTarget = 21; statTarget <= 180; statTarget += 1) {
+		Config.AutoStat.Build.push(["s", statTarget], ["e", statTarget], ["v", statTarget]);
+	}
+
+	Config.AutoStat.Build.push(["v", "all"]);
 }

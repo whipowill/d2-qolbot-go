@@ -41,7 +41,8 @@ function LoadTemplate()
 	// 125	Salvation
 
 	Config.AttackSkill[0] = -1; // Preattack skill.
-	Config.AttackSkill[1] = me.getSkill(97, 1) ? 97 : (me.getSkill(106, 1) ? 106 : 0); // Primary skill to bosses.
+	// Zeal on bosses too (2026-11-15): Smite is one hit with the weapon's damage, Zeal is up to five with Fanaticism's speed
+	Config.AttackSkill[1] = me.getSkill(106, 1) ? 106 : (me.getSkill(97, 1) ? 97 : 0); // Primary skill to bosses.
 	Config.AttackSkill[2] = me.getSkill(122, 1) ? 122 : 98; // Primary aura to bosses
 	Config.AttackSkill[3] = me.getSkill(106, 1) ? 106 : 0; // Primary skill to others.
 	Config.AttackSkill[4] = me.getSkill(122, 1) ? 122 : 98; // Primary aura to others.
@@ -61,32 +62,28 @@ function LoadTemplate()
 
 	Config.AutoSkill.Enabled = true; // Enable or disable AutoSkill system
 	Config.AutoSkill.Build = [
-		[122, 10, false], // fanatacism
-		[117, 10, false], // holy shield
-		[106, 10, false], // zeal
-		[97, 10, false], // smite
-		[122, 100, false], // fanatacism
-		[117, 100, false], // holy shield
-		[106, 100, false], // zeal
-		[97, 100, false], // smite
+		// 2026-11-15, the usual 1.13 Zealot: Fanaticism, Zeal and Holy Shield maxed (Zeal has no synergies in 1.13, so Sacrifice and Smite get
+		// none). Might is the aura until Fanaticism at 30; the rest goes to Resist Lightning, whose passive bonus counts when another aura is on.
+		// It had 10 then 100 points for Smite, a one-hit skill the build did not need
+		[106, 1, false], // zeal (level 12; with sacrifice)
+		[98, 4, false], // might: the aura until fanaticism
+		[106, 6, false], // zeal
+		[117, 1, false], // holy shield (level 24; with smite, charge, holy bolt, blessed aim, blessed hammer)
+		[122, 20, false], // fanaticism (level 30; with concentration)
+		[106, 20, false], // zeal
+		[117, 20, false], // holy shield (block, defense)
+		[110, 20, false], // resist lightning (Nightmare and Hell lightning)
 	];
 
 	Config.AutoStat.Enabled = true; // Enable or disable AutoStat system
-	Config.AutoStat.Build = [
-		["s", 12], // stat strength for quilt armor
-		["v", 28], // spend in vitality until it reaches 28 (level 5)
-		["d", 50], // spend in energy until 50 (level 8)
-		["v", 50], // spend more in vitality
-		["s", 15], // get up to 15 strength (level 13)
-		["v", 65], // spend in vitality (level 18)
-		["s", 35], // get up to 25 strength (level 20)
-		["d", 75], // spend in energy (level 25)
-		["v", 75], // level 27
-		["s", 55], // level 31
-		["v", 100], // level 36
-		["s", 80], // level 41
-		["v", 125], // level 46
-		["s", 95], // level 49 (less if done stat quests)
-		["v", "all"], // put rest of the points in vitality
-	];
+	// Qolbot (the user, 2026-11-16: "for melee fighters, the stat allocation should be balanced between str, dex, and vit ... keep them equal up until str and dex
+	// about 180, then all other points go to vit"; "balanced each allocation"): every point goes to the lowest of the three, one at a time (the targets go up by one:
+	// strength, dexterity and vitality each to 21, each to 22, ... to 180), then all the rest into vitality. Energy gets nothing.
+	Config.AutoStat.Build = [];
+
+	for (var statTarget = 21; statTarget <= 180; statTarget += 1) {
+		Config.AutoStat.Build.push(["s", statTarget], ["d", statTarget], ["v", statTarget]);
+	}
+
+	Config.AutoStat.Build.push(["v", "all"]);
 }

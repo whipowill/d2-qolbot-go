@@ -132,6 +132,25 @@ const AutoSkill = new function () {
 		return false;
 	};
 
+	// Skills are level-locked: a point in a skill needs character level (required level + points already in it). The build lists the skills the
+	// character should end with, most important first. When the most important skill that is still short of its count is blocked ONLY by the
+	// character level and that is at most bankWindow levels away, its points are kept for it (not spent on the skills further down the list, which
+	// is how a level 26 Barbarian ended up with nine points in Battle Cry and none for Whirlwind at level 30). Further away than that the points
+	// go down the list, as before: waiting that long would leave the character weak for no reason.
+	this.bankWindow = 5;
+	this.banked = {};
+
+	// character levels before the next point of this skill may be spent when only the level stands in the way, else 0
+	this.levelsAway = function (skillid, count) {
+		let entry = this.reqTable[skillid];
+
+		if (!entry || this.points(skillid) >= count || this.needPreReq(skillid)) {
+			return 0;
+		}
+
+		return Math.max(0, entry[0] + this.points(skillid) - me.charlvl);
+	};
+
 	this.skillToAdd = function (inputArray) {
 		for (let i = 0; i < inputArray.length; i += 1) {
 			// limit maximum allocation count to 20
@@ -168,6 +187,23 @@ const AutoSkill = new function () {
 
 			if (reqIn && this.skillCheck(reqIn, 1)) { // reqIn is unset when the skill has all its prerequisites: go on to the next entry
 				return reqIn;
+			}
+
+			let away = this.levelsAway(inputArray[i][0], inputArray[i][1]);
+
+			if (away > 0 && away <= this.bankWindow && inputArray[i][1] >= 5) { // only a main skill (5 or more points wanted) holds the line: a one-point utility skill that is not open yet is just skipped
+				if (!this.banked[inputArray[i][0]]) {
+					this.banked[inputArray[i][0]] = true;
+					print("AutoSkill: " + getSkillById(inputArray[i][0]) + " opens in " + away + " level(s): keeping a skill point for it.");
+				}
+
+				// Only ONE point is kept back: a skill's next point needs one more character level than the last (Blessed Hammer: level 24, then 25, 26 ...), so
+				// it can take one point per level whatever is waiting. Darius (level 24) sat on 17 unspent points for it, 2026-11-13. The spare points go down the list.
+				if (this.remaining > 1) {
+					continue;
+				}
+
+				return false;
 			}
 		}
 

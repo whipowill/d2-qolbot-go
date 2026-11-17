@@ -63,14 +63,10 @@ const generatedNIP = "Generated.nip"
 // items) plus the generated one.
 const customPickitLists = false
 
-// autoequipFile is the gear-ranking list for a class: casters (Sorceress, Necromancer, Druid) value skills and cast rate, the rest
-// value attack speed, leech and damage. See the headers of the two files.
+// autoequipFile is the gear-ranking list. One list for every class since 2026-11-15: its rule asks libs/common/Gear.js what a piece is
+// worth to the character's BUILD (a Hammerdin is a caster, a Zealot a fighter with a shield), not to its class.
 func autoequipFile(class string) string {
-	switch class {
-	case "Sorceress", "Necromancer", "Druid":
-		return "Autoequip/caster.nip"
-	}
-	return "Autoequip/melee.nip"
+	return "Autoequip/gear.nip"
 }
 
 // baselinePickit is what every bot loads: the gear ranking for its class, the mercenary's ranking, potions and quest items.
@@ -235,8 +231,12 @@ func (m *Manager) baseNames() map[string]bool {
 
 // pickitRules returns the saved rules (none by default).
 func (m *Manager) pickitRules() PickitRules {
-	if m.cfg.PickitRules != nil {
-		r := *m.cfg.PickitRules
+	{
+		src := defaultKeeperRules() // nothing saved: the program's default rules (keeperdefaults.json)
+		if m.cfg.PickitRules != nil {
+			src = *m.cfg.PickitRules
+		}
+		r := src
 		if !r.BasesSeeded && len(r.Bases) == 0 {
 			r.Bases = defaultBases()
 			r.BasesOn = true
@@ -252,7 +252,6 @@ func (m *Manager) pickitRules() PickitRules {
 		m.resolveBases(r.Bases)
 		return r
 	}
-	return PickitRules{Bases: defaultBases(), Magic: defaultMagic(), Class: defaultClass()}
 }
 
 // pickitDefaults is what the "Reset to defaults" buttons on the Magic & Rares and Base Items pages put back.
@@ -332,8 +331,6 @@ func (m *Manager) setPickitRules(r PickitRules) error {
 }
 
 var (
-	defaultPickitLead = []string{"Autoequip/melee.nip", "Autoequip/merc.nip", "QOL/Potions.nip", "QOL/Quest.nip", "QOL/Misc.nip", "QOL/Jewelry.nip",
-		"QOL/Rares.nip", "QOL/Ladder.nip", "QOL/Bases.nip", "QOL/Custom.nip"}
 	reLoadedNIP = regexp.MustCompile(`Loaded NIP: (\S+?)\. Lines: (\d+)\. Valid entries: (\d+)/(\d+)`)
 )
 
@@ -343,7 +340,7 @@ func (m *Manager) pickitDir() string {
 
 // pickitSelection returns the configured lists, or the defaults.
 func (m *Manager) pickitSelection() PickitSel {
-	sel := PickitSel{Lead: defaultPickitLead}
+	sel := PickitSel{Lead: defaultKeeperLead()}
 	if m.cfg.Pickit != nil {
 		sel.Lead = m.cfg.Pickit.Lead
 	}

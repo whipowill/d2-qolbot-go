@@ -1,6 +1,7 @@
 package main
 
 import (
+	"d2qolbot/internal/spec"
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
@@ -26,6 +27,7 @@ type questFileRow struct {
 	ID      int      `json:"id"`
 	Title   string   `json:"title"`
 	Play    *bool    `json:"play"`
+	Manual  bool     `json:"manual"`
 	Aliases []string `json:"aliases"`
 	Reward  *struct {
 		Skill int    `json:"skill"`
@@ -40,6 +42,7 @@ var (
 	pointQuests  []pointQuest        // the quests whose reward is skill points, stat points or life (audit.go)
 	questAliases map[string][]string // title -> other spellings in older logs
 	questAll     []questRow          // every row, played or not (for finding a quest by its title)
+	manualQuest  = map[int]bool{}    // the quests whose last step is a reward only the player can choose
 )
 
 // loadQuestTable reads the quest table. Without it the sheets and the audit have nothing to show, so a missing or broken file is an error.
@@ -58,7 +61,11 @@ func loadQuestTable(path string) error {
 		return fmt.Errorf("%s: no quests in it", path)
 	}
 	table, points, all, aliases := []questRow{}, []pointQuest{}, []questRow{}, map[string][]string{}
+	manual := map[int]bool{}
 	for _, q := range doc.Quests {
+		if q.Manual {
+			manual[q.ID] = true
+		}
 		row := questRow{q.Act, q.ID, q.Title}
 		all = append(all, row)
 		aliases[q.Title] = q.Aliases
@@ -69,7 +76,7 @@ func loadQuestTable(path string) error {
 			points = append(points, pointQuest{ID: q.ID, Title: q.Title, Skill: q.Reward.Skill, Stat: q.Reward.Stat, Life: q.Reward.Life, How: q.Reward.How})
 		}
 	}
-	questTable, pointQuests, questAll, questAliases = table, points, all, aliases
+	questTable, pointQuests, questAll, questAliases, manualQuest = table, points, all, aliases, manual
 	return nil
 }
 
@@ -102,7 +109,7 @@ func readQuestDone(path string) (done [3][]int, ok bool) {
 	}
 	for d := 0; d < 3; d++ {
 		done[d] = []int{}
-		for _, q := range questTable {
+		for _, q := range questAll { // every quest of the game: the sheet shows the ones the bots do not play too
 			if words[d][q.ID]&1 != 0 {
 				done[d] = append(done[d], q.ID)
 			}
@@ -111,12 +118,32 @@ func readQuestDone(path string) (done [3][]int, ok bool) {
 	return done, true
 }
 
+// readQuestPending returns, per difficulty, the quests whose only step left is the hand-in: bit 1 set, bit 0 not (the game's "reward pending", what
+// Quester.questPending checks in a game).
+func readQuestPending(path string) (pending [3][]int, ok bool) {
+	words, ok := readQuestWords(path)
+	if !ok {
+		return
+	}
+	for d := 0; d < 3; d++ {
+		pending[d] = []int{}
+		for _, q := range questAll {
+			if w := words[d][q.ID]; w&1 == 0 && w&2 != 0 {
+				pending[d] = append(pending[d], q.ID)
+			}
+		}
+	}
+	return pending, true
+}
+
 // BotQuests is one bot's row of the party analysis.
 type BotQuests struct {
 	Name    string   `json:"name"`
 	Char    string   `json:"char"`
 	Level   int      `json:"level"`
+	MaxLife int      `json:"maxLife,omitempty"` // the base maximum life in the save (level, class and vitality; no gear): who is sturdy enough to lead
 	Done    [3][]int `json:"done"`
+	Pending [3][]int `json:"pending,omitempty"` // only the hand-in left (readQuestPending): the bot finishes it at its next visit to the NPC
 	SavedAt string   `json:"savedAt,omitempty"`
 	Problem string   `json:"problem,omitempty"`
 }
@@ -145,13 +172,21 @@ func (m *Manager) partyQuests(names []string) map[string]any {
 			bq.Problem = "could not read the quests from " + w.char + ".d2s"
 		} else {
 			bq.Done, bq.SavedAt = d, fi.ModTime().Format(time.RFC3339)
+			if pd, ok := readQuestPending(p); ok {
+				bq.Pending = pd
+			}
 			if _, ci, ok := readD2S(p); ok {
 				bq.Level = ci.Level
+			}
+			if raw, err := os.ReadFile(p); err == nil {
+				if sv, err := spec.ParseSave(raw); err == nil {
+					bq.MaxLife = sv.MaxLifeRaw / 256
+				}
 			}
 		}
 		bots = append(bots, bq)
 	}
-	return map[string]any{"quests": questTable, "bots": bots}
+	return map[string]any{"quests": questAll, "bots": bots} // every quest of the game, played or not: all of them have to get done
 }
 
 func splitNames(s string) []string {

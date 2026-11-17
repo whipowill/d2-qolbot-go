@@ -19,6 +19,8 @@ Quester.npcItems = [
 	[547, "alkor", "The Golden Bird", 3, true] // Alkor takes a few seconds to brew the Potion of Life: come back to him
 ];
 
+Quester.permissions = {}; // "p1" ...: a talk that only has to happen once per game (Jerhyn), done
+
 Quester.questTries = {}; // quest id -> how many times this game the bot went to an NPC for it (no endless loops)
 
 Quester.manualSaid = {}; // quest id -> already written to the log (the bots do not say it in chat: only you can pick that reward)
@@ -79,6 +81,13 @@ Quester.questNpcPlan = function (refresh) {
 		}
 	}
 
+	// The guards of the Harem let nobody into the palace until Jerhyn has been talked to once Radament's Lair is done: without it every walk to the Palace
+	// Cellar and the Arcane Sanctuary stops at the Harem (found 2026-11-12: "move retry 3" in Harem Level 2, and Meir's portals to those places were refused).
+	// Every bot talks to him once per game, the leader's quest script too (act2_arcane_sanctuary).
+	if (me.act === 2 && !this.permissions.p1 && me.getQuest(9, 0) && !me.getQuest(12, 0)) {
+		add("jerhyn", "Jerhyn's permission for the Harem", "p1");
+	}
+
 	for (i = 0; i < this.npcItems.length; i += 1) {
 		e = this.npcItems[i];
 
@@ -111,7 +120,18 @@ Quester.questNpcPending = function (refresh) {
 	return plan.talks.length > 0;
 };
 
+// A talk with a quest NPC, with the quests' states recorded before it and after it (QuestStates), so that the record shows what each NPC changed
 Quester.talkToQuestNpc = function (name) {
+	var talked;
+
+	QuestStates.snapshot("before talking to " + name, "", false);
+	talked = this.talkToQuestNpcRun(name);
+	QuestStates.snapshot("after talking to " + name, name, true);
+
+	return talked;
+};
+
+Quester.talkToQuestNpcRun = function (name) {
 	var npc = getUnit(1, name);
 
 	if (!npc) {
@@ -122,6 +142,18 @@ Quester.talkToQuestNpc = function (name) {
 	if (!npc && (name === "jerhyn" || name === "kaelan")) {
 		Town.move("palace");
 		npc = getUnit(1, name);
+	}
+
+	// Deckard Cain is "Deckard Cain" in the game (the name "cain" finds nobody) and Town.js's Act 4 "cain" spot is Tyrael's: look him up by his class id
+	// (245, as ActTravel and Quester.cainSoulstone do), near the stash in the Pandemonium Fortress (Darius, Hell's Forge hand-in: "quest NPC cain not found",
+	// live 2026-11-14 13:28:56)
+	if (!npc && name === "cain") {
+		npc = getUnit(1, 245) || getUnit(1, "deckardcain") || getUnit(1, "deckard cain");
+
+		if (!npc && me.act === 4) {
+			Town.move("stash");
+			npc = getUnit(1, 245);
+		}
 	}
 
 	if (!npc) {
@@ -149,7 +181,7 @@ Quester.talkToQuestNpc = function (name) {
 
 // Go through everything a town's quest NPCs have for this bot. Returns the number of conversations held.
 Quester.questNpcs = function () {
-	var plan, talked = 0, i, j, t, round, used, before, after, pendingNow, heldNow, pass, passTalked, handed, rewarded, idle, heldBefore;
+	var plan, talked = 0, i, j, t, round, used, before, after, pendingNow, heldNow, pass, passTalked, handed, rewarded, idle, heldBefore, others, self = this;
 
 	if (!me.inTown) {
 		return 0;
@@ -159,7 +191,11 @@ Quester.questNpcs = function () {
 		var any = false, q;
 
 		for (q = 0; q < t.quests.length; q += 1) {
-			if (typeof t.quests[q] === "number" ? self.questPending(t.quests[q]) : self.invItem(parseInt(String(t.quests[q]).substr(1), 10))) {
+			if (typeof t.quests[q] === "string" && t.quests[q].charAt(0) === "p") { // a talk that must happen once
+				if (!self.permissions[t.quests[q]]) {
+					any = true;
+				}
+			} else if (typeof t.quests[q] === "number" ? self.questPending(t.quests[q]) : self.invItem(parseInt(String(t.quests[q]).substr(1), 10))) {
 				any = true;
 			}
 		}
@@ -211,6 +247,10 @@ Quester.questNpcs = function () {
 			rewarded = false;
 			idle = 0;
 
+			// Another NPC of the list still has something pending: a round that changes nothing sends me on to him at once. The waiting rounds ("come back later") are for the last
+			// NPC only (the user, 2026-11-16, about Malah's three useless rounds: "you can optimize that if you can detect which npc they need to talk to"). UNTESTED in a game.
+			others = plan.talks.slice(i + 1).some(function (o) { return pendingNow(self, o); });
+
 			for (round = 0; round < 8; round += 1) {
 				before = pendingNow(this, t);
 				heldBefore = heldNow(this, t);
@@ -219,6 +259,12 @@ Quester.questNpcs = function () {
 					print("Quester: quest NPC " + t.npc + " not found");
 
 					break;
+				}
+
+				for (j = 0; j < t.quests.length; j += 1) {
+					if (typeof t.quests[j] === "string" && t.quests[j].charAt(0) === "p") {
+						this.permissions[t.quests[j]] = true;
+					}
 				}
 
 				talked += 1;
@@ -244,7 +290,7 @@ Quester.questNpcs = function () {
 				// nothing came back yet: some NPCs say "come back later" and need a few seconds
 				idle += 1;
 
-				if (idle > (t.expect && handed ? 6 : 2)) {
+				if (idle > (t.expect && handed ? 6 : others ? 0 : 2)) {
 					break;
 				}
 
@@ -255,6 +301,7 @@ Quester.questNpcs = function () {
 				this.problem(t.npc + " has not given me anything back yet (" + t.why + ").");
 			} else if (!pendingNow(this, t)) {
 				this.note(t.why + ": done.");
+				Saver.soon("quest reward"); // a follower's quest is finished here, not by the Quester: save soon so that the Activity list and the Quest Progress sheet see it
 			}
 		}
 
@@ -267,3 +314,42 @@ Quester.questNpcs = function () {
 
 	return talked;
 };
+
+// Is there a quest of this town's act that this bot has not completed (so that talking to the quest NPCs here may move it on)? Used by Chores.needed
+// ("quest talk") and by the Follower: EVERY bot does the town part of its quests whenever it is in town (user, 2026-11-13), not only the leader.
+Quester.townQuestsAt = 0; // when the bot last ran the town part of its quests
+Quester.townStartedOnly = false; // set by the Follower around runQuests(true): only quests that have started, see runQuests
+Quester.pendingTalkAt = {}; // quest id -> when a follower last went to the NPC for its waiting reward
+Quester.townQuestSeen = {}; // quest id -> the progress it had when the bot last talked for it (no second talk for the same state)
+
+Quester.townQuestsOpen = function () {
+	var i, row, progress, towns = [1, 40, 75, 103, 109];
+
+	for (i = 0; i < this.quests.length; i += 1) {
+		row = this.quests[i];
+
+		if (towns[row[0] - 1] !== me.area || !this.actOpen(row[0]) || typeof this[row[4]] !== "function") {
+			continue;
+		}
+
+		progress = this.getQuestProgress(row[3]);
+
+		// Qolbot (2026-11-16, Hell's Forge): progress is only ever 0 or 100, so "started but not done" never matched and a follower in the town of a quest whose reward was
+		// WAITING (bit 1 set: the leader's smash credited the whole team) never went to the NPC. A pending reward counts, once every two minutes (Follower.townQuestTalk stamps
+		// pendingTalkAt): Barabas, Xena and Sankt stayed at 0010000000000010 for good while Darius handed in to Cain. UNTESTED in a game.
+		if (progress <= 0 && !row[5] && this.questPending(row[3])) {
+			if (Date.now() - (this.pendingTalkAt[row[3]] || 0) > 120000) {
+				return true;
+			}
+
+			continue;
+		}
+
+		if (progress > 0 && progress < 100 && this.townQuestSeen[row[3]] !== progress && !(row[5] && this.questPending(row[3]))) {
+			return true;
+		}
+	}
+
+	return false;
+};
+

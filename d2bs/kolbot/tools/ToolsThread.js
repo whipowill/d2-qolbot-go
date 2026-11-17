@@ -28,6 +28,8 @@ include("common/Runewords.js");
 include("common/Storage.js");
 include("common/Town.js");
 include("common/Saver.js");
+include("common/QuestTable.js"); // the quests, for watchQuests
+include("common/MercHire.js"); // the kind of the merc for the bot card (MercHire.current: class and a skill only that kind has)
 
 function main() {
 	var i, mercHP, ironGolem, tick, merc,
@@ -180,8 +182,14 @@ function main() {
 		return true;
 	};
 
-	this.exit = function () {
+	// inDanger: a chicken, so the "save before a chicken" setting applies (Saver.beforeLeaving)
+	this.exit = function (inDanger) {
 		this.stopDefault();
+
+		if (inDanger) {
+			Saver.beforeLeaving();
+		}
+
 		quit();
 	};
 
@@ -525,6 +533,43 @@ function main() {
 	// kill; Qolbot shows it once (the monster's id is in the line). (spectype & 0x5 is how the other scripts tell a boss from plain monsters and champions.)
 	var watchKills = !!Config.WatchKills, seenMon = {}, saidMon = {}, saidCount = 0, lastScan = 0;
 
+	// Qolbot: every bot says when one of its quests becomes complete, the moment the game sets it, in the Quester's words (the user, 2026-11-14:
+	// followers' completions only reached the Activity list from their saves, a minute or two later). The first look in a game only remembers what is
+	// done; the leader's Quester says it too, and the manager shows one entry per bot and quest.
+	var questDone = null, questAt = 0;
+
+	this.watchQuests = function () {
+		var i, q, rows, done;
+
+		if (getTickCount() - questAt < 3000) {
+			return;
+		}
+
+		questAt = getTickCount();
+		rows = QuestTable.rows || [];
+
+		if (!questDone) {
+			questDone = {};
+
+			for (i = 0; i < rows.length; i += 1) {
+				questDone[rows[i].id] = !!me.getQuest(rows[i].id, 0);
+			}
+
+			return;
+		}
+
+		for (i = 0; i < rows.length; i += 1) {
+			q = rows[i];
+			done = !!me.getQuest(q.id, 0);
+
+			if (done && !questDone[q.id]) {
+				print("Quester: Act " + q.act + " - #" + q.num + " - \"" + q.title + "\" is complete."); // read by Qolbot's Activity list
+			}
+
+			questDone[q.id] = done;
+		}
+	};
+
 	this.watchKills = function () {
 		var now = getTickCount(), mon, spec, dead, label;
 
@@ -546,7 +591,9 @@ function main() {
 			do {
 				spec = mon.spectype;
 
-				if (spec & 0x05) {
+				// a super unique (0x01: Corpsefire, Bishibosh, ...), not its minions (0x08). Not the random uniques (0x04): their name reads wrong here, every
+				// one of them was "Mind Maw the Slasher" (live 18:14-18:17 on Nightmare: gids 45, 46, 49, 92 in the Blood Moor and 183 in the Den of Evil)
+				if ((spec & 0x01) && !(spec & 0x08)) {
 					dead = mon.hp === 0 || mon.mode === 0 || mon.mode === 12;
 
 					if (!dead) {
@@ -561,48 +608,7 @@ function main() {
 		}
 	};
 
-	// Qolbot: tell the manager what the bot carries (equipped, inventory, belt, cube, stash) so a click on its card can show it. Looked at
-	// every 10 seconds and sent only when something moved. Stat text is included for anything better than normal quality.
-	var invLast = 0, invSig = "";
-
-	this.reportInventory = function () {
-		var now = getTickCount(), item, list = [], sig = [], known, e;
-
-		if (now - invLast < 10000) {
-			return;
-		}
-
-		invLast = now;
-		item = me.getItem();
-
-		if (item) {
-			do {
-				if (item.mode === 0 || item.mode === 1 || item.mode === 2) { // storage, worn, belt
-					known = item.getFlag(0x10);
-					sig.push(item.gid + ":" + item.mode + ":" + item.location + ":" + item.x + ":" + item.y + ":" + item.bodylocation + ":" + (known ? 1 : 0));
-					e = {g: item.gid, c: item.code, q: item.quality, m: item.mode, l: item.location, b: item.bodylocation, x: item.x, y: item.y, w: item.sizex, h: item.sizey,
-						n: (known ? item.fname.split("\n").reverse().join(" ") : item.name).replace(/\xFFc./g, ""), t: item.itemType, i: item.ilvl, k: known ? 1 : 0};
-
-					if (item.quality >= 3) {
-						e.d = item.description;
-					}
-
-					list.push(e);
-				}
-			} while (item.getNext());
-		}
-
-		sig = sig.join("|");
-
-		if (sig === invSig) {
-			return;
-		}
-
-		invSig = sig;
-		D2Bot.inventory(JSON.stringify({gold: me.getStat(14), bank: me.getStat(15), items: list}));
-	};
-
-	var lastZone = 0;
+	var lastZone = 0, lastVitals = 0, lastLifePct = -1;
 	var lastLevel = 0;
 
 	// Start
@@ -623,11 +629,46 @@ function main() {
 				D2Bot.zone(typeof Pather !== "undefined" && Pather.getAreaName ? Pather.getAreaName(me.area) : "Area " + me.area, ["Normal", "Nightmare", "Hell"][me.diff]);
 			}
 
+			// life in percent for the face on the bot's card (Qolbot): when it changed by 3 or more, and at least every 10 seconds
+			if (me.gameReady && me.hpmax > 0 && getTickCount() - lastVitals > 1500) {
+				var lifePct = Math.max(0, Math.min(100, Math.round(me.hp * 100 / me.hpmax)));
+
+				if (Math.abs(lifePct - lastLifePct) >= 3 || getTickCount() - lastVitals > 10000) {
+					lastVitals = getTickCount();
+					lastLifePct = lifePct;
+					D2Bot.vitals(lifePct);
+				}
+			}
+
+			// gold and town portal scrolls, for Qolbot (data/<profile>.purse.json): it picks a leader that has scrolls and starts a gold hunt when the
+			// team is broke. Every 30 seconds.
+			if (me.gameReady && getTickCount() - (this.lastPurse || 0) > 30000) {
+				this.lastPurse = getTickCount();
+
+				try {
+					// a big change in gold gets a line of its own, so the next drop can be traced to what the bot was doing (2026-11-13: 2600 gold went in
+					// ten minutes and the logs could not say where: a mercenary revival, potions, scrolls?)
+					if (this.lastGold !== undefined && Math.abs(me.getStat(14) + me.getStat(15) - this.lastGold) >= 300) {
+						print("Purse: " + this.lastGold + " -> " + (me.getStat(14) + me.getStat(15)) + " gold (" + (me.inTown ? "in town" : "in the field") + ", " + Town.checkScrolls(518) + " scrolls)");
+					}
+
+					this.lastGold = me.getStat(14) + me.getStat(15);
+					// once per game: does this bot hold the Gidbinn (87) or the Gidbinn quest item? (the altar gives nothing to a bot whose party mate already has it?)
+					if (!this.gidbinnNoted) {
+						this.gidbinnNoted = true;
+						print("Quest items: the Gidbinn is " + (me.getItem(87) ? "HELD (" + me.getItem(87).location + ")" : "not held"));
+					}
+					FileTools.writeText("data/" + me.profile + ".purse.json", JSON.stringify({gold: me.getStat(14), stash: me.getStat(15), scrolls: Town.checkScrolls(518), at: Date.now()}));
+				} catch (purseError) {
+					print("purse: " + purseError);
+				}
+			}
+
 			if (me.gameReady) {
 				try {
-					this.reportInventory();
-				} catch (invError) {
-					print("reportInventory: " + invError);
+					this.watchQuests();
+				} catch (questError) {
+					print("watchQuests: " + questError);
 				}
 			}
 
@@ -648,10 +689,13 @@ function main() {
 					this.drinkPotion(2);
 				}
 
-				if (Config.LifeChicken > 0 && me.hp <= Math.floor(me.hpmax * Config.LifeChicken / 100)) {
+				// a rejuvenation potion just drunk heals at once, but the life the client sees catches up a moment later: give it that moment before
+				// leaving, unless life is already very low (2026-11-15: the bots chickened with rejuvs in the belt)
+				if (Config.LifeChicken > 0 && me.hp <= Math.floor(me.hpmax * Config.LifeChicken / 100)
+						&& !(timerLastDrink[2] && getTickCount() - timerLastDrink[2] < 600 && me.hp > Math.floor(me.hpmax * 0.15))) {
 					D2Bot.printToConsole("Life Chicken (" + me.hp + "/" + me.hpmax + ")" + this.getNearestMonster() + " in " + Pather.getAreaName(me.area) + ". Ping: " + me.ping, 9);
 					D2Bot.updateChickens();
-					this.exit();
+					this.exit(true);
 
 					break;
 				}
@@ -667,7 +711,7 @@ function main() {
 				if (Config.ManaChicken > 0 && me.mp <= Math.floor(me.mpmax * Config.ManaChicken / 100)) {
 					D2Bot.printToConsole("Mana Chicken: (" + me.mp + "/" + me.mpmax + ") in " + Pather.getAreaName(me.area), 9);
 					D2Bot.updateChickens();
-					this.exit();
+					this.exit(true);
 
 					break;
 				}
@@ -681,7 +725,7 @@ function main() {
 						if (ironGolem.hp <= Math.floor(128 * Config.IronGolemChicken / 100)) { // ironGolem.hpmax is bugged with BO
 							D2Bot.printToConsole("Irom Golem Chicken in " + Pather.getAreaName(me.area), 9);
 							D2Bot.updateChickens();
-							this.exit();
+							this.exit(true);
 
 							break;
 						}
@@ -696,7 +740,7 @@ function main() {
 						if (mercHP < Config.MercChicken) {
 							D2Bot.printToConsole("Merc Chicken in " + Pather.getAreaName(me.area), 9);
 							D2Bot.updateChickens();
-							this.exit();
+							this.exit(true);
 
 							break;
 						}

@@ -14,7 +14,7 @@ func pickitManager(t *testing.T) *Manager {
 	os.MkdirAll(filepath.Join(dir, "Autoequip"), 0o755)
 	os.WriteFile(filepath.Join(dir, "QOL", "Misc.nip"), []byte("[name] == gold\n[type] == ring"), 0o644)
 	os.WriteFile(filepath.Join(dir, "QOL", "Potions.nip"), []byte("[name] == healingpotion\n"), 0o644)
-	os.WriteFile(filepath.Join(dir, "Autoequip", "melee.nip"), []byte("x\n"), 0o644)
+	os.WriteFile(filepath.Join(dir, "Autoequip", "gear.nip"), []byte("x\n"), 0o644)
 	os.WriteFile(filepath.Join(dir, "kolton.nip"), []byte("y\n"), 0o644)
 	os.WriteFile(filepath.Join(dir, "READ.txt"), []byte("not a list"), 0o644)
 	os.MkdirAll(filepath.Join(root, "d2bs"), 0o755)
@@ -25,11 +25,11 @@ func pickitManager(t *testing.T) *Manager {
 func TestListPickit(t *testing.T) {
 	m := pickitManager(t)
 	got := m.listPickit()
-	if len(got) != 4 || got[0].Path != "Autoequip/melee.nip" || got[1].Path != "QOL/Misc.nip" || got[3].Path != "kolton.nip" {
+	if len(got) != 4 || got[0].Path != "Autoequip/gear.nip" || got[1].Path != "QOL/Misc.nip" || got[3].Path != "kolton.nip" {
 		t.Fatalf("lists (Autoequip, QOL, the rest; only .nip): %+v", got)
 	}
-	if !got[0].Lead || !got[1].Lead || got[3].Lead {
-		t.Errorf("defaults: the leader loads melee.nip and Misc.nip, not kolton.nip: %+v", got)
+	if got[0].Lead || !got[1].Lead || !got[2].Lead || got[3].Lead {
+		t.Errorf("defaults (keeperdefaults.json): the leader loads Misc.nip and Potions.nip, not gear.nip or kolton.nip: %+v", got)
 	}
 	if got[1].Lines != 2 || got[1].Loaded != "2/2" {
 		t.Errorf("lines and the bots' last report: %+v", got[1])

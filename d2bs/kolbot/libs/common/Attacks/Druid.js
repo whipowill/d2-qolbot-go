@@ -98,8 +98,37 @@ var ClassAttack = {
 	},
 
 	afterAttack: function () {
-		Misc.unShift();
+		// a standing-off summoner stays in bear (or wolf) form: the summons can be cast in it (the user plays a Summon Druid "in wearbear all the time")
+		if (!this.isStandOffShifter()) {
+			Misc.unShift();
+		}
+
 		Precast.doPrecast(false);
+		this.standOffShape();
+	},
+
+	// A pure summoner (AttackSkill 500) with a Config.Wereform and the skill for it.
+	isStandOffShifter: function () {
+		if (Config.AttackSkill[3] !== 500 || !Config.Wereform) {
+			return false;
+		}
+
+		return !!me.getSkill(/wolf|^1$/i.test(String(Config.Wereform)) ? 223 : 228, 1);
+	},
+
+	// Qolbot, 2026-11-15: a pure summoner (AttackSkill 500) with Config.Wereform stands off in that form (far more life). Only when it has the
+	// skill: Misc.shapeShift would try three casts, 6 s, every fight without it.
+	// The user shifts in town before going out ("i put it on in town"): Follower.townSummon calls this after the town summons too.
+	standOffShape: function () {
+		if (!this.isStandOffShifter()) {
+			return;
+		}
+
+		try {
+			Misc.shapeShift(Config.Wereform);
+		} catch (shiftError) {
+			print("Druid: shapeshift: " + shiftError);
+		}
 	},
 
 	// Returns: 0 - fail, 1 - success, 2 - no valid attack skills
@@ -113,6 +142,20 @@ var ClassAttack = {
 
 		if (timedSkill > -1 && (!me.getState(121) || !Skill.isTimed(timedSkill))) {
 			switch (timedSkill) {
+			case 500: // Pure Summoner (Qolbot, 2026-11-15, as in Necromancer.js): stand off at Skill.getRange(500) while the summons fight; the user:
+				// "that summoner 'stay safe and stand off' should apply to summon druid also", and in bear form while he does: "summon druid would
+				// normally be in wearbear form as he stands off for his own protection"
+				this.standOffShape();
+
+				if (Math.round(getDistance(me, unit)) > Skill.getRange(timedSkill) || checkCollision(me, unit, 0x4)) {
+					if (!Attack.getIntoPosition(unit, Skill.getRange(timedSkill), 0x4)) {
+						return 0;
+					}
+				}
+
+				delay(300);
+
+				return 1;
 			case 245: // Tornado
 				if (Math.round(getDistance(me, unit)) > Skill.getRange(timedSkill) || checkCollision(me, unit, 0x4)) {
 					if (!Attack.getIntoPosition(unit, Skill.getRange(timedSkill), 0x4)) {

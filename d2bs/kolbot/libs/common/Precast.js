@@ -292,7 +292,13 @@ var Precast = new function () {
 			}
 
 			if (buffSummons) {
+				Misc.unShift(); // Battle Orders from a weapon is not cast in bear form (a stand-off summoner now stays shifted between fights)
 				this.precastCTA(force);
+			}
+
+			// a Summon Druid (pure summoner with Config.Wereform) goes back into bear form once the buffs are up (the user: "in wearbear all the time")
+			if (typeof ClassAttack === "object" && ClassAttack.standOffShape) {
+				ClassAttack.standOffShape();
 			}
 
 			break;

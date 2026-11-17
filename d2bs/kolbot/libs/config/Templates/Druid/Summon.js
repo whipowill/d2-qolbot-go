@@ -42,9 +42,10 @@ function LoadTemplate()
 	// 250	Hurricane
 
 	Config.AttackSkill[0] = -1; // Preattack skill.
-	Config.AttackSkill[1] = 0; // Primary skill to bosses.
+	// 500 = pure summoner (Attacks/Druid.js): stand off 15 units while the summons fight, never walk up and hit (it was 0, the plain Attack)
+	Config.AttackSkill[1] = 500; // Primary skill to bosses.
 	Config.AttackSkill[2] = -1; // Primary untimed skill to bosses. Keep at -1 if Config.AttackSkill[1] is untimed skill.
-	Config.AttackSkill[3] = 0; // Primary skill to others.
+	Config.AttackSkill[3] = 500; // Primary skill to others.
 	Config.AttackSkill[4] = -1; // Primary untimed skill to others. Keep at -1 if Config.AttackSkill[3] is untimed skill.
 	Config.AttackSkill[5] = -1; // Secondary skill if monster is immune to primary.
 	Config.AttackSkill[6] = -1; // Secondary untimed skill if monster is immune to primary untimed.
@@ -70,37 +71,26 @@ function LoadTemplate()
 
 	Config.AutoSkill.Enabled = true; // Enable or disable AutoSkill system
 	Config.AutoSkill.Build = [
-		[231, 1, false], // carrion vine
-		[227, 5, false], // wolf
-		[228, 1, false], // wearbear
-		[224, 5, false], // lycanthropy
-		[247, 10, false], // bear
-		[237, 10, false], // dire wolf
-		[227, 10, false], // wolf
-		[226, 10, false], // oak sage = 226, hotw = 236
-		[224, 10, false], // lycanthropy
-		[247, 100, false], // bear
-		[237, 100, false], // dire wolf
-		[227, 100, false], // wolf
-		[226, 100, false], // oak sage = 226, hotw = 236
-	];;
+		// Qolbot (the user, 2026-11-16: "on a summon druid build, wearbear only needs one and lycanthropy one, then max out the summon skills (not ravens), then max
+		// out lycanthropy"). AutoSkill adds the missing prerequisites itself, one point each: Raven (for the Spirit Wolf), Werewolf (for Lycanthropy), the Spirit
+		// Wolf and Oak Sage (for the Dire Wolf), the Dire Wolf (for the Grizzly): Raven stays at 1.
+		[228, 1, false], // werebear
+		[224, 1, false], // lycanthropy
+		[247, 20, false], // summon grizzly
+		[237, 20, false], // summon dire wolf
+		[227, 20, false], // summon spirit wolf
+		[236, 20, false], // heart of wolverine (the user: "i would choose HOTW instead of Oak Sage"); oak sage (226) only gets its one prerequisite point
+		[224, 20, false], // lycanthropy, with what is left
+	];
 
 	Config.AutoStat.Enabled = true; // Enable or disable AutoStat system
-	Config.AutoStat.Build = [
-		["s", 12], // stat strength for quilt armor
-		["v", 28], // spend in vitality until it reaches 28 (level 5)
-		["e", 50], // spend in energy until 50 (level 8)
-		["v", 50], // spend more in vitality
-		["s", 15], // get up to 15 strength (level 13)
-		["v", 65], // spend in vitality (level 18)
-		["s", 35], // get up to 25 strength (level 20)
-		["e", 75], // spend in energy (level 25)
-		["v", 75], // level 27
-		["s", 55], // level 31
-		["v", 100], // level 36
-		["s", 80], // level 41
-		["v", 125], // level 46
-		["s", 95], // level 49 (less if done stat quests)
-		["v", "all"], // put rest of the points in vitality
-	];
+	// Qolbot (the user, 2026-11-16: "summon druid and summon necro you would balance str and vit until about 180, then go all vit"): every point goes to the lower
+	// of strength and vitality, one at a time (the targets go up by one: each to 21, each to 22, ... to 180), then all the rest into vitality. No dexterity, no energy.
+	Config.AutoStat.Build = [];
+
+	for (var statTarget = 21; statTarget <= 180; statTarget += 1) {
+		Config.AutoStat.Build.push(["s", statTarget], ["v", statTarget]);
+	}
+
+	Config.AutoStat.Build.push(["v", "all"]);
 };

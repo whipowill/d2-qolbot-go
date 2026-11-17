@@ -41,6 +41,27 @@ func (m *Manager) specOptions(class string) []string {
 }
 
 // setProfileSpec forces (or, with "", un-forces) the build for one character.
+// setProfileMerc stores the merc chosen on the bot card ("" = keep the one it has). It applies the next time the bot starts a game.
+func (m *Manager) setProfileMerc(profile, merc string) error {
+	ok := merc == ""
+	for _, c := range m.mercTable().Kinds {
+		ok = ok || c.ID == merc
+	}
+	if !ok {
+		return fmt.Errorf("unknown merc %q", merc)
+	}
+	m.mu.Lock()
+	s := m.states[profile]
+	if s == nil {
+		m.mu.Unlock()
+		return fmt.Errorf("unknown profile %q", profile)
+	}
+	s.Profile.Merc = merc
+	m.mu.Unlock()
+	m.logf(0, profile, "merc %s", map[bool]string{true: "set to " + merc + " (hired the next time it starts a game)", false: "back to: keep the one it has"}[merc != ""])
+	return m.saveConfig()
+}
+
 func (m *Manager) setProfileSpec(profile, name string) error {
 	m.mu.Lock()
 	s := m.states[profile]
@@ -104,10 +125,10 @@ type farmRun struct {
 
 var farmAll = []farmRun{
 	{"Corpsefire", "Corpsefire", 1}, {"Mausoleum", "Blood Raven", 1}, {"Pit", "The Pit", 1},
-	{"Countess", "Countess", 1}, {"Andariel", "Andariel", 1}, {"Cows", "Secret Cow Level", 1},
-	{"Radament", "Radament", 2}, {"AncientTunnels", "Ancient Tunnels", 2}, {"Summoner", "The Summoner", 2}, {"Duriel", "Duriel", 2},
-	{"Travincal", "Travincal", 3}, {"Mephisto", "Mephisto", 3},
-	{"Izual", "Izual", 4}, {"Hephasto", "Hephasto", 4}, {"Diablo", "Diablo", 4},
+	{"Countess", "Countess", 1}, {"Catacombs", "Catacombs", 1}, {"Andariel", "Andariel", 1}, {"Cows", "Secret Cow Level", 1},
+	{"Radament", "Radament", 2}, {"AncientTunnels", "Ancient Tunnels", 2}, {"Summoner", "The Summoner", 2}, {"Tombs", "Tal Rasha's Tombs", 2}, {"Duriel", "Duriel", 2},
+	{"Travincal", "Travincal", 3}, {"Durance", "Durance of Hate", 3}, {"Mephisto", "Mephisto", 3},
+	{"Izual", "Izual", 4}, {"Hephasto", "Hephasto", 4}, {"ChaosSanctuary", "Chaos Sanctuary", 4}, {"Diablo", "Diablo", 4},
 	{"Pindleskin", "Pindleskin", 5}, {"Eldritch", "Eldritch & Shenk", 5}, {"Nihlathak", "Nihlathak", 5}, {"Worldstone", "Worldstone Keep", 5}, {"Baal", "Baal", 5},
 }
 
@@ -123,6 +144,9 @@ func (m *Manager) farmCatalog() []farmRun {
 
 // farmSelection returns the chosen farm runs that exist, in running order.
 func (m *Manager) farmSelection() []string {
+	if m.levelUp != nil {
+		return m.levelUp.Farm
+	}
 	chosen := map[string]bool{}
 	for _, n := range m.cfg.FarmRuns {
 		chosen[n] = true
@@ -209,6 +233,9 @@ func (m *Manager) setPlaying(playing bool) error {
 
 // goalNow is the goal the leader bot plays when you are not playing: Quest or Farm, and Farm until one is chosen.
 func (m *Manager) goalNow() string {
+	if m.levelUp != nil { // the leveling detour after too many chickens (levelup.go): the saved goal is untouched
+		return "Farm"
+	}
 	if m.cfg.Goal == "Quest" {
 		return "Quest"
 	}
@@ -217,6 +244,9 @@ func (m *Manager) goalNow() string {
 
 // difficultyNow is the difficulty the leader bot hosts in.
 func (m *Manager) difficultyNow() string {
+	if m.levelUp != nil && m.levelUp.Diff != "" { // a level hunt in another difficulty (Normal Baal for a team in act 1 of Nightmare, levelup.go)
+		return m.levelUp.Diff
+	}
 	switch m.cfg.Difficulty {
 	case "Normal", "Nightmare":
 		return m.cfg.Difficulty

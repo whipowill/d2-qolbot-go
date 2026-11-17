@@ -49,7 +49,7 @@ function LoadTemplate()
 	Config.AttackSkill[3] = me.getSkill(225, 1) ? 225 : -1; // Primary skill to others.
 	Config.AttackSkill[4] = me.getSkill(234, 1) ? 234 : me.getSkill(225, 1) ? 225 : 0; // Primary untimed skill to others. Keep at -1 if Config.AttackSkill[3] is untimed skill.
 	Config.AttackSkill[5] = me.getSkill(225, 1) ? 225 : -1; // Secondary skill if monster is immune to primary.
-	Config.AttackSkill[6] = me.getSkill(229, 1) ? 229 : 0; // Secondary untimed skill if monster is immune to primary untimed.
+	Config.AttackSkill[6] = me.getSkill(229, 1) ? 229 : -1; // Secondary untimed skill if monster is immune to primary untimed.
 
 	Config.LowManaSkill[0] = -1; // Timed low mana skill.
 	Config.LowManaSkill[1] = -1; // Untimed low mana skill.
@@ -85,17 +85,14 @@ function LoadTemplate()
 	];;
 
 	Config.AutoStat.Enabled = true; // Enable or disable AutoStat system
-	Config.AutoStat.Build = [
-		["s", 30], // strength for gear
-		["v", 40], // vitality
-		["d", 30], // dexterity
-		["v", 60], // vitality
-		["s", 60], // strength
-		["v", 90], // vitality
-		["d", 60], // dexterity
-		["s", 90], // strength
-		["v", 120], // vitality
-		["d", 90], // dexterity
-		["v", "all"], // rest into vitality
-	];
+	// Qolbot (the user, 2026-11-16: the casters, "equal str/eng/vit until 180"): strength, energy and vitality equal, one point at a time (the targets go up by one:
+	// each to 21, each to 22, ... to 180), then all the rest into vitality. Dexterity gets nothing. (The order before: vitality first, strength up to 95-100, and
+	// energy only for the Hammerdin, 30.)
+	Config.AutoStat.Build = [];
+
+	for (var statTarget = 21; statTarget <= 180; statTarget += 1) {
+		Config.AutoStat.Build.push(["s", statTarget], ["e", statTarget], ["v", statTarget]);
+	}
+
+	Config.AutoStat.Build.push(["v", "all"]);
 };

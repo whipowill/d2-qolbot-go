@@ -1,0 +1,18 @@
+// GoldSell.nip: what a bot picks up to SELL for gold. Loaded ONLY on a gold hunt, for the leader (the bot that loots), after all the keep lists.
+// A match here is never kept: Pickit.checkItem turns it into "pick up to sell" and the town chores sell it, unless it is an upgrade for a bot or its
+// mercenary (then it is put on) or the Equipment tab protects its kind (then it is not picked up at all). An item that a keep list wants is kept
+// as always, because the keep lists come first. Edit freely: one rule per line, the same syntax as every other .nip.
+
+// Rings and amulets: almost always worth gold, at every difficulty. Never a SET or UNIQUE one (they are keepers: a set ring was sold for 2154 gold on 2026-11-13).
+[type] == ring && ([quality] == magic || [quality] == rare || [quality] == crafted)
+[type] == amulet && ([quality] == magic || [quality] == rare || [quality] == crafted)
+
+// Rare (and crafted) gear sells well at every difficulty.
+[quality] == rare && ([type] == helm || [type] == circlet || [type] == armor || [type] == shield || [type] == gloves || [type] == boots || [type] == belt || [type] == cloak)
+[quality] == rare && ([type] == sword || [type] == axe || [type] == mace || [type] == hammer || [type] == club || [type] == scepter || [type] == wand || [type] == staff || [type] == polearm || [type] == spear || [type] == knife || [type] == bow || [type] == crossbow || [type] == javelin)
+[quality] == crafted && ([type] == helm || [type] == circlet || [type] == armor || [type] == shield || [type] == gloves || [type] == boots || [type] == belt || [type] == cloak)
+
+// Magic gear at every item level (the user, 2026-11-14: "let's amend goldsell.nip so they make some money from level 1"; it was item level 60 and up,
+// so the followers sold next to nothing in Normal). Low ones sell for less, but they sell.
+[quality] == magic && ([type] == helm || [type] == circlet || [type] == armor || [type] == shield || [type] == gloves || [type] == boots || [type] == belt)
+[quality] == magic && ([type] == sword || [type] == axe || [type] == mace || [type] == hammer || [type] == club || [type] == scepter || [type] == wand || [type] == staff || [type] == polearm || [type] == spear || [type] == bow || [type] == crossbow)

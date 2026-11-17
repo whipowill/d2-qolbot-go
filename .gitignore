@@ -68,3 +68,12 @@ credentials*
 .DS_Store
 Thumbs.db
 .claude/
+
+# --- Hand-kept test progress ---
+/progress.txt
+
+# --- Python caches ---
+__pycache__/
+
+# --- The game's fonts for the inventory window (the user's own copies; not ours to share) ---
+/fonts/

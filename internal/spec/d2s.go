@@ -29,6 +29,10 @@ type Save struct {
 	UnspentStats  int
 	UnspentSkills int
 	MaxLifeRaw    int         // base maximum life, in 1/256 points (stat 7); gear is not in it
+	MaxManaRaw    int         // base maximum mana, in 1/256 points (stat 9)
+	MaxStamRaw    int         // base maximum stamina, in 1/256 points (stat 11)
+	Exp           int         // experience (stat 13)
+	Gold, Stash   int         // gold carried (stat 14) and in the stash (stat 15)
 	Skills        map[int]int // skill id -> hard points (only skills with points)
 }
 
@@ -126,6 +130,16 @@ func ParseSave(b []byte) (*Save, error) {
 			s.UnspentSkills = v
 		case 7:
 			s.MaxLifeRaw = v
+		case 9:
+			s.MaxManaRaw = v
+		case 11:
+			s.MaxStamRaw = v
+		case 13:
+			s.Exp = v
+		case 14:
+			s.Gold = v
+		case 15:
+			s.Stash = v
 		case 12:
 			if v > 0 {
 				s.Level = v

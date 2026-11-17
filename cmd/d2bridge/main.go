@@ -344,7 +344,32 @@ func main() {
 	addr := flag.String("addr", "127.0.0.1:8765", "Qolbot bridge address")
 	title := flag.String("title", "D2Bot #", "title of the message window (what D2BS scripts target)")
 	flag.BoolVar(&hidden, "hidden", false, "start Game.exe minimized")
+	extract := flag.String("extract", "", "write one file of an MPQ to stdout and exit: -extract <game folder> <archive> <file in it>")
+	info := flag.String("info", "", "print the size and WAV byte rate of MPQ files and exit: -info <game folder> <archive> <file>...")
 	flag.Parse()
+
+	if *info != "" { // a one-off run for the Music tab's track lengths (extract.go)
+		if flag.NArg() < 2 {
+			fmt.Fprintln(os.Stderr, "usage: d2bridge -info <game folder> <archive> <file>...")
+			os.Exit(2)
+		}
+		if err := infoMPQ(*info, flag.Arg(0), flag.Args()[1:]); err != nil {
+			fmt.Fprintln(os.Stderr, "info:", err)
+			os.Exit(1)
+		}
+		return
+	}
+	if *extract != "" { // a one-off run for Qolbot's music (extract.go), not the bridge
+		if flag.NArg() != 2 {
+			fmt.Fprintln(os.Stderr, "usage: d2bridge -extract <game folder> <archive> <file>")
+			os.Exit(2)
+		}
+		if err := extractMPQ(*extract, flag.Arg(0), flag.Arg(1)); err != nil {
+			fmt.Fprintln(os.Stderr, "extract:", err)
+			os.Exit(1)
+		}
+		return
+	}
 
 	conn, err := net.Dial("tcp", *addr)
 	if err != nil {
@@ -428,6 +453,70 @@ func postInput(h uintptr, data string) {
 		pPostMessage.Call(h, wmLButtonDown, 1, lp)
 		time.Sleep(80 * time.Millisecond)
 		pPostMessage.Call(h, wmLButtonUp, 0, lp)
+	case len(f) >= 3 && f[0] == "respec":
+		// PlugY's "Unassign all skills points" button on the skill page (T): open the page, click the button (client
+		// position x y in the 640x480 window), close the page. The caller checks the unspent points afterwards.
+		const vkT = 0x54
+		pPostMessage.Call(h, wmKeyDown, vkT, 0x00000001)
+		time.Sleep(60 * time.Millisecond)
+		pPostMessage.Call(h, wmKeyUp, vkT, 0xC0000001)
+		time.Sleep(900 * time.Millisecond) // let the page open
+		lp := num(2)<<16 | num(1)&0xFFFF
+		pPostMessage.Call(h, wmMouseMove, 0, lp)
+		time.Sleep(120 * time.Millisecond)
+		pPostMessage.Call(h, wmLButtonDown, 1, lp)
+		time.Sleep(80 * time.Millisecond)
+		pPostMessage.Call(h, wmLButtonUp, 0, lp)
+		time.Sleep(700 * time.Millisecond)
+		pPostMessage.Call(h, wmKeyDown, vkT, 0x00000001)
+		time.Sleep(60 * time.Millisecond)
+		pPostMessage.Call(h, wmKeyUp, vkT, 0xC0000001)
+	case len(f) >= 5 && f[0] == "unassign":
+		// PlugY's stat un-assign (2026-11-13, user: hold Alt and click the + button where you add points; Shift takes 10 points at a time): open the
+		// character screen (C), click the stat's button at client position (x,y) with Alt+Shift TENS times and with Alt alone ONES times, close the screen.
+		// Alt and Shift are sent as key messages and the Shift flag in the mouse message. Whether PlugY accepts posted keys as "held" is NOT KNOWN yet.
+		const (
+			vkC, vkShift, vkAlt      = 0x43, 0x10, 0x12
+			wmSysKeyDown, wmSysKeyUp = 0x0104, 0x0105
+			mkShift                  = 0x0004
+		)
+		x, y, tens, ones := num(1), num(2), int(num(3)), int(num(4))
+		lp := y<<16 | x&0xFFFF
+		tap := func(vk uintptr) {
+			pPostMessage.Call(h, wmKeyDown, vk, 0x00000001)
+			time.Sleep(60 * time.Millisecond)
+			pPostMessage.Call(h, wmKeyUp, vk, 0xC0000001)
+		}
+		click := func(shift bool) {
+			pPostMessage.Call(h, wmSysKeyDown, vkAlt, 0x20380001)
+			var wp uintptr
+			if shift {
+				pPostMessage.Call(h, wmKeyDown, vkShift, 0x002A0001)
+				wp = mkShift
+			}
+			time.Sleep(60 * time.Millisecond)
+			pPostMessage.Call(h, wmMouseMove, wp, lp)
+			time.Sleep(60 * time.Millisecond)
+			pPostMessage.Call(h, wmLButtonDown, wp|1, lp)
+			time.Sleep(80 * time.Millisecond)
+			pPostMessage.Call(h, wmLButtonUp, wp, lp)
+			time.Sleep(60 * time.Millisecond)
+			if shift {
+				pPostMessage.Call(h, wmKeyUp, vkShift, 0xC02A0001)
+			}
+			pPostMessage.Call(h, wmSysKeyUp, vkAlt, 0xE0380001)
+			time.Sleep(250 * time.Millisecond)
+		}
+		tap(vkC)
+		time.Sleep(900 * time.Millisecond)
+		for i := 0; i < tens; i++ {
+			click(true)
+		}
+		for i := 0; i < ones; i++ {
+			click(false)
+		}
+		time.Sleep(400 * time.Millisecond)
+		tap(vkC)
 	case len(f) >= 2 && f[0] == "key":
 		vk := num(1)
 		pPostMessage.Call(h, wmKeyDown, vk, 0x00000001)

@@ -7,6 +7,8 @@
 *				A script gets the three calls for its own name with Report.mixin(this, "Name"), then uses this.log / this.note / this.problem.
 */
 
+include("common/Speech.js");
+
 var Report = {
 
 	// the log line only
@@ -19,7 +21,7 @@ var Report = {
 		this.log(source, message);
 
 		if (!Config.QuietChat) {
-			say(message);
+			say(Speech.flavor(message)); // the log line above stays plain: Qolbot reads it. The chat is the bots' voice.
 		}
 	},
 
@@ -28,7 +30,7 @@ var Report = {
 		this.log(source, "problem: " + message);
 
 		if (!Config.QuietProblems) {
-			say(message);
+			say(Speech.flavor(message));
 		}
 	},
 

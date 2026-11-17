@@ -32,7 +32,7 @@ function LoadDefaultConfig()
 
 	// potions
 	Config.UseHP = 75; // Drink a healing potion if life is under designated percent.
-	Config.UseRejuvHP = 40;  // Drink a rejuvenation potion if life is under designated percent.
+	Config.UseRejuvHP = 55;  // Drink a rejuvenation potion if life is under designated percent. ABOVE LifeChicken: at 40 and 40 the chicken check (<=) fired in the same moment and no rejuv was ever drunk in time (2026-11-15)
 	Config.UseMP = 30; // Drink a mana potion if mana is under designated percent.
 	Config.UseRejuvMP = 0; // Drink a rejuvenation potion if mana is under designated percent.
 	Config.UseMercHP = 75; // Give a healing potion to your merc if his/her life is under designated percent.
@@ -70,15 +70,19 @@ function LoadDefaultConfig()
 	// "hp", "mp", "rv"
 	Config.BeltColumn[0] = "hp";
 	Config.BeltColumn[1] = "mp";
-	Config.BeltColumn[2] = "mp";
+	Config.BeltColumn[2] = me.classid === 1 ? "mp" : "hp"; // a second healing column for everyone but a Sorceress (2026-11-15: the Nightmare team ran one column of 3 dry and chickened)
 	Config.BeltColumn[3] = "rv";
-	Config.MinColumn[0] = 2;
+	// Fight while traveling (2026-11-15): Pather.moveTo takes clearPath from Config.ClearPath only, and nothing set it, so no bot ever cleared on the way:
+	// the leader walked through the packs while the followers stopped to fight them, and the leader arrived alone (Sankt, Catacombs Level 4, 11:59).
+	// Range 15 around each step, every area. Not for a Sorceress: her Quick Travel teleport trips would fight their way through.
+	Config.ClearPath = me.classid === 1 ? undefined : {Range: 15, Spectype: 0};
+	Config.MinColumn[0] = me.diff > 0 ? 4 : 2; // Nightmare and Hell: top the healing columns up at every visit (2026-11-15: bots left town with 1 potion a column and chickened)
 	Config.MinColumn[1] = 2;
-	Config.MinColumn[2] = 2;
+	Config.MinColumn[2] = me.diff > 0 ? 4 : 2; // Nightmare and Hell: top the healing columns up at every visit (2026-11-15: bots left town with 1 potion a column and chickened)
 	Config.MinColumn[3] = 0; // rp columns to 0 bc they can't be bought
 
 	// looting
-	Config.PickitFiles.push([1, 2, 5].indexOf(me.classid) > -1 ? "Autoequip/caster.nip" : "Autoequip/melee.nip"); // <-- for autoequip: casters and attackers rank gear differently
+	Config.PickitFiles.push("Autoequip/gear.nip"); // <-- for autoequip: each piece scored for the character's build (libs/common/Gear.js)
 	Config.PickitFiles.push("Autoequip/merc.nip"); // <-- for autoequip
 	Config.PickitFiles.push("QOL/Potions.nip");
 	Config.PickitFiles.push("QOL/Quest.nip");

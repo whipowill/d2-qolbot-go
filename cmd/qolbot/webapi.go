@@ -23,6 +23,7 @@ func (m *Manager) apiState(w http.ResponseWriter, r *http.Request) {
 	}
 	logs := append([]LogLine(nil), m.logs...)
 	player := m.cfg.Player
+	leader := m.leaderShownLocked()
 	safe := m.cfg.SafeMode
 	protect := m.protectLocked()
 	gameExe := m.cfg.GameExe
@@ -36,11 +37,14 @@ func (m *Manager) apiState(w http.ResponseWriter, r *http.Request) {
 	difficulty := m.difficultyNow()
 	playing := !m.cfg.NotPlaying
 	farmSel := m.farmSelection()
+	detour := m.detourLocked()
+	fatal := m.fatalLocked()
+	notice := m.notice
 	reportTasks := m.reportTasks()
 	reportProblems, banter := eff.ReportProblems, eff.Banter
-	bubble := m.cfg.BanterBubble
-	autoEquip, autoStat, autoSkill := eff.AutoEquip, eff.AutoStat, eff.AutoSkill
-	questClearAll, teleportTeam := eff.QuestClearAll, eff.TeleportTeam
+	bubble := eff.BanterBubble
+	autoEquip, autoStat, autoSkill, autoRespec := eff.AutoEquip, eff.AutoStat, eff.AutoSkill, eff.AutoRespec
+	questClearAll, teleportTeam, questWaypoints := eff.QuestClearAll, eff.TeleportTeam, eff.QuestWaypoints
 	chickenLimit, chickenWindow := m.readinessLimits()
 	var mercWear spec.MercWear
 	if m.cfg.MercWear != nil {
@@ -68,8 +72,8 @@ func (m *Manager) apiState(w http.ResponseWriter, r *http.Request) {
 	if len(logs) > 200 {
 		logs = logs[len(logs)-200:]
 	}
-	json.NewEncoder(w).Encode(map[string]any{"demo": devDemo(), "cpu": cpuInfo, "mercWear": mercWear, "profiles": list, "events": m.recentEvents(60), "logs": logs, "player": player, "safeMode": safe, "protect": protect, "autoEquip": autoEquip, "autoStat": autoStat, "autoSkill": autoSkill, "questClearAll": questClearAll, "teleportTeam": teleportTeam, "chickenLimit": chickenLimit, "chickenWindowMinutes": int(chickenWindow / time.Minute),
-		"plugy": plugy, "autoTown": autoTown, "gamble": gamble, "goal": goal, "difficulty": difficulty, "playing": playing, "farmRuns": farmSel, "farmCatalog": m.farmCatalog(), "reportTasks": reportTasks, "reportProblems": reportProblems, "saveOnStop": saveOnStop, "autoSaveMinutes": saveEvery, "saveAvailable": saveAvail,
+	json.NewEncoder(w).Encode(map[string]any{"demo": devDemo(), "cpu": cpuInfo, "mercWear": mercWear, "mercTable": m.mercTable(), "profiles": list, "events": m.recentEvents(60), "chat": m.recentChat(8), "leader": leader, "logs": logs, "player": player, "safeMode": safe, "protect": protect, "autoEquip": autoEquip, "autoStat": autoStat, "autoSkill": autoSkill, "autoRespec": autoRespec, "detour": detour, "fatal": fatal, "notice": notice, "questClearAll": questClearAll, "questWaypoints": questWaypoints, "inventoryLayout": eff.InventoryLayout, "regroupSeconds": eff.RegroupSeconds, "regroup": eff.Regroup, "teleportTeam": teleportTeam, "saveOnChicken": eff.SaveOnChicken, "chickenLimit": chickenLimit, "chickenWindowMinutes": int(chickenWindow / time.Minute),
+		"plugy": plugy, "quartermaster": eff.Quartermaster, "qol": eff.QOL, "autoTown": autoTown, "gamble": gamble, "goal": goal, "difficulty": difficulty, "playing": playing, "farmRuns": farmSel, "farmCatalog": m.farmCatalog(), "reportTasks": reportTasks, "reportProblems": reportProblems, "saveOnStop": saveOnStop, "autoSaveMinutes": saveEvery, "saveAvailable": saveAvail,
 		"storage": storage, "banter": banter, "banterBubble": bubble,
 		"hostIp": hostIP, "headless": m.headlessValue(), "wine": wineBin,
 		"gameExe": gameExe, "gameOK": gameProblem == "", "gameProblem": gameProblem})
@@ -124,7 +128,10 @@ func (m *Manager) apiPlay(w http.ResponseWriter, r *http.Request) {
 		BanterBubble   *bool         `json:"banterBubble"`
 		SaveOnStop     *bool         `json:"saveOnStop"`
 		AutoSaveMin    *int          `json:"autoSaveMinutes"`
+		SaveOnChicken  *bool         `json:"saveOnChicken"`
 		Plugy          *bool         `json:"plugy"`
+		Quartermaster  *bool         `json:"quartermaster"`
+		QOL            *bool         `json:"qol"`
 		AutoTown       *bool         `json:"autoTown"`
 		Gamble         *bool         `json:"gamble"`
 		ReportTasks    *bool         `json:"reportTasks"`
@@ -182,6 +189,12 @@ func (m *Manager) apiPlay(w http.ResponseWriter, r *http.Request) {
 	if in.Plugy != nil {
 		m.cfg.Plugy = in.Plugy
 	}
+	if in.Quartermaster != nil {
+		m.cfg.Quartermaster = in.Quartermaster
+	}
+	if in.QOL != nil {
+		m.cfg.QOL = in.QOL
+	}
 	if in.AutoTown != nil {
 		m.cfg.AutoTown = in.AutoTown
 	}
@@ -201,6 +214,9 @@ func (m *Manager) apiPlay(w http.ResponseWriter, r *http.Request) {
 	if in.AutoSaveMin != nil {
 		m.cfg.AutoSaveMinutes = in.AutoSaveMin
 	}
+	if in.SaveOnChicken != nil {
+		m.cfg.SaveOnChicken = in.SaveOnChicken
+	}
 	if in.Storage != nil {
 		m.cfg.Storage = in.Storage
 	}
@@ -214,7 +230,7 @@ func (m *Manager) apiPlay(w http.ResponseWriter, r *http.Request) {
 		m.cfg.Banter = in.Banter
 	}
 	if in.BanterBubble != nil {
-		m.cfg.BanterBubble = *in.BanterBubble
+		m.cfg.BanterBubble = in.BanterBubble
 	}
 	m.mu.Unlock()
 	m.logf(0, "", "inventory/stash/chat settings updated from the web page (apply to bots started from now on)")
@@ -274,13 +290,18 @@ func (m *Manager) apiConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var in struct {
-		Protect       *spec.Protect  `json:"protect"`
-		AutoEquip     *bool          `json:"autoEquip"`
-		AutoStat      *bool          `json:"autoStat"`
-		AutoSkill     *bool          `json:"autoSkill"`
-		QuestClearAll *bool          `json:"questClearAll"`
-		TeleportTeam  *bool          `json:"teleportTeam"`
-		MercWear      *spec.MercWear `json:"mercWear"`
+		Protect         *spec.Protect  `json:"protect"`
+		AutoEquip       *bool          `json:"autoEquip"`
+		AutoStat        *bool          `json:"autoStat"`
+		AutoSkill       *bool          `json:"autoSkill"`
+		AutoRespec      *bool          `json:"autoRespec"`
+		QuestClearAll   *bool          `json:"questClearAll"`
+		QuestWaypoints  *bool          `json:"questWaypoints"`
+		InventoryLayout *bool          `json:"inventoryLayout"`
+		Regroup         *bool          `json:"regroup"`
+		RegroupSeconds  *int           `json:"regroupSeconds"`
+		TeleportTeam    *bool          `json:"teleportTeam"`
+		MercWear        *spec.MercWear `json:"mercWear"`
 	}
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<16)).Decode(&in); err != nil {
 		http.Error(w, "bad JSON: "+err.Error(), 400)
@@ -302,8 +323,28 @@ func (m *Manager) apiConfig(w http.ResponseWriter, r *http.Request) {
 	if in.AutoSkill != nil {
 		m.cfg.AutoSkill = in.AutoSkill
 	}
+	if in.AutoRespec != nil {
+		m.cfg.AutoRespec = in.AutoRespec
+	}
 	if in.MercWear != nil {
 		m.cfg.MercWear = in.MercWear
+	}
+	if in.Regroup != nil {
+		m.cfg.Regroup = in.Regroup
+	}
+	if in.RegroupSeconds != nil {
+		if *in.RegroupSeconds < 10 || *in.RegroupSeconds > 600 {
+			m.mu.Unlock()
+			http.Error(w, "the regroup time must be 10 to 600 seconds", 400)
+			return
+		}
+		m.cfg.RegroupSeconds = in.RegroupSeconds
+	}
+	if in.InventoryLayout != nil {
+		m.cfg.InventoryLayout = in.InventoryLayout
+	}
+	if in.QuestWaypoints != nil {
+		m.cfg.QuestWaypoints = in.QuestWaypoints
 	}
 	if in.QuestClearAll != nil {
 		m.cfg.QuestClearAll = in.QuestClearAll
@@ -350,22 +391,26 @@ func (m *Manager) apiPickit(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]any{"lists": m.listPickit(), "listsEnabled": customPickitLists, "rules": rules, "runes": runeNames, "bases": m.baseNamesSorted(), "codes": m.codeNames(), "magic": magicCatalog(), "classKinds": classCatalog(), "defaults": m.pickitDefaults(), "gems": []string{"Chipped", "Flawed", "Normal", "Flawless", "Perfect"}})
 }
 
-// GET /api/inventory?name=Meir: what the bot carries, as last reported from the game (the JSON is passed through as it came).
+// GET /api/inventory?name=Meir: what the character carries, read from its save file (saveinv.go: no bot needs to run).
 func (m *Manager) apiInventory(w http.ResponseWriter, r *http.Request) {
 	m.mu.Lock()
 	s := m.states[r.URL.Query().Get("name")]
-	var inv string
-	var at time.Time
+	character := ""
 	if s != nil {
-		inv, at = s.Inv, s.InvAt
+		character = s.Character
 	}
 	m.mu.Unlock()
 	w.Header().Set("Content-Type", "application/json")
-	if inv == "" || !json.Valid([]byte(inv)) {
-		fmt.Fprint(w, `{"known":false}`)
+	if character == "" {
+		json.NewEncoder(w).Encode(map[string]any{"known": false, "problem": "unknown profile"})
 		return
 	}
-	fmt.Fprintf(w, `{"known":true,"at":%q,"inventory":%s}`, at.Format(time.RFC3339), inv)
+	rep, saved, problem := m.saveInventory(character)
+	if rep.Items == nil {
+		json.NewEncoder(w).Encode(map[string]any{"known": false, "problem": problem})
+		return
+	}
+	json.NewEncoder(w).Encode(map[string]any{"known": true, "at": saved.Format(time.RFC3339), "source": "save", "problem": problem, "inventory": rep, "char": m.charSheet(character)})
 }
 
 func (m *Manager) apiPickitFile(w http.ResponseWriter, r *http.Request) {

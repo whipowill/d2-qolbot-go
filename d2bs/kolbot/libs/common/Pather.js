@@ -174,7 +174,7 @@ var Pather = {
 		}
 
 		if (retry === undefined) {
-			retry = 3;
+			retry = 6; // Qolbot: 3 gave up too early when a monster or a team mate stood in a corridor (Failed to move to Countess)
 		}
 
 		if (clearPath === undefined) {
@@ -249,9 +249,13 @@ var Pather = {
 					}
 				}
 
+				if (!me.inTown && !this.fleeing && typeof Team === "object" && Team.keepClose) { // Qolbot: the leader does not walk on while its team is far behind
+					try { Team.keepClose(); } catch (closeError) { print("Team: " + closeError); }
+				}
+
 				if (this.useTeleport ? this.teleportTo(node.x, node.y) : this.walkTo(node.x, node.y, (fail > 0 || me.inTown) ? 2 : 4)) {
 					if (!me.inTown) {
-						if (this.recursion) {
+						if (this.recursion && !this.fleeing) { // Qolbot: no fight, chest or pick-up on the way to a team mate's town portal (Pather.fleeing)
 							this.recursion = false;
 
 							NodeAction.go({clearPath: clearPath});
@@ -266,7 +270,7 @@ var Pather = {
 						Misc.townCheck();
 					}
 				} else {
-					if (fail > 0 && !this.useTeleport && !me.inTown) {
+					if (fail > 0 && !this.useTeleport && !me.inTown) { // also while fleeing: a monster in the way is fought, or the bot never gets past it
 						// Don't go berserk on longer paths
 						if (!cleared) {
 							Attack.clear(5);
@@ -277,6 +281,11 @@ var Pather = {
 						if (fail > 1 && me.getSkill(143, 1)) {
 							Skill.cast(143, 0, node.x, node.y);
 						}
+					}
+
+					// Qolbot: something stands in the way (a monster, or a team mate in a corridor): step aside to a free spot before trying again
+					if (fail > 1 && !this.useTeleport && !me.inTown) {
+						this.sidestep(x, y);
 					}
 
 					// Reduce node distance in new path
@@ -294,7 +303,7 @@ var Pather = {
 						path.pop();
 					}
 
-					print("move retry " + fail);
+					print("move retry " + fail + " at " + me.x + "," + me.y + " (area " + me.area + ") to " + x + "," + y);
 
 					if (fail > 0 && fail >= retry) {
 						break;
@@ -355,6 +364,30 @@ MainLoop:
 		y - the y coord to walk to
 		minDist - minimal distance from x/y before returning true
 	*/
+	// Qolbot: click a free spot a few steps to the side of the way to (x, y), so a blocked walk gets a different line.
+	sidestep: function (x, y) {
+		var i, spot, tick,
+			angle = Math.atan2(me.y - y, me.x - x),
+			turns = [Math.PI / 2, -Math.PI / 2, Math.PI / 4, -Math.PI / 4];
+
+		for (i = 0; i < turns.length; i += 1) {
+			spot = {x: Math.round(Math.cos(angle + turns[i]) * 6 + me.x), y: Math.round(Math.sin(angle + turns[i]) * 6 + me.y)};
+
+			if (Attack.validSpot(spot.x, spot.y) && !(typeof Team === "object" && Team.towardExit && Team.towardExit(spot.x, spot.y))) { // never a step TOWARD an exit (it can cross back over the threshold: Sankt bounced between town and Outer Steppes); a step away from it is fine
+				Misc.click(0, 0, spot.x, spot.y);
+				tick = getTickCount();
+
+				while (getDistance(me, spot) > 2 && getTickCount() - tick < 1200) {
+					delay(40);
+				}
+
+				return true;
+			}
+		}
+
+		return false;
+	},
+
 	walkTo: function (x, y, minDist) {
 		while (!me.gameReady) {
 			delay(100);
@@ -364,9 +397,12 @@ MainLoop:
 			minDist = me.inTown ? 2 : 4;
 		}
 
-		var i, angle, angles, nTimer, whereToClick, tick,
+		var i, angle, angles, nTimer, whereToClick, tick, startDist, bestDist,
 			nFail = 0,
 			attemptCount = 0;
+
+		// Qolbot: the walk is judged by progress, not by clicks. bestDist is the closest I have been to the target so far.
+		bestDist = getDistance(me.x, me.y, x, y);
 
 		// Stamina handler and Charge
 		if (!me.inTown && !me.dead) {
@@ -408,6 +444,7 @@ MainLoop:
 
 			attemptCount += 1;
 			nTimer = getTickCount();
+			startDist = getDistance(me.x, me.y, x, y);
 
 ModeLoop:
 			while (me.mode !== 2 && me.mode !== 3 && me.mode !== 6) {
@@ -415,7 +452,12 @@ ModeLoop:
 					return false;
 				}
 
-				if ((getTickCount() - nTimer) > 500) {
+				// Qolbot: the game may be slow to change my mode (several games share the machine), but if I have already moved I am walking
+				if (getDistance(me.x, me.y, x, y) <= startDist - 2) {
+					break ModeLoop;
+				}
+
+				if ((getTickCount() - nTimer) > Math.max(500, me.ping * 2 + 800)) {
 					nFail += 1;
 
 					if (nFail >= 3) {
@@ -454,6 +496,13 @@ ModeLoop:
 			// Wait until we're done walking - idle or dead
 			while (getDistance(me.x, me.y, x, y) > minDist && me.mode !== 1 && me.mode !== 5 && !me.dead) {
 				delay(10);
+			}
+
+			// Qolbot: three clicks that got me nowhere are a failure; three clicks on a long way with progress each time are not
+			if (getDistance(me.x, me.y, x, y) <= bestDist - 3) {
+				bestDist = getDistance(me.x, me.y, x, y);
+				attemptCount = 0;
+				nFail = 0;
 			}
 
 			if (attemptCount >= 3) {
@@ -596,9 +645,44 @@ ModeLoop:
 		use - enter target area or last area in the array
 		clearPath - kill monsters while moving
 	*/
+	// The gate between Harrogath and the Bloody Foothills: walk to it and click it until it is open (mode 2). Nothing to do when it is open already.
+	openHarrogathGate: function () {
+		var gate = getUnit(2, 449), i, tick;
+
+		if (gate && gate.mode === 2) {
+			return true;
+		}
+
+		this.moveTo(5026, 5095);
+		gate = getUnit(2, 449);
+
+		for (i = 0; gate && gate.mode !== 2 && i < 3; i += 1) {
+			Misc.click(0, 0, gate);
+			tick = getTickCount();
+
+			while (getTickCount() - tick < 3000 && gate.mode !== 2) {
+				delay(50);
+			}
+		}
+
+		if (gate && gate.mode === 2) {
+			delay(500);
+		}
+
+		return !!gate && gate.mode === 2;
+	},
+
 	moveToExit: function (targetArea, use, clearPath) {
-		var i, j, area, exits, targetRoom, dest, currExit,
+		var i, j, area, exits, targetRoom, dest, currExit, arrived,
 			areas = [];
+
+		if (me.inTown && typeof Team === "object" && Team.mayLeaveTown && !Team.mayLeaveTown(targetArea instanceof Array ? targetArea[0] : targetArea)) { // Qolbot: a follower leaves town only on the leader's order
+			return false;
+		}
+
+		if (me.inTown && typeof Team === "object" && Team.waitToLeaveTown) { // Qolbot: the town gate: nobody leaves town into the field before every bot is ready
+			try { Team.waitToLeaveTown(targetArea instanceof Array ? targetArea[0] : targetArea); Team.announceLeaving(targetArea instanceof Array ? targetArea[0] : targetArea, "exit"); } catch (leaveError) { print("Team: " + leaveError); }
+		}
 
 		if (targetArea instanceof Array) {
 			areas = targetArea;
@@ -610,7 +694,24 @@ ModeLoop:
 			print("Traveling to " + this.getAreaName(areas[0]));
 		}
 
+		// Qolbot: the Harrogath gate is opened by whoever walks out; journeyTo did it, a plain walk to the exit did not (live 14:29:41 on 2026-11-14: Meir, a
+		// follower, "move retry" at 5042,5084 to 5001,5091 until the leader regrouped the team). UNTESTED live.
+		if (me.area === 109 && areas[0] === 110) {
+			this.openHarrogathGate();
+		}
+
 		for (i = 0; i < areas.length; i += 1) {
+			// Qolbot: already IN one of the areas of the list (back from a town trip by portal, partway along): go on from there, never back up the list.
+			// Live 19:36 on Nightmare: Darius came back to Tower Cellar Level 1 by portal, the walk began with the exit to the Forgotten Tower (the first
+			// area) up the stairs, and the quest failed: "Failed to move to Countess".
+			if (areas.lastIndexOf(me.area) >= i) {
+				i = areas.lastIndexOf(me.area) + 1;
+
+				if (i >= areas.length) {
+					break;
+				}
+			}
+
 			area = getArea();
 
 			if (!area) {
@@ -639,8 +740,16 @@ ModeLoop:
 						return false;
 					}
 
-					if (!this.moveTo(dest[0], dest[1], 3, clearPath)) {
+					// 3 tries is all a normal walk gets; a gold hunt (full clears leave the bot in odd corners of the area) gets 8, so "sidestep" has a chance
+					// (2026-11-13: "Failed to move to Countess" in Tower Cellar Level 2 after the area had been cleared, three retries on three targets)
+					if (!this.moveTo(dest[0], dest[1], Config.HuntClear ? 8 : 6, clearPath)) {
 						return false;
+					}
+
+					// Qolbot: AT the exit, before crossing it, the leader waits until the team is here with it (Team.gather with the proximity check: every mate in
+					// this area and within reach). It used to wait where it started walking, which could be hundreds of units from the exit.
+					if ((use || i < areas.length - 1) && typeof Team === "object") {
+						Team.gather(0, false, true);
 					}
 
 					/* i < areas.length - 1 is for crossing multiple areas.
@@ -666,6 +775,22 @@ ModeLoop:
 
 							break;
 						}
+
+						// Qolbot: a waypoint in an area walked THROUGH is picked up too (the quest leader, Quester.captureWaypoint), not only in the last one
+						// (the user, 2026-11-15: "they should just be sure to pickup waypoints as they quest"). UNTESTED in a game.
+						if (i < areas.length - 1 && me.area === areas[i] && this.onArrive) {
+							this.onArrive(me.area);
+						}
+
+						// A gold hunt (plan.hunt, AutoSpec: Config.HuntClear) clears every area it passes through on its way to the boss: more kills, more gold.
+						// The area of the boss itself is left to the boss script.
+						if (Config.HuntClear && i < areas.length - 1 && me.area === areas[i]) {
+							try {
+								Attack.clearLevel();
+							} catch (clearError) {
+								print("Hunt clear: " + clearError);
+							}
+						}
 					}
 
 					break;
@@ -674,7 +799,13 @@ ModeLoop:
 		}
 
 		if (use) {
-			return typeof targetArea === "object" ? me.area === targetArea[targetArea.length - 1] : me.area === targetArea;
+			arrived = typeof targetArea === "object" ? me.area === targetArea[targetArea.length - 1] : me.area === targetArea;
+
+			if (arrived && this.onArrive) {
+				this.onArrive(me.area); // Qolbot: the quest leader takes the waypoint of every area it walks into (Quester)
+			}
+
+			return arrived;
 		}
 
 		return true;
@@ -723,6 +854,125 @@ ModeLoop:
 		return [x, y];
 	},
 
+	// Qolbot: Durance of Hate Level 2, the way into Mephisto's lair, for the Mephisto run (quest or farm) and a Sorceress's Quick Travel to Level 3
+	// (the user, 2026-11-15: "she could get there either by taking the waypoint to trav and teleporting to level 3, or taking waypoint to level 2 ...
+	// if there is no sorc on the team, they can likewise start at trav or start at level 2. they should just be sure to pickup waypoints as they quest").
+	// With the Level 2 waypoint: by it. Without: from Travincal down the stairs (object 386, by preset) and through Level 1, the team together (a gather
+	// before the stairs and in Level 1; nobody to wait for on a Sorceress's solo trip), and the Level 2 waypoint is taken on the way. UNTESTED in a game.
+	toDurance: function () {
+		var index = this.wpAreas.indexOf(101),
+			has = function () { return typeof Waypoints === "object" ? Waypoints.has(101) : !!getWaypoint(index); };
+
+		if (me.area === 101) {
+			return true;
+		}
+
+		if (has()) {
+			this.useWaypoint(101);
+
+			return me.area === 101;
+		}
+
+		print("Durance of Hate: no Level 2 waypoint: from Travincal, down the stairs, through Level 1");
+		this.journeyTo(83);
+
+		try {
+			this.moveToPreset(83, 2, 386);
+		} catch (stairsError) {
+			print("Durance of Hate: walk to the stairs: " + stairsError);
+		}
+
+		if (typeof Team === "object") {
+			Team.gather(0, false, true);
+		}
+
+		this.useUnit(2, 386, 100);
+
+		if (me.area === 100 && typeof Team === "object") {
+			Team.gather(0, false, true);
+		}
+
+		if (!this.moveToExit(101, true)) { // the quest leader takes the waypoint on arrival when it is near (onArrive)
+			throw new Error("Failed to move to Durance of Hate Level 2");
+		}
+
+		if (!getWaypoint(index)) { // not taken yet (no quest, or too far from the arrival): the walk to it
+			try {
+				this.getWP(101);
+
+				if (typeof Waypoints === "object" && typeof Team === "object" && !Team.solo && Team.isLeader() && Waypoints.receivers(101).length) {
+					Waypoints.waitForTeam(101, 30000); // the mates take it too (Follower.gatherWaypoint, within 25 units)
+				}
+
+			} catch (wpError) {
+				print("Durance of Hate: the Level 2 waypoint: " + wpError);
+			}
+		}
+
+		return me.area === 101;
+	},
+
+	// Pather.findTileAgain(id, targetArea): walk back to the exit of this area that leads to targetArea (read afresh) and look for its tile there
+	findTileAgain: function (id, targetArea) {
+		var i, j, area, exits, exit, dest, unit, tiles;
+
+		try {
+			area = getArea();
+			exits = area ? area.exits : [];
+
+			for (i = 0; exits && i < exits.length; i += 1) {
+				if (exits[i].target === targetArea) {
+					exit = {x: exits[i].x, y: exits[i].y, tileid: exits[i].tileid};
+
+					break;
+				}
+			}
+
+			if (!exit) {
+				print("useUnit: tile " + id + " not in view and no exit to " + this.getAreaName(targetArea) + " in " + this.getAreaName(me.area));
+
+				return false;
+			}
+
+			print("useUnit: tile " + id + " not in view at " + me.x + "," + me.y + ": walking to the exit to " + this.getAreaName(targetArea) + " again (" +
+				exit.x + "," + exit.y + ", " + Math.round(getDistance(me, exit.x, exit.y)) + " away)");
+
+			for (j = 0; j < 2; j += 1) {
+				dest = this.getNearestWalkable(exit.x, exit.y, 5, 1) || [exit.x, exit.y];
+				this.moveTo(dest[0], dest[1], 6);
+
+				for (i = 0; i < 10; i += 1) {
+					unit = getUnit(5, id) || (exit.tileid !== id ? getUnit(5, exit.tileid) : null);
+
+					if (unit) {
+						print("useUnit: found the tile to " + this.getAreaName(targetArea) + " again (" + unit.classid + ")");
+
+						return unit;
+					}
+
+					// a tile of another id right at the exit is the one
+					tiles = getUnit(5);
+
+					if (tiles) {
+						do {
+							if (getDistance(tiles.x, tiles.y, exit.x, exit.y) <= 10) {
+								print("useUnit: found a tile at the exit to " + this.getAreaName(targetArea) + " (" + tiles.classid + " instead of " + id + ")");
+
+								return copyUnit(tiles);
+							}
+						} while (tiles.getNext());
+					}
+
+					delay(200);
+				}
+			}
+		} catch (findError) {
+			print("useUnit: looking for tile " + id + " again: " + findError);
+		}
+
+		return false;
+	},
+
 	/*
 		Pather.useUnit(type, id, targetArea);
 		type - type of the unit to use
@@ -733,18 +983,44 @@ ModeLoop:
 		var i, tick, unit,
 			preArea = me.area;
 
-		for (i = 0; i < 5; i += 1) {
+		// Qolbot: the object can show up a moment after the walk ends (a busy machine, a level still loading): wait up to 3 seconds,
+		// stepping a little now and then, instead of giving up after one
+		for (i = 0; i < 15; i += 1) {
 			unit = getUnit(type, id);
 
 			if (unit) {
 				break;
 			}
 
+			if (i === 5 || i === 10) {
+				this.moveTo(me.x + 2 * rand(-1, 1), me.y + 2 * rand(-1, 1));
+			}
+
 			delay(200);
+		}
+
+		// Qolbot: still not in view: look again from the exit itself. Live 2026-11-14 23:57 (Pindleskin's Nihlathak leg, "Unit not found. ID: 76"): a party
+		// heal trip in the middle of the walk to the stairs, and the bot came back by portal somewhere else; 2026-11-15 02:09 (Forgotten Tower, "ID: 9"):
+		// the walk to the stairs gave up 100 units short. The area's exits are read afresh (not the ones from before the trip), the bot walks to the
+		// one that leads to targetArea, and the stairs are looked up again there: by id, then any tile within 10 units of the exit (a fresh unit, not a
+		// stale one). UNTESTED in a game.
+		if (!unit && type === 5 && targetArea && !me.inTown) {
+			unit = this.findTileAgain(id, targetArea);
 		}
 
 		if (!unit) {
 			throw new Error("useUnit: Unit not found. ID: " + id);
+		}
+
+		// Qolbot: EVERY CROSSING IS A TEAM CROSSING (the user, 2026-11-15: "every transition between the zones and seams of the game are team crossings"):
+		// stairs, a tomb's orifice, any object that changes the area. The leader walks up to it and waits there for the team (mates in this area and
+		// within reach, the one timer, then a regroup), as at an exit and a field waypoint. UNTESTED in a game.
+		if (!me.inTown && typeof Team === "object" && Team.isLeader && Team.isLeader() && Team.gather) {
+			if (getDistance(me, unit) > 5) {
+				this.moveToUnit(unit);
+			}
+
+			Team.gather(0, false, true);
 		}
 
 		for (i = 0; i < 3; i += 1) {
@@ -779,6 +1055,22 @@ ModeLoop:
 		check - force the waypoint menu
 	*/
 	useWaypoint: function useWaypoint(targetArea, check) {
+		if (me.inTown && typeof Team === "object" && Team.mayLeaveTown && !Team.mayLeaveTown(targetArea)) { // Qolbot: a follower leaves town only on the leader's order
+			return false;
+		}
+
+		// Qolbot: the leader leaves town only with the team ready, into the field and into another act's town alike (the user, 2026-11-16: "the leader shouldn't have left the town if
+		// the team wasn't ready"); a hop to another act's town is not announced as an area to follow into (the followers follow the act)
+		if (me.inTown && typeof Team === "object" && Team.waitToLeaveTown) {
+			try {
+				Team.waitToLeaveTown(targetArea);
+
+				if ([1, 40, 75, 103, 109].indexOf(targetArea) < 0) {
+					Team.announceLeaving(targetArea, "waypoint");
+				}
+			} catch (leaveError) { print("Team: " + leaveError); }
+		}
+
 		if (typeof targetArea === "number") {
 			print("Taking waypoint to " + this.getAreaName(targetArea));
 		}
@@ -803,7 +1095,7 @@ ModeLoop:
 			break;
 		}
 
-		var i, tick, wp;
+		var i, tick, wp, gatheredAtWp = false;
 
 		for (i = 0; i < 12; i += 1) {
 			if (me.area === targetArea || me.dead) {
@@ -819,6 +1111,12 @@ ModeLoop:
 			if (wp && wp.area === me.area) {
 				if (!me.inTown && getDistance(me, wp) > 7) {
 					this.moveToUnit(wp);
+				}
+
+				// Qolbot: AT the waypoint in the field, before taking it, the leader waits until the team is here with it (it used to wait where it started walking)
+				if (!me.inTown && !gatheredAtWp && typeof Team === "object") {
+					gatheredAtWp = true;
+					Team.gather(0, false, true);
 				}
 
 				if (check || Config.WaypointMenu) {
@@ -1001,6 +1299,61 @@ MainLoop:
 			return true;
 		}
 
+		if (me.inTown && typeof Team === "object" && Team.mayLeaveTown && !Team.mayLeaveTown(targetArea)) { // Qolbot: a follower leaves town only on the leader's order
+			return false;
+		}
+
+		if (me.inTown && typeof Team === "object" && Team.waitToLeaveTown) { // Qolbot: the town gate: nobody leaves town into the field before every bot is ready
+			try { Team.waitToLeaveTown(targetArea); } catch (leaveError) { print("Team: " + leaveError); }
+		}
+
+		// Qolbot: ALWAYS TOGETHER (the user, 2026-11-15: "the entire team should always be together in the field. always. no exceptions"): a leader that goes
+		// out of town through SOMEBODY ELSE'S portal (a Sorceress's Quick Travel portal, a waypoint helper's, a mate's trip portal) tells the team to take
+		// that same portal now ("proceed" with its owner; Follower takes it at once, Team.returnCall). Its own portal: Team.sendOutFirst below says it.
+		// Its own portal too (the order record: every departure of the leader into the field is an order, the last order trumps all; with nobody left in
+		// town sendOutFirst says nothing, and the team's last order stayed "town" while everybody was out).
+		if (me.inTown && typeof Team === "object" && Team.isLeader && Team.isLeader() && Team.say) {
+			try {
+				var whose = owner || (this.getPortal(targetArea, me.name) ? me.name : ((unit && unit.getParent && unit.getParent()) || (targetArea && this.getPortal(targetArea, null) && this.getPortal(targetArea, null).getParent()) || "")),
+					named = targetArea || (whose && (this.getPortal(null, whose) || {}).objtype); // a Quick Travel place has no area number: the portal says where it leads
+
+				if (named && [1, 40, 75, 103, 109].indexOf(named) < 0 && whose) {
+					Team.say("proceed", {area: named, owner: whose}, Team.limits.sync);
+				}
+			} catch (proceedError) {
+				print("Team: " + proceedError);
+			}
+		}
+
+		if (me.inTown && (owner === me.name || !owner) && targetArea && this.getPortal(targetArea, me.name) && typeof Team === "object" && Team.sendOutFirst) { // Qolbot: the maker of the portal goes back out last
+			var goOut = true;
+
+			try { goOut = Team.sendOutFirst(targetArea, !!this.getPortal(targetArea, me.name)) !== false; } catch (lastError) { print("Team: " + lastError); }
+
+			if (!goOut) { // the leader's order changed while I waited to go last (Team.sendOutFirst): I do not go out
+				return false;
+			}
+		}
+
+		// Qolbot: EVERY CROSSING IS A TEAM CROSSING (the user, 2026-11-15): a portal in the field that is not a town portal (Mephisto's red portal, the
+		// Arcane Sanctuary's, the Worldstone Chamber's, the Cow Level's): the leader walks up to it and waits there for the team before it goes through.
+		// A town portal (object 59) is a trip to town, and the team follows it by the trip rules. UNTESTED in a game.
+		if (!me.inTown && typeof Team === "object" && Team.isLeader && Team.isLeader() && Team.gather) {
+			try {
+				var crossing = unit || this.getPortal(targetArea, owner);
+
+				if (crossing && crossing.classid !== 59) {
+					if (getDistance(me, crossing) > 5) {
+						this.moveToUnit(crossing);
+					}
+
+					Team.gather(0, false, true);
+				}
+			} catch (crossError) {
+				print("Team: " + crossError);
+			}
+		}
+
 		print("Taking portal");
 
 		me.cancel();
@@ -1082,6 +1435,32 @@ MainLoop:
 			delay(200 + me.ping);
 		}
 
+		// Qolbot: a failed portal take in town says what the bot saw (live 2026-11-15 10:22 and 14:34, Tal Rasha's Tomb #2: four bots could not take Meir's
+		// portal back out, 29 s each, the log said nothing; the next trip, by the caller's own portal, worked). Each portal in view: where it leads, owner,
+		// distance, mode. None in view = the bot stood too far away; one in view to the right area = it could not get in.
+		if (me.inTown && me.area === preArea && (targetArea ? me.area !== targetArea : true) && !(owner === me.name && !this.getPortal(targetArea, me.name))) { // not the routine look for a portal of my own when I made none
+			try {
+				var seen = [], p = getUnit(2, "portal"), mine = getParty(me.name), theirs,
+					partyOf = function (who) { // the party id (65535 = in no party), so a mate's portal the game refuses shows whether we are partied (the user: "prob not partied")
+						try { theirs = getParty(who); } catch (partyError) { theirs = null; }
+
+						return theirs ? theirs.partyid : "?";
+					};
+
+				if (p) {
+					do {
+						seen.push((p.getParent() || "red") + ">" + p.objtype + " d" + Math.round(getDistance(me, p)) + " m" + p.mode + " at " + p.x + "," + p.y +
+							(p.getParent() ? " party " + partyOf(p.getParent()) : ""));
+					} while (p.getNext());
+				}
+
+				print("Pather.usePortal: failed in town, wanted area " + targetArea + " of " + (owner === undefined ? "a red portal" : owner === null ? "any mate" : owner) +
+					" from " + me.x + "," + me.y + " (my party " + (mine ? mine.partyid : "?") + "); portals in view: " + (seen.length ? seen.join("; ") : "none"));
+			} catch (seenError) {
+				print("Pather.usePortal: failed in town (" + seenError + ")");
+			}
+		}
+
 		return targetArea ? me.area === targetArea : me.area !== preArea;
 	},
 
@@ -1090,8 +1469,87 @@ MainLoop:
 		targetArea - id of the area the portal leads to
 		owner - name of the portal's owner
 	*/
+	// A town portal that is already open in this area (mine or a party member's) and not far away: take it instead of opening a new one, which costs a
+	// scroll (2026-11-13: 452 "lost, going to town to meet up" trips in one day, each one opening its own portal). Returns true when I am in town.
+	// Qolbot: true while a bot walks to a mate's open town portal: no fighting, no chests, no pick-ups on the way (the user, 2026-11-15: "when a party
+	// member opens a portal to chicken to town, the entire team drops whatever they are doing and takes that portal. they don't keep fighting -- they
+	// leave immediately"; live 15:53:42-57: Sankt fought twice and picked up a Long Bow on the way to Darius's portal, 15 s after the others were in town)
+	fleeing: false,
+
+	// Qolbot: the mate whose portal the leader told the team to take to town (PartySync.call's portal, set by TownChicken while it answers the call; the
+	// user, 2026-11-15: "the leader then instructs the remaining party members to take that bot's portal back to town"); "": any party portal
+	preferPortalOf: "",
+
+	useTownPortalNear: function (maxDist) {
+		var portal, town = [1, 40, 75, 103, 109][me.act - 1], owner = null;
+
+		if (me.inTown || !town) {
+			return false;
+		}
+
+		try {
+			portal = this.preferPortalOf ? this.getPortal(town, this.preferPortalOf) : null; // the named mate's portal first
+
+			if (portal) {
+				owner = this.preferPortalOf;
+			} else {
+				portal = this.getPortal(town, null); // any blue portal to this act's town that belongs to me or to a party member
+			}
+
+			// one short try to get next to it; not there: open my own (2 s) instead of usePortal's retries (Darius, River of Flame, live 2026-11-14 13:07:40:
+			// 28 s of "move retry" 8 units from a mate's portal, monsters in the way, drinking potions, while the team was in town)
+			if (portal && getDistance(me, portal) <= maxDist && getDistance(me, portal) > 5) {
+				this.fleeing = true;
+
+				try {
+					this.moveTo(portal.x, portal.y, 1);
+				} finally {
+					this.fleeing = false;
+				}
+
+				portal = this.getPortal(town, owner);
+			}
+
+			this.fleeing = true; // usePortal's own last steps to the portal too
+
+			try {
+				portal = portal && getDistance(me, portal) <= 6 && this.usePortal(town, owner);
+			} finally {
+				this.fleeing = false;
+			}
+
+			if (portal) {
+				print("Town portal: using one that is already open.");
+
+				return me.inTown;
+			}
+		} catch (portalError) {
+			print("Town portal: could not reuse one (" + portalError + ")");
+		}
+
+		return false;
+	},
+
 	getPortal: function (targetArea, owner) {
-		var portal = getUnit(2, "portal");
+		var portal = getUnit(2, "portal"), team = null;
+
+		// Qolbot: a portal of one of the bots Qolbot started (Team.expected) is the team's, in the D2 party or not (live 2026-11-14: Meir's portal to the Plains
+		// of Despair was taken at once by some bots and not seen by others, twice: 12:34 Sankt, 12:42 Barabas and Darius, who then asked for a portal)
+		function trusted(name) {
+			if (!name) {
+				return false;
+			}
+
+			if (name === me.name || Misc.inMyParty(name)) {
+				return true;
+			}
+
+			if (team === null) {
+				team = (typeof Team === "object" && Team.expected) ? Team.expected() : [];
+			}
+
+			return team.indexOf(name) > -1;
+		}
 
 		if (portal) {
 			do {
@@ -1104,13 +1562,13 @@ MainLoop:
 
 						break;
 					case null: // Pather.usePortal(area, null) - any blue portal leading to area
-						if (portal.getParent() === me.name || Misc.inMyParty(portal.getParent())) {
+						if (trusted(portal.getParent())) {
 							return copyUnit(portal);
 						}
 
 						break;
 					default: // Pather.usePortal(null, owner) - any blue portal belonging to owner OR Pather.usePortal(area, owner) - blue portal matching area and owner
-						if (portal.getParent() === owner && (owner === me.name || Misc.inMyParty(owner))) {
+						if (portal.getParent() === owner && trusted(owner)) {
 							return copyUnit(portal);
 						}
 
@@ -1216,13 +1674,13 @@ MainLoop:
 			return true;
 		// For the other acts, check the "Able to go to Act *" quests
 		case 2:
-			return me.getQuest(7, 0) === 1;
+			return !!me.getQuest(7, 0); // Qolbot: getQuest gives true/false in this D2BS, not 1
 		case 3:
-			return me.getQuest(15, 0) === 1;
+			return !!me.getQuest(15, 0);
 		case 4:
-			return me.getQuest(23, 0) === 1;
+			return !!me.getQuest(23, 0);
 		case 5:
-			return me.getQuest(28, 0) === 1;
+			return !!me.getQuest(28, 0);
 		default:
 			return false;
 		}
@@ -1234,7 +1692,7 @@ MainLoop:
 		clearPath - clear path
 	*/
 	getWP: function (area, clearPath) {
-		var i, j, wp, preset,
+		var i, j, wp, preset, index = this.wpAreas.indexOf(area), had = index > -1 && !!getWaypoint(index),
 			wpIDs = [119, 145, 156, 157, 237, 238, 288, 323, 324, 398, 402, 429, 494, 496, 511, 539];
 
 		if (area !== me.area) {
@@ -1251,12 +1709,27 @@ MainLoop:
 
 				if (wp) {
 					for (j = 0; j < 10; j += 1) {
-						Misc.click(0, 0, wp);
-						//wp.interact();
+						// Qolbot: once in a while a waypoint cannot be clicked from where the bot stands (something blocks the click, or it is too far
+						// to the side). Step to another spot beside it and use the unit's own interact on every other try.
+						if (j === 3 || j === 6 || j === 8) {
+							print("Pather.getWP: the waypoint does not answer, trying from another spot (" + (j / 3 | 0) + ")");
+							this.moveTo(wp.x + rand(-4, 4), wp.y + rand(-4, 4), 1);
+							wp = getUnit(2, "waypoint") || wp;
+						}
+
+						if (j % 2 === 1) {
+							wp.interact();
+						} else {
+							Misc.click(0, 0, wp);
+						}
 
 						if (getUIFlag(0x14)) {
 							delay(500);
 							me.cancel();
+
+							if (!had) {
+								print("Waypoint collected: " + this.getAreaName(area)); // Qolbot: only a waypoint this character did not have (the Activity tab shows it)
+							}
 
 							return true;
 						}
@@ -1636,3 +2109,38 @@ MainLoop:
 		return areas[area];
 	}
 };
+
+// Qolbot: ONE TO TOWN, ALL TO TOWN by waypoint too (the user, 2026-11-15: "if any party members portals out of the field -- for any reason -- everyone drops
+// everything"): a bot that rides a waypoint from the field into a town calls the party, the same as Town.goToTown does for a portal (Town.teamFollows).
+// A wrapper, so the one rule sits at the bottom and not in each of useWaypoint's many returns. UNTESTED in a game.
+(function () {
+	var inner = Pather.useWaypoint;
+
+	Pather.useWaypoint = function (targetArea, check) {
+		var fromField = me.inTown ? 0 : me.area, fromTown = me.inTown, result = inner.apply(Pather, arguments), lack;
+
+		if (fromField && me.inTown && typeof Town === "object" && typeof Town.teamFollows === "function") {
+			Town.teamFollows(fromField);
+		}
+
+		// THE LEADER RODE A WAYPOINT FROM TOWN INTO THE FIELD and a mate lacks it (a waypoint fetch's first leg, a quest): that mate cannot ride after me
+		// and must not walk off alone (Follower), so open my portal here at once and name it ("proceed", owner me): the whole team comes through it now,
+		// instead of asking for a portal and arriving after the timer (the user, 2026-11-15: "the entire team should always be together in the field").
+		// UNTESTED in a game.
+		if (fromTown && !me.inTown && me.gameReady && typeof Team === "object" && Team.isLeader() && !Team.solo && Team.syncOn() && typeof Waypoints === "object" &&
+				typeof Waypoints.lacking === "function") {
+			try {
+				lack = Waypoints.lacking(me.area).filter(function (n) { return n !== me.name && Team.areas()[n] !== undefined; });
+
+				if (lack.length && Pather.makePortal()) {
+					print("Team: " + lack.join(", ") + " " + (lack.length > 1 ? "lack" : "lacks") + " this waypoint: my portal is open here for the team.");
+					Team.say("proceed", {area: me.area, owner: me.name}, Team.limits.sync);
+				}
+			} catch (portalError) {
+				print("Team: a portal for the team: " + portalError);
+			}
+		}
+
+		return result;
+	};
+}());

@@ -4,6 +4,10 @@
 *	@desc		do town chores like buying, selling and gambling
 */
 
+include("common/Quartermaster.js");
+include("common/PlugY.js");
+include("common/Qol.js");
+
 var NPC = {
 	Akara: getLocaleString(2892).toLowerCase(),
 	Gheed: getLocaleString(2891).toLowerCase(),
@@ -35,6 +39,8 @@ var NPC = {
 
 include("common/Report.js");
 include("common/QuestItems.js");
+include("common/Chores.js"); // Chores.tune: how many spare potions to carry, whoever runs the bot
+include("common/Layout.js");
 
 var Town = {
 	telekinesis: true,
@@ -57,16 +63,50 @@ var Town = {
 		41, // Key
 		76, // Healing Potion
 		77, // Mana Potion
-		78, // Rejuvenation Potion
+		// 78, Rejuvenation Potion: STASHED (user, 2026-11-13). The Keeper tab's "Bots pick up rejuvenation potions" keeps every one the leader sees, and with this
+		// type in the list nothing ever stashed them, so they filled the pack. Rejuvenation potions in the belt are not touched (only the pack is stashed).
 		79, // Stamina Potion
 		80, // Antidote Potion
 		81 // Thawing Potion
 	],
 
 	// Do town chores
+	// Qolbot: the chores run as a chore trip (Team.chore): a hop to another town for them (better potions, reviving or hiring a merc, the gambler) needs nobody's permission
 	doChores: function () {
+		var self = this, startAct = me.inTown ? me.act : 0, result;
+
+		result = typeof Team === "object" && Team.chore ? Team.chore(function () { return self.doChoresRun(); }) : this.doChoresRun();
+
+		// the user, 2026-11-16: "the only exception is town-to-town navigation from bots during chores that always brings them back to the original town": the chores
+		// hop to another act's town (Alkor, Hratli, Ormus, a merc's NPC) and are free of the gate only because the bot ends where it began. UNTESTED in a game.
+		if (startAct && me.inTown && me.act !== startAct) {
+			try {
+				print("Town: chores done in act " + me.act + ", back to act " + startAct + ".");
+				Team.chore(function () { return self.goToTown(startAct); });
+				this.move("portalspot");
+			} catch (backError) {
+				print("Town: could not get back to act " + startAct + " after the chores: " + backError);
+			}
+		}
+
+		return result;
+	},
+
+	doChoresRun: function () {
 		if (!me.inTown) {
 			this.goToTown();
+		}
+
+		// How many spare potions to carry follows from the belt and Quartermaster (Chores.tune), on EVERY chores visit, whoever runs the bot. It was only done by Chores.needed,
+		// which only the follower script calls: a bot leading its own farm kept the default of 4 healing and 4 mana spares (live 2026-11-16, Meir with a full 16-potion belt
+		// and 8 Greater potions in the pack; the user: "i thought qolbot was supposed to dynamically scale how many potions had to be added to inventory above and
+		// beyond what is in the belt"). UNTESTED in a game.
+		if (typeof Chores === "object" && Chores.tune) {
+			try {
+				Chores.tune();
+			} catch (tuneError) {
+				print("Chores: tune: " + tuneError);
+			}
 		}
 
 		var i,
@@ -85,11 +125,21 @@ var Town = {
 		}
 
 		this.heal();
+		// What the bot put in its cube in the field to make room (Item.cubeForRoom) comes out AFTER the pack has been sorted (the user, 2026-11-16: "when it's time to sort
+		// the inventory, deal with the items in the inventory first (to make room), then you'll have room to move the cube items into the inventory so they resume the normal ID
+		// flow"). It used to come out first, into a pack that had no room for it. Below: the pack is identified, sold and stashed, then the cube is unloaded and the same again.
+		var cubeLeft = this.cubeWaiting();
+
+		// Qolbot: the pack carries no gold between visits (stashGoldAt: all of it goes to the stash at the end of the chores), and the shops take only the pack's
+		// gold: take what the chores may need out of the stash first (potions, scrolls, repairs, the merc). What is left goes back at the end. UNTESTED in a game.
+		if (typeof Gold === "object" && Gold.topUp) {
+			try { Gold.topUp(100000); } catch (topUpError) { print("Gold: " + topUpError); me.cancel(); }
+		}
 		this.identify();
 		this.shopItems();
 		this.fillTome(518);
 
-		if (Config.FieldID) {
+		if (Config.FieldID || Config.InventoryLayout) {
 			this.fillTome(519);
 		}
 
@@ -106,14 +156,45 @@ var Town = {
 			Item.autoMercEquip();
 		}
 
+		// Qolbot (the user, 2026-11-16: "whenever bots are in town ... they should consider what quests they are on and what NPC they should talk to"): a reward waiting at an NPC of
+		// this town is handed in on every chores visit, whatever the objective and whoever leads. UNTESTED in a game.
+		if (me.inTown && typeof Quester === "object" && Quester.townQuestsOpen && Quester.questNpcs) {
+			try {
+				if (Quester.townQuestsOpen()) {
+					Quester.questNpcs();
+				}
+			} catch (questTalkError) {
+				print("Town: quest talk: " + questTalkError);
+				me.cancel();
+			}
+		}
+
 		this.buyKeys();
 		this.repair();
 		this.gamble();
 		this.reviveMerc();
 		Cubing.doCubing();
 		Runewords.makeRunewords();
+		this.holdCube = true; // the cube's items are not stashed unidentified in this round: the pack's own come first
 		this.stash(true);
+		this.holdCube = false;
+
+		if (this.cubeWaiting()) { // the pack is sorted and has room now: the cube's items come out, are identified and sorted like any other; what still does not fit is stashed from the cube
+			this.unloadCube();
+			this.identify();
+			this.clearInventory();
+			this.stash(true);
+		}
+
+		if (typeof QuestItems === "object" && QuestItems.wantRoom) { // a quest item needs room and the pack is full of what must stay: charms go to the stash
+			QuestItems.stashForRoom();
+		}
+
 		this.clearScrolls();
+		Layout.apply(); // Qolbot: the cube, the tomes and the keys in their places
+		Layout.tidy(); // Qolbot (the user, 2026-11-14): the last chore, everything the bot keeps moves to the left of the pack, the free cells on the right
+		Item.checkBigSpace(); // a yellow notice when the pack has no clear 2x4 space
+		Item.dropHeldForTeam(); // Qolbot: gear taken off during the chores goes on the ground at the portal spot, where the team gathers
 
 		for (i = 0; i < cancelFlags.length; i += 1) {
 			if (getUIFlag(cancelFlags[i])) {
@@ -166,7 +247,13 @@ var Town = {
 				this.openStash();
 			}
 
-			item.interact();
+			// Qolbot: through QuestItems, which logs the use (the Activity list shows "Quest Item Used") and saves the character; a bare interact() drank
+			// Xena's Potion of Life with no trace (2026-11-14: three of four bots showed it)
+			if (typeof QuestItems === "object") {
+				QuestItems.useAll();
+			} else {
+				item.interact();
+			}
 		}
 	},
 
@@ -273,6 +360,25 @@ var Town = {
 		return !!(Config.HealStatus && (me.getState(2) || me.getState(9) || me.getState(61)));
 	},
 
+	// the potions in the pack (not the belt, not the stash), healing and mana, for the log
+	packPotions: function () {
+		var pot = me.getItem(-1, 0), hp = 0, mp = 0;
+
+		if (pot) {
+			do {
+				if (pot.location === 3) {
+					if (pot.itemType === 76) {
+						hp += 1;
+					} else if (pot.itemType === 77) {
+						mp += 1;
+					}
+				}
+			} while (pot.getNext());
+		}
+
+		return [hp, mp];
+	},
+
 	buyPotions: function () {
 		if (me.gold < (Config.PotionGold || 1000)) { // Ain't got money fo' dat shyt
 			return false;
@@ -344,6 +450,9 @@ var Town = {
 			this.goToTown(4);
 		}
 
+		// for the log (the user, 2026-11-16: "meir feels the need to carry 30 potions on her person at all times"): what the belt lacks, what the pack holds, what is bought for
+		print("Potions: belt lacks " + col.join("/") + " per column (" + Config.BeltColumn.join("/") + "), pack holds " + this.packPotions().join("/") + " hp/mp, spares allowed " + Config.HPBuffer + "/" + Config.MPBuffer + ", buying for: " + (needPots ? "the belt " : "") + (needBuffer ? "the pack spares" : ""));
+
 		npc = this.initNPC("Shop", "buyPotions");
 
 		if (!npc) {
@@ -391,6 +500,8 @@ var Town = {
 				}
 			}
 		}
+
+		print("Potions: bought; the pack now holds " + this.packPotions().join("/") + " hp/mp, the belt lacks " + this.checkColumns(beltSize).join("/") + " per column.");
 
 		return true;
 	},
@@ -476,7 +587,9 @@ var Town = {
 	},
 
 	fillTome: function (code) {
-		if (me.gold < 450) {
+		// 450 gold covers a new tome; a bot that already has its tome only needs scrolls (about 100 gold each). Barabas, 2026-11-13, had between 100
+		// and 450 gold: TownChicken sent him out of the game for scrolls and this refused to buy any, so he left again every minute.
+		if (me.gold < 450 && !(me.gold >= 100 && me.findItem(code, 0, 3))) {
 			return false;
 		}
 
@@ -493,8 +606,8 @@ var Town = {
 
 		delay(500);
 
-		if (code === 518 && !me.findItem(518, 0, 3)) {
-			tome = npc.getItem(518);
+		if (!me.findItem(code, 0, 3)) { // Qolbot: either tome (the identify tome was never bought)
+			tome = npc.getItem(code);
 
 			if (tome && Storage.Inventory.CanFit(tome)) {
 				try {
@@ -517,7 +630,15 @@ var Town = {
 		}
 
 		try {
-			scroll.buy(true);
+			if (me.gold >= 1400) {
+				scroll.buy(true); // fills the tome
+			} else {
+				// not enough gold to fill it in one go (the game refuses the whole fill): one scroll at a time, as many as the gold pays for
+				for (var bought = this.checkScrolls(code); bought < 13 && me.gold >= 100; bought += 1) {
+					scroll.buy(false);
+					delay(250);
+				}
+			}
 		} catch (e2) {
 			print(e2.message);
 
@@ -534,7 +655,7 @@ var Town = {
 			switch (id) {
 			case 519:
 			case "ibk":
-				return 20; // Ignore missing ID tome
+				return Config.InventoryLayout ? 0 : 20; // Ignore missing ID tome (Qolbot: not with the inventory layout, which has a place for it)
 			case 518:
 			case "tbk":
 				return 0; // Force TP tome check
@@ -549,19 +670,25 @@ var Town = {
 	// 2. anything else on the keep list (1 keep, 2 cubing, 3 runeword, 5 crafting) is kept, and the stash takes it
 	// 3. everything else is junk (0). -1 (not identified yet) and 4 (sell for gold) are passed through.
 	keepVerdict: function (item, result) {
-		if (result === -1 || result === 4) {
+		if (result === -1) {
 			return result;
 		}
 
+		// an upgrade wins over "sell for gold" (live 2026-11-14: Xena sold a rare Long Battle Bow and a rare Crossbow her Rogue could wear, because
+		// GoldSell.nip matched them first and 4 was passed through before this check: "looks like auto equip for merc weapons doesn't work?")
 		if (Item.autoEquipCheck(item) || Item.autoMercEquipCheck(item)) {
 			return 1;
+		}
+
+		if (result === 4) {
+			return result;
 		}
 
 		return [1, 2, 3, 5].indexOf(result) > -1 ? result : 0;
 	},
 
 	identify: function () {
-		var i, item, tome, scroll, npc, list, timer, tpTome, result,
+		var i, item, tome, scroll, npc, list, timer, tpTome, result, soldName, goldBefore,
 			tpTomePos = {};
 
 		this.cainID();
@@ -575,12 +702,22 @@ var Town = {
 		// Avoid unnecessary NPC visits
 		for (i = 0; i < list.length; i += 1) {
 			// Only unid items or sellable junk (low level) should trigger a NPC visit
-			if ((!list[i].getFlag(0x10) || Config.LowGold > 0) && Item.isReplacable(list[i]) && ([-1, 4].indexOf(Pickit.checkItem(list[i]).result) > -1 || !list[i].getFlag(0x10))) {
+			if ((!list[i].getFlag(0x10) || Config.LowGold > 0 || Pickit.checkItem(list[i]).result === 4) && Item.isReplacable(list[i]) && ([-1, 4].indexOf(Pickit.checkItem(list[i]).result) > -1 || !list[i].getFlag(0x10))) {
 				break;
 			}
 		}
 
 		if (i === list.length) {
+			// say what was looked at, so "he never checked his gear" can be answered from the log (at most every 2 minutes)
+			if (list.length && (!this.idNoteAt || getTickCount() - this.idNoteAt > 120000)) {
+				var looked = [];
+				this.idNoteAt = getTickCount();
+				for (var li = 0; li < list.length && li < 12; li += 1) {
+					looked.push(list[li].name + (list[li].getFlag(0x10) ? " (id)" : " (unid)") + (Item.isReplacable(list[li]) ? "" : " (protected)") + " r" + Pickit.checkItem(list[li]).result);
+				}
+				print("Town.identify: nothing to identify or sell among " + list.length + " item(s): " + looked.join("; "));
+			}
+
 			return false;
 		}
 
@@ -600,16 +737,23 @@ MainLoop:
 		while (list.length > 0) {
 			item = list.shift();
 
-			if (!item.getFlag(0x10) && item.location === 3 && Item.isReplacable(item) && this.ignoredItemTypes.indexOf(item.itemType) === -1) { // protected kinds (Settings tab) are never identified
+			if (!item.getFlag(0x10) && item.location === 3 && Item.isReplacable(item) && !Item.keptOutright(item) && this.ignoredItemTypes.indexOf(item.itemType) === -1) { // protected kinds (Settings tab) and keepers kept without their stats are never identified
 				result = Pickit.checkItem(item);
 
-				// Force ID for unid items matching autoEquip criteria
-				if (result.result === 1 && !item.getFlag(0x10) && (Item.hasTier(item) || Item.hasMercTier(item))) {
+				// Force ID for unid items matching autoEquip criteria; a "sell for gold" item (GoldSell.nip) that could be an upgrade for me or my mercenary
+				// is identified first too, not sold unidentified: keepVerdict then decides (upgrade -> keep and wear, else sell)
+				if ((result.result === 1 || result.result === 4) && !item.getFlag(0x10) && ((Item.hasTier(item) && Item.autoEquipCheck(item)) || (Item.hasMercTier(item) && Item.autoMercEquipCheck(item)))) {
 					result.result = -1;
 				}
 
-				// Qolbot: identify every unidentified item kept by the rules (protected kinds never get here)
+				// Qolbot: identify every unidentified item kept by the rules (protected kinds and outright keepers never get here: keptOutright)
 				if (result.result === 1 && !item.getFlag(0x10)) {
+					result.result = -1;
+				}
+
+				// Qolbot: a "sell for gold" item (GoldSell.nip) is identified before it is sold: identified it fetches more (the user, 2026-11-14: Xena sold an
+				// unidentified magic Ring for 900 gold at 18:35:05). The sale follows below, after keepVerdict (an upgrade is kept instead).
+				if (result.result === 4 && !item.getFlag(0x10)) {
 					result.result = -1;
 				}
 
@@ -617,8 +761,20 @@ MainLoop:
 				// Items for gold, will sell magics, etc. w/o id, but at low levels
 				// magics are often not worth iding.
 				case 4:
-					Misc.itemLogger("Sold", item);
-					item.sell();
+					// only with a shop window open (identifying with Cain or at a tome does not open one: "Unit.sell: Must be used in shops" ended whole script runs,
+					// 15:56 on 2026-11-13, once the sell list made this case common); what is left is sold by clearInventory at a vendor
+					if (getUIFlag(0x0C)) {
+						Misc.itemLogger("Sold", item);
+						try { Misc.logItem("Sold", item); } catch (soldLogError) { print("Sold: " + soldLogError); } // Qolbot: the stats for the Activity entry
+						soldName = item.name;
+						goldBefore = me.gold;
+						item.sell();
+						delay(150 + me.ping);
+						for (var soldWait = 0; soldWait < 10 && me.gold === goldBefore; soldWait += 1) { // the gold arrives after the sale packet: wait up to 1.5 s for it, so the line below is not "0 gold"
+							delay(150);
+						}
+						print("Sold " + soldName + " for " + (me.gold - goldBefore) + " gold (a sell rule).");
+					}
 
 					break;
 				case -1:
@@ -690,7 +846,16 @@ MainLoop:
 						break;
 					default:
 						Misc.itemLogger("Sold", item);
+						try { Misc.logItem("Sold", item); } catch (soldLogError) { print("Sold: " + soldLogError); } // Qolbot: the stats for the Activity entry
+						soldName = item.name;
+						goldBefore = me.gold;
 						item.sell();
+
+						for (var idSoldWait = 0; idSoldWait < 10 && me.gold === goldBefore; idSoldWait += 1) {
+							delay(150);
+						}
+
+						print("Sold " + soldName + " for " + (me.gold - goldBefore) + " gold (no keep rule)."); // Qolbot: the Activity entry (this sale printed nothing)
 
 						timer = getTickCount() - this.sellTimer; // shop speedup test
 
@@ -746,7 +911,7 @@ MainLoop:
 
 			// Check if we may use Cain - kept unid items
 			for (i = 0; i < unids.length; i += 1) {
-				if (!Item.isReplacable(unids[i])) { // Cain identifies everything: not with a protected item in the bag (any other item may need identifying to tell whether it is a keeper)
+				if (!Item.isReplacable(unids[i]) || Item.keptOutright(unids[i])) { // Cain identifies everything: not with a protected item or an outright keeper in the bag (any other item may need identifying to tell whether it is a keeper)
 					//print("Can't use Cain - can't id a valid item.");
 
 					return false;
@@ -792,7 +957,7 @@ MainLoop:
 		while (list.length > 0) {
 			item = list.shift();
 
-			if (!Item.isReplacable(item)) { // protected kinds are never identified
+			if (!Item.isReplacable(item) || Item.keptOutright(item)) { // protected kinds and outright keepers are never identified
 				continue;
 			}
 
@@ -1011,6 +1176,19 @@ CursorLoop:
 			this.goToTown(2);
 		}
 
+		// Qolbot: the shop takes the pack's gold only: take what the gambling will spend out of the stash first (everything above GambleGoldStop, pack and stash
+		// together). What is left goes back to the stash at the end of the chores. UNTESTED in a game.
+		var spend = me.getStat(14) + me.getStat(15) - Config.GambleGoldStop;
+
+		if (spend > me.getStat(14) && typeof Gold === "object" && Gold.topUp) {
+			try {
+				Gold.topUp(spend);
+			} catch (gambleGoldError) {
+				print("Gold: " + gambleGoldError);
+				me.cancel();
+			}
+		}
+
 		npc = this.initNPC("Gamble", "gamble");
 
 		if (!npc) {
@@ -1023,7 +1201,11 @@ CursorLoop:
 			list.push(items.shift().gid);
 		}
 
-		while (me.gold >= Config.GambleGoldStop) {
+		var passGold; // the pack's gold at the start of a pass: a pass that buys nothing ends the gambling (no room, or too little gold in the pack for any item)
+
+		while (me.getStat(14) + me.getStat(15) >= Config.GambleGoldStop && me.getStat(14) > 0) { // pack and stash together (Qolbot, 2026-11-16)
+			passGold = me.getStat(14);
+
 			if (!getInteractedNPC()) {
 				npc.startTrade("Gamble");
 			}
@@ -1071,6 +1253,7 @@ CursorLoop:
 							break;
 						default:
 							Misc.itemLogger("Sold", newItem, "Gambling");
+							try { Misc.logItem("Sold", newItem, "Gambling"); } catch (soldLogError) { print("Sold: " + soldLogError); } // Qolbot: the stats for the Activity entry
 							me.overhead("Sell: " + newItem.name);
 							newItem.sell();
 
@@ -1085,13 +1268,21 @@ CursorLoop:
 			}
 
 			me.cancel();
+
+			if (me.getStat(14) === passGold) {
+				print("Gambling: a pass bought nothing, stopping.");
+
+				break;
+			}
 		}
 
 		return true;
 	},
 
 	needGamble: function () {
-		return Config.Gamble && me.gold >= Config.GambleGoldStart;
+		// Qolbot (the user, 2026-11-16: "gambling not triggering anymore should be based on the total gold in the stash and pack together, not just the pack"): the
+		// chores stash all the gold, so the pack alone never reached GambleGoldStart
+		return Config.Gamble && (me.getStat(14) + me.getStat(15)) >= Config.GambleGoldStart;
 	},
 
 	getGambledItem: function (list) {
@@ -1150,7 +1341,8 @@ CursorLoop:
 	},
 
 	checkKeys: function () {
-		if (!Config.OpenChests || me.classid === 6 || me.gold < 540 || (!me.getItem("key") && !Storage.Inventory.CanFit({sizex: 1, sizey: 1}))) {
+		// Qolbot: with the inventory layout every bot keeps a few keys (they have a place), whether it opens chests or not
+		if ((!Config.OpenChests && !Config.InventoryLayout) || (me.classid === 6 && !Config.InventoryLayout) || me.gold < 540 || (!me.getItem("key") && !Storage.Inventory.CanFit({sizex: 1, sizey: 1}))) {
 			return 12;
 		}
 
@@ -1311,6 +1503,180 @@ CursorLoop:
 		return false;
 	},
 
+	// Qolbot: the repair-all bill is more than the bot has (live 18:27 on Nightmare: Barabas, 60072 gold, 58006 of it recharging an Assault Helmet's charges,
+	// and his Deathspade at 1 of 24 durability went unrepaired). Repair the worn items one at a time, the most worn first, each only when its whole cost fits
+	// (C->S 0x35, 17 bytes: the repairer's gid, the item's gid, 0, then the flags, negative = all, 0 = this item; D2MOO D2GAME_NPC_Repair: an item that
+	// cannot be paid in full is repaired as far as the gold goes, which would spend everything: never sent). The scroll fund of needRepair is kept.
+	// the worn items too dear to repair that may go (trashable), each tried once a game (a failed try must not mean a town trip every fight)
+	toTrash: function () {
+		var self = this, budget = me.gold + me.getStat(15) - (this.checkScrolls(518) < 5 ? 300 : 0);
+
+		this.trashTried = this.trashTried || {};
+
+		return this.getItemsForRepair(Config.RepairPercent, true).filter(function (it) {
+			var c;
+
+			try {
+				c = it.getItemCost(2);
+			} catch (e) {
+				return false;
+			}
+
+			return c > budget && !self.trashTried[me.gamename + ":" + it.gid] && self.trashable(it);
+		});
+	},
+
+	// may a worn item that is too dear to repair be got rid of? Only when the protection list does not keep it and no keep rule (pickit, cubing,
+	// runeword, crafting) wants it
+	trashable: function (item) {
+		var keep;
+
+		try {
+			if (!Item.isReplacable(item)) {
+				return false;
+			}
+
+			keep = Pickit.checkItem(item).result;
+		} catch (e) {
+			return false;
+		}
+
+		return [1, 2, 3, 5].indexOf(keep) === -1;
+	},
+
+	// take it off and sell it here (the repairer's shop is open), else drop it; says which
+	trash: function (item) {
+		var gid = item.gid, name = item.name, it;
+
+		this.trashTried = this.trashTried || {};
+		this.trashTried[me.gamename + ":" + gid] = true;
+
+		try {
+			if (!item.toCursor()) {
+				return "could not take it off";
+			}
+
+			it = getUnit(100);
+
+			if (it && getUIFlag(0x0C) && Storage.Inventory.CanFit(it) && Storage.Inventory.MoveTo(it)) {
+				it = me.getItem(-1, 0, gid) || it;
+				Misc.itemLogger("Sold", it);
+				try { Misc.logItem("Sold", it); } catch (soldLogError) { print("Sold: " + soldLogError); }
+
+				var goldBefore = me.gold, tick;
+
+				if (it.sell()) {
+					for (tick = getTickCount(); getTickCount() - tick < 1500 && me.gold === goldBefore; ) {
+						delay(50);
+					}
+
+					// the line the Activity list reads ("Sold X for N gold."; live 18:31:58 "Sold Assault Helmet (too dear to repair)." was not shown)
+					print("Sold " + name + " for " + (me.gold - goldBefore) + " gold (too dear to repair).");
+					print("Town: " + name + " was too dear to repair and nobody keeps it");
+
+					return "sold";
+				}
+			}
+
+			it = getUnit(100) || me.getItem(-1, 0, gid);
+
+			if (it && it.drop()) {
+				print("Town: dropped " + name + ": too dear to repair and nobody keeps it");
+
+				return "dropped";
+			}
+		} catch (e) {
+			return "trash: " + e;
+		}
+
+		return "kept: could not drop it";
+	},
+
+	// the worn items below Config.RepairPercent whose whole repair the bot can pay for (gold and stash, the scroll fund kept)
+	affordableRepairs: function () {
+		var items = this.getItemsForRepair(Config.RepairPercent, true), budget = me.gold + me.getStat(15) - (this.checkScrolls(518) < 5 ? 300 : 0);
+
+		return items.filter(function (it) {
+			var c;
+
+			try {
+				c = it.getItemCost(2);
+			} catch (e) {
+				c = -1;
+			}
+
+			return c > 0 && c <= budget;
+		});
+	},
+
+	repairSome: function (npc) {
+		var items = this.getItemsForRepair(Config.RepairPercent, true), i, cost, budget, before, done = [], skipped = [];
+
+		items.sort(function (a, b) {
+			var pa = a.getStat(73) ? a.getStat(72) / a.getStat(73) : 1, pb = b.getStat(73) ? b.getStat(72) / b.getStat(73) : 1;
+
+			return pa - pb;
+		});
+
+		for (i = 0; i < items.length; i += 1) {
+			budget = me.gold + me.getStat(15) - (this.checkScrolls(518) < 5 ? 300 : 0);
+
+			try {
+				cost = items[i].getItemCost(2);
+			} catch (e) {
+				cost = -1;
+			}
+
+			if (cost <= 0 || cost > budget) {
+				// a money sink nobody wants kept goes (the user, 2026-11-14: "no reason to keep a helmet that is a money sink if it's not on a keeper
+				// list"): not protected (Item.isReplacable: the protection list, and nothing is protected below its level) and no keep rule matches it
+				if (cost > budget && this.trashable(items[i])) {
+					skipped.push(items[i].name + " " + cost + " (" + this.trash(items[i]) + ")");
+				} else {
+					skipped.push(items[i].name + " " + cost);
+				}
+
+				continue;
+			}
+
+			before = me.gold + me.getStat(15);
+			sendPacket(1, 0x35, 4, npc.gid, 4, items[i].gid, 4, 0, 4, 0);
+
+			for (var tick = getTickCount(); getTickCount() - tick < 2000 && me.gold + me.getStat(15) === before; ) {
+				delay(100);
+			}
+
+			done.push(items[i].name + " " + (before - me.gold - me.getStat(15)) + " (durability now " + items[i].getStat(72) + "/" + items[i].getStat(73) + ")");
+		}
+
+		print("Town: repaired one at a time: " + (done.join(", ") || "nothing") + (skipped.length ? "; too dear: " + skipped.join(", ") : ""));
+
+		return done.length > 0;
+	},
+
+	// Qolbot: what each worn item would cost to repair (getItemCost(2)), most expensive first, for the log
+	repairCosts: function () {
+		var it = me.getItem(-1, 1), out = [], c;
+
+		if (it) {
+			do {
+				try {
+					c = it.getItemCost(2);
+				} catch (e) {
+					c = -1;
+				}
+
+				if (c > 0) {
+					out.push({n: it.name, c: c, d: it.getStat(72) + "/" + it.getStat(73)});
+				}
+			} while (it.getNext());
+		}
+
+		out.sort(function (a, b) { return b.c - a.c; });
+
+		return out.map(function (o) { return o.n + " " + o.c + " (durability " + o.d + ")"; }).join(", ") || "no item cost known";
+	},
+
 	repair: function () {
 		var i, quiver, myQuiver, npc, repairAction, bowCheck;
 
@@ -1332,6 +1698,16 @@ CursorLoop:
 				}
 
 				me.repair();
+
+				break;
+			case "repairSome":
+				npc = this.initNPC("Repair", "repair");
+
+				if (!npc) {
+					return false;
+				}
+
+				this.repairSome(npc);
 
 				break;
 			case "buyQuiver":
@@ -1375,7 +1751,9 @@ CursorLoop:
 	needRepair: function () {
 		var quiver, bowCheck, quantity,
 			repairAction = [],
-			canAfford = me.gold >= me.getRepairCost();
+			// the scroll fund: repairs never take the last 300 gold of a bot that is short of town portal scrolls (2026-11-13: a leader with no
+			// scrolls cannot leave the field, share waypoints or run a quest)
+			canAfford = me.gold - me.getRepairCost() >= (this.checkScrolls(518) < 5 ? 300 : 0);
 
 		// Arrow/Bolt check
 		bowCheck = Attack.usingBow();
@@ -1409,7 +1787,18 @@ CursorLoop:
 				repairAction.push("repair");
 			}
 		} else {
-			print("ÿc4Town: ÿc1Can't afford repairs.");
+			// Qolbot: the numbers, and what costs the most, once every two minutes (live 18:24 on Nightmare: Barabas, cost 59300 with 25953 gold, said
+			// dozens of times a minute)
+			if (Date.now() - (this.repairSaidAt || 0) > 120000) {
+				this.repairSaidAt = Date.now();
+				print("ÿc4Town: ÿc1Can't afford repairs (cost " + me.getRepairCost() + ", gold " + me.gold + ", stash " + me.getStat(15) + ", tp scrolls " + this.checkScrolls(518) + "): " + this.repairCosts());
+			}
+
+			// what fits the budget can still be repaired one item at a time (Town.repairSome). Only items it can pay for: an item too dear (the helmet)
+			// must not make a "needs repair" that never goes away (Attack.clearLevel goes to town whenever needRepair says so)
+			if (this.affordableRepairs().length > 0 || this.toTrash().length > 0) {
+				repairAction.push("repairSome");
+			}
 		}
 
 		return repairAction;
@@ -1557,6 +1946,10 @@ MainLoop:
 	},
 
 	canStash: function (item, ignoreRoom) {
+		if (Item.isHeldForTeam(item)) { // Qolbot: taken off for an upgrade, waiting to be dropped at the portal spot for the team
+			return false;
+		}
+
 		var ignoredClassids = [
 			524, // scroll of inifuss
 			525, // key to the cairn stones
@@ -1605,9 +1998,83 @@ MainLoop:
 		return !!result;
 	},
 
+	// REJUVENATION POTIONS, reserve and accumulation (user, 2026-11-13): the user wants them for two things, a potion on hand when the bot is about to die,
+	// and as many as possible piled up over time. A potion cannot tell which it is for, a COUNT can: the bot keeps Config.RejuvReserve of them on hand (belt
+	// plus pack; 4, a full belt column), every one beyond that is accumulation and goes to the stash, and when the bot is short of the reserve it takes the
+	// difference out of the stash. Reserve first, accumulation from the overflow.
+	rejuvCounts: function () {
+		var i, items = me.getItems() || [], c = {belt: 0, pack: 0, stash: 0};
+
+		for (i = 0; i < items.length; i += 1) {
+			if (items[i].itemType === 78 && items[i].mode === 2) { // mode 2 = in the belt
+				c.belt += 1;
+			} else if (items[i].itemType === 78 && items[i].mode === 0) {
+				if (items[i].location === 3) {
+					c.pack += 1;
+				} else if (items[i].location === 7) {
+					c.stash += 1;
+				}
+			}
+		}
+
+		return c;
+	},
+
+	rejuvTopUp: function () {
+		var i, items, moved = 0, c = this.rejuvCounts(), need = (Config.RejuvReserve || 4) - c.belt - c.pack;
+
+		if (!me.inTown || need <= 0 || c.stash <= 0 || !this.openStash()) {
+			return 0;
+		}
+
+		items = (me.getItems() || []).filter(function (it) {
+			return it.itemType === 78 && it.mode === 0 && it.location === 7;
+		});
+
+		for (i = 0; i < items.length && moved < need; i += 1) {
+			if (Storage.Inventory.MoveTo(items[i])) {
+				moved += 1;
+			}
+		}
+
+		me.cancel();
+
+		if (moved) {
+			print("Rejuvs: took " + moved + " rejuvenation potion(s) out of the stash for the reserve (" + (c.belt + c.pack + moved) + " on hand).");
+		}
+
+		return moved;
+	},
+
 	stash: function (stashGold) {
 		if (stashGold === undefined) {
 			stashGold = true;
+		}
+
+		// Settings, Game, "Using Quartermaster?": its .deposit command stores the common items (rejuvenation potions ...) first, before the stash is
+		// used, and also when nothing else needs stashing: the pack fills with potions that no stash rule ever moves
+		if (typeof Quartermaster === "object") {
+			try {
+				Quartermaster.deposit(true); // also on an emergency visit (Quartermaster.skip): .deposit before the stash
+			} catch (depositError) {
+				print("Quartermaster: " + depositError);
+			}
+		}
+
+		try {
+			if (!Config.UsesQuartermaster) { // with Quartermaster the next arrival in town deposits the pack's rejuvenation potions again: moving them out of the stash is pointless
+				this.rejuvTopUp(); // short of the reserve: take rejuvenation potions out of the stash first
+			}
+		} catch (topUpError) {
+			print("Rejuvs: " + topUpError);
+			me.cancel();
+		}
+
+		try {
+			this.cubeToStash();
+		} catch (cubeError) {
+			print("Town: the cube to the stash: " + cubeError);
+			me.cancel();
 		}
 
 		if (!this.needStash()) {
@@ -1616,19 +2083,29 @@ MainLoop:
 
 		me.cancel();
 
-		var i, result, tier,
-			items = Item.botItems();
+		var i, result, tier, noRoom = false,
+			items = Item.botItems(),
+			rejuvKeep = Math.max(0, (Config.RejuvReserve || 4) - this.rejuvCounts().belt); // how many rejuvenation potions in the pack are the reserve
 
 		if (items) {
 			for (i = 0; i < items.length; i += 1) {
+				if (items[i].itemType === 78 && rejuvKeep > 0) { // the reserve stays in the pack; the rest of them is accumulation and goes to the stash
+					rejuvKeep -= 1;
+
+					continue;
+				}
+
 				if (!this.canStash(items[i], true) || !this.wantStash(items[i])) {
 					continue;
 				}
 
+				noRoom = false;
+
 				if (!Storage.Stash.CanFit(items[i])) {
 					if (Item.toCube(items[i])) { // Qolbot: the cube is extra storage once the stash is full
 						Misc.itemLogger("Stashed", items[i]);
-						print("\xFFc7Stashed " + Pickit.itemColor(items[i]) + items[i].name);
+						try { Misc.logItem("Stashed", items[i]); } catch (stashLogError) { print("Stashed: " + stashLogError); } // Qolbot: the stats for the Activity card (live 21:19:31, Sankt's rare Small Shield had none)
+						print("\xFFc7Stashed " + Pickit.itemColor(items[i]) + items[i].name + " [" + Item.stashWhy(items[i]) + "]");
 
 						if (Item.isCharm(items[i])) {
 							Item.forgetCharm(items[i]);
@@ -1637,34 +2114,39 @@ MainLoop:
 						continue;
 					}
 
-					if (Config.InfiniteStash) {
-						say("/insertpage");
-						delay(1000);
-						say("/swappage 1"); // only works with PlugY v14
-						delay(1000);
+					noRoom = true;
+
+					if (Config.InfiniteStash && !this.noMorePages) {
+						Cubing.newStashPage(); // a fresh page in view ("/insertpage")
 						D2Bot.printToConsole("New Stash Created!", 7);
 					}
 					else {
-						D2Bot.printToConsole("No More Space In Stash!", 8);
-						D2Bot.stop(me.profile, true);
+						this.stashFullStop(items[i]); // no page can be added (or never could: the user's PlugY.ini allows one page of the personal stash)
+						return false;
 					}
 				}
 
 				Misc.itemLogger("Stashed", items[i]);
 
 				if (Storage.Stash.MoveTo(items[i])) {
-					print("\xFFc7Stashed " + Pickit.itemColor(items[i]) + items[i].name); // read by Qolbot's Activity list
+					try { Misc.logItem("Stashed", items[i]); } catch (stashLogError) { print("Stashed: " + stashLogError); } // Qolbot: the stats for the Activity card (live 21:19:31, Sankt's rare Small Shield had none)
+					print("\xFFc7Stashed " + Pickit.itemColor(items[i]) + items[i].name + " [" + Item.stashWhy(items[i]) + "]"); // read by Qolbot's Activity list
 
 					if (Item.isCharm(items[i])) {
 						Item.forgetCharm(items[i]); // it is in the stash now: nothing to remember
 					}
+				} else if (noRoom) { // the page that was just asked for did not give room: PlugY does not allow another one
+					this.noMorePages = true;
+					this.stashFullStop(items[i]);
+
+					return false;
 				}
 			}
 		}
 
 		// Stash gold
 		if (stashGold) {
-			if (me.getStat(14) >= Config.StashGold && me.getStat(15) < 25e5 && this.openStash()) {
+			if (me.getStat(14) >= this.stashGoldAt() && me.getStat(15) < 25e5 && this.openStash()) {
 				gold(me.getStat(14), 3);
 				delay(1000);
 				me.cancel();
@@ -1674,8 +2156,133 @@ MainLoop:
 		return true;
 	},
 
+	// Qolbot: keepers that were put in the cube while the cube was storage (Item.cubeRoom, before 2026-11-15) go to the stash, a new PlugY page when the
+	// shown one is full; quest items and what Town.canStash leaves alone stay. Only when the stash can grow: otherwise the cube is the storage.
+	// UNTESTED in a game.
+	// Qolbot: the items a town trip gets rid of (Item.tripItem) out of the cube into the pack, where the chores identify, sell and stash them (the cube was
+	// filled in the field to make room: Item.cubeForRoom). Returns how many are still in the cube for want of room in the pack. UNTESTED in a game.
+	// how many items wait in the cube for a town visit (what unloadCube would take out)
+	cubeWaiting: function () {
+		try {
+			if (!me.getItem(549)) {
+				return 0;
+			}
+
+			return (me.findItems(-1, -1, 6) || []).filter(function (it) { return !Item.userOwned(it) && Item.tripItem(it); }).length;
+		} catch (waitError) {
+			return 0;
+		}
+	},
+
+	unloadCube: function () {
+		var i, items, moved = 0;
+
+		if (!me.inTown || !me.getItem(549)) {
+			return 0;
+		}
+
+		items = (me.findItems(-1, -1, 6) || []).filter(function (it) { return !Item.userOwned(it) && Item.tripItem(it); });
+
+		if (!items.length) {
+			return 0;
+		}
+
+		try {
+			if (!Cubing.openCube()) {
+				return items.length;
+			}
+
+			for (i = 0; i < items.length; i += 1) {
+				if (Storage.Inventory.CanFit(items[i]) && Storage.Inventory.MoveTo(items[i])) {
+					moved += 1;
+				}
+
+				Storage.Reload();
+			}
+		} catch (unloadError) {
+			print("Town: the cube: " + unloadError);
+		}
+
+		me.cancel();
+		print("Town: took " + moved + " of " + items.length + " item(s) out of my cube for the town chores.");
+
+		return items.length - moved;
+	},
+
+	cubeToStash: function () {
+		var i, items, added = false;
+
+		if (!Config.InfiniteStash || this.noMorePages || !me.getItem(549) || this.holdCube) {
+			return true;
+		}
+
+		// Everything in the cube goes to the stash, identified or not (the user, 2026-11-16: "items go in the cube if the inventory is full, and those items in the cube
+		// cannot be IDed but they will all automatically go into the stash ... is the safest way to do it"; a full inventory is a yellow alert on the Activity page).
+		items = (me.findItems(-1, -1, 6) || []).filter(function (it) { return Town.canStash(it, true); });
+
+		if (!items.length) {
+			return true;
+		}
+
+		if (!this.openStash()) {
+			return false;
+		}
+
+		for (i = 0; i < items.length; i += 1) {
+			if (!Storage.Stash.CanFit(items[i])) {
+				if (added) {
+					print("Town: no room in the stash for " + items[i].name + " from the cube, even on a new page: it stays in the cube.");
+
+					continue;
+				}
+
+				print("Town: the stash page is full: adding a page for the items in my cube.");
+				Cubing.newStashPage();
+				added = true;
+
+				if (!Storage.Stash.CanFit(items[i])) {
+					continue;
+				}
+			}
+
+			if (Storage.Stash.MoveTo(items[i])) {
+				print("Town: moved " + items[i].name + " from my cube to the stash");
+
+				// The Activity list is told "Stashed <item>" once per item. An item that went into the cube through Pack.stashed was announced then; the ones the field put into the
+				// cube (Item.cubeForRoom, Item.cursorToCube: a farm run's keepers, uniques and sets among them) were not, and never showed on the Activity tab (the user,
+				// 2026-11-16: "none of these are reflected in the activity tab"). UNTESTED in a game.
+				if (!Item.stashAnnounced[items[i].gid]) {
+					Item.stashAnnounced[items[i].gid] = true;
+
+					try { Misc.logItem("Stashed", items[i]); } catch (stashLogError) { print("Stashed: " + stashLogError); }
+
+					// from a full pack: a unique or set says what it is, anything else was not identified (it could not be, in the cube)
+					print("\xFFc7Stashed " + Pickit.itemColor(items[i]) + items[i].name + " [" + (items[i].quality === 7 || items[i].quality === 5 || items[i].getFlag(0x10) ? Item.stashWhy(items[i]) : "pack was full: not identified") + "]"); // read by Qolbot's Activity list
+				}
+			}
+		}
+
+		return true;
+	},
+
+	// The stash is full and no page can be added: say so (Qolbot stops the whole team for it and shows a red box, fatal.go) and stop this bot cleanly.
+	stashFullStop: function (item) {
+		print("Stash is full: no room for " + item.name + " and no page can be added (PlugY allows one page): stopping.");
+		D2Bot.printToConsole("No More Space In Stash!", 8);
+		D2Bot.stop(me.profile, true);
+	},
+
+	// Qolbot: ALL the gold goes to the stash on every visit that does the chores (the user, 2026-11-15: "having any gold on their person seems meaningless --
+	// make them stash all their gold every time they do chores"). Gold above the pack's cap is lost on a sale (Xena, 0 gold for a Glorious Chain Mail at
+	// 580,000), and _DefaultConfig.js's StashGold of 1,000,000 was more than any of them can carry, so it never happened. The chores spend the pack's gold
+	// first (potions, repair, gamble come before the stash), and Gold.js takes stash gold out when the pack runs low. Config.StashGold is not used.
+	// UNTESTED in a game.
+	stashGoldAt: function () {
+		return 1;
+	},
+
 	needStash: function () {
-		if (Config.StashGold && me.getStat(14) >= Config.StashGold && me.getStat(15) < 25e5) {
+		if (me.getStat(14) >= this.stashGoldAt() && me.getStat(15) < 25e5) {
 			return true;
 		}
 
@@ -1907,6 +2514,7 @@ MainLoop:
 				if (getUIFlag(0xC) || (Config.PacketShopping && getInteractedNPC() && getInteractedNPC().itemcount > 0)) { // Might as well sell the item if already in shop
 					print("clearInventory sell " + items[i].name);
 					Misc.itemLogger("Sold", items[i]);
+					try { Misc.logItem("Sold", items[i]); } catch (soldLogError) { print("Sold: " + soldLogError); } // Qolbot: the stats for the Activity entry
 					items[i].sell();
 				} else {
 					Misc.itemLogger("Dropped", items[i], "clearScrolls");
@@ -1919,7 +2527,7 @@ MainLoop:
 	},
 
 	clearInventory: function () {
-		var i, col, result, item, beltSize,
+		var i, col, result, item, beltSize, soldName, goldBefore,
 			items = [];
 
 		this.checkQuestItems(); // only golden bird quest for now
@@ -1958,12 +2566,17 @@ MainLoop:
 						delay(me.ping + 200);
 
 						col = this.checkColumns(beltSize);
+
+						// One potion goes into ONE belt column. Without this the loop went on to the next column of the same kind and clicked the potion AGAIN where it no
+						// had been (a mana potion, two mana columns with room): Xena's game died there with "Halt ... Unrecoverable internal error" at every start, 2026-11-13 21:12-21:46
+						break;
 					}
 				}
 			}
 		}
 
 		// Cleanup remaining potions
+		print("Potions: cleanup: the pack holds " + this.packPotions().join("/") + " hp/mp, spares allowed " + Config.HPBuffer + "/" + Config.MPBuffer + ".");
 		item = me.getItem(-1, 0);
 
 		if (item) {
@@ -2018,28 +2631,51 @@ MainLoop:
 						this.initNPC("Shop", "clearInventory");
 						print("clearInventory sell " + items[i].name);
 						Misc.itemLogger("Sold", items[i]);
+						try { Misc.logItem("Sold", items[i]); } catch (soldLogError) { print("Sold: " + soldLogError); } // Qolbot: the stats for the Activity entry
 
 						if (Item.isCharm(items[i])) {
 							Item.forgetCharm(items[i]); // sold: nothing to remember
 						}
 
+						soldName = items[i].name;
+						goldBefore = me.gold;
 						items[i].sell();
+						delay(150 + me.ping);
+						for (var soldWait = 0; soldWait < 10 && me.gold === goldBefore; soldWait += 1) { // the gold arrives after the sale packet: wait up to 1.5 s for it, so the line below is not "0 gold"
+							delay(150);
+						}
+						print("Sold " + soldName + " for " + (me.gold - goldBefore) + " gold (no keep rule)."); // what an item fetched (2026-11-13: 8430 gold arrived in one visit and no log line said why)
 					} catch (sellError) {
 						print(sellError);
 					}
 
 					break;
 				case 4: // Sell item
+					// Qolbot: never sold unidentified: a keep rule may need its stats (live 18:38:59, Xena's rare Gauntlets: Generated.nip #102 keeps rare
+					// gloves by their stats, GoldSell.nip sells rare gloves by kind, and the sell line won while the stats were unknown). It waits for the
+					// next identify (Town.identify identifies a GoldSell item first).
+					if (!items[i].getFlag(0x10)) {
+						break;
+					}
+
 					try {
 						print("LowGold sell " + items[i].name);
 						this.initNPC("Shop", "clearInventory");
 						Misc.itemLogger("Sold", items[i]);
+						try { Misc.logItem("Sold", items[i]); } catch (soldLogError) { print("Sold: " + soldLogError); } // Qolbot: the stats for the Activity entry
 
 						if (Item.isCharm(items[i])) {
 							Item.forgetCharm(items[i]); // sold: nothing to remember
 						}
 
+						soldName = items[i].name;
+						goldBefore = me.gold;
 						items[i].sell();
+						delay(150 + me.ping);
+						for (var soldWait = 0; soldWait < 10 && me.gold === goldBefore; soldWait += 1) { // the gold arrives after the sale packet: wait up to 1.5 s for it, so the line below is not "0 gold"
+							delay(150);
+						}
+						print("Sold " + soldName + " for " + (me.gold - goldBefore) + " gold (a sell rule).");
 					} catch (e) {
 						print(e);
 					}
@@ -2169,6 +2805,18 @@ MainLoop:
 			return true;
 		}
 
+		// Qolbot: and the other way, portalspot -> wp: Pather.moveTo cannot find it either (live 13:48:54 on 2026-11-14: Darius, "move retry 1 at 5099,5019
+		// (area 109) to 5110,5061", then 12 "waypoint retry" and "useWaypoint: Failed to use waypoint", Siege on Harrogath failed twice). UNTESTED live.
+		if (me.act === 5 && spot === "waypoint" && getDistance(me.x, me.y, 5098, 5018) <= 12) {
+			path = [5098, 5018, 5102, 5027, 5104, 5041, 5106, 5046, 5108, 5051, 5113, 5068];
+
+			for (i = 0; i < path.length; i += 2) {
+				Pather.walkTo(path[i], path[i + 1]);
+			}
+
+			return true;
+		}
+
 		for (i = 0; i < 3; i += 1) {
 			if (this.moveToSpot(spot)) {
 				return true;
@@ -2253,19 +2901,77 @@ MainLoop:
 		return false;
 	},
 
-	goToTown: function (act, wpmenu) {
+	// Qolbot: true while Town.visitTown or PartySync.hold runs a trip that makes its own team call (goToTown then does not call)
+	ownTrip: false,
+
+	// Qolbot: ONE TO TOWN, ALL TO TOWN (the user, 2026-11-15: "if any party members portals out of the field -- for any reason -- everyone drops
+	// everything and takes that portal immediately"; "there are just a thousand places those rules are being ignored"). This is the bottom of every
+	// trip from the field to town (about 200 callers: quest scripts, Quick Travel, the regroup, the waypoint sync, a lost follower ...), so the call is
+	// made here and not in each of them: ANY bot of a bot-led run that comes to town from the field goes through PartySync.call: the leader calls the
+	// party through its portal; a follower calls nobody and tells the leader, who then calls the team through the follower's portal (the user,
+	// 2026-11-15: "the leader alone issues orders. nobody else does"; TownChicken.js, PartySync.wentTown). Not when it
+	// only follows somebody to town: its leader is already there, or another bot's trip is on. Trips that call by themselves (Town.visitTown,
+	// PartySync.hold) set ownTrip. A Sorceress's solo Quick Travel trip calls nobody. UNTESTED in a game.
+	teamFollows: function (fieldArea) {
 		var towns = [1, 40, 75, 103, 109];
+
+		try {
+			if (this.ownTrip || !fieldArea || !me.inTown || typeof PartySync !== "object" || typeof Team !== "object" || Team.solo || PartySync.currentId ||
+					!PartySync.enabled() || !Team.syncOn() || PartySync.tripOn()) {
+				return false;
+			}
+
+			if (!Team.isLeader() && Config.Leader && towns.indexOf(Team.areas()[Config.Leader]) > -1) {
+				return false; // I follow my leader, who is in town already
+			}
+
+			if (!PartySync.call(fieldArea)) {
+				return false;
+			}
+
+			PartySync.currentId = 0; // no trip of mine to run here: the town gate takes everybody out together
+			return true;
+		} catch (callError) {
+			print("Town: calling the team to town: " + callError);
+
+			return false;
+		}
+	},
+
+	goToTown: function (act, wpmenu) {
+		var towns = [1, 40, 75, 103, 109], fieldArea = me.inTown ? 0 : me.area;
 
 		if (!me.inTown) {
 			print("Going back to town");
 
-			if (!Pather.makePortal()) {
-				throw new Error("Town.goToTown: Failed to make TP");
+			// an open town portal close by is free (a new one costs a scroll); not for the emergency trips of the town chicken thread (reusePortals is false
+			// there): with low life nobody walks to somebody else's portal
+			// not in Tal Rasha's tombs or Duriel's Lair while The Summoner is open: the game refuses a mate's portal back in, so the bot needs its own to
+			// return (live 2026-11-15 14:58: Sankt came to town by a mate's portal and every one of the four was refused on the way back; Quester.act2_summoner)
+			if (!((me.area < 66 || me.area > 73 || me.getQuest(13, 0)) && this.reusePortals !== false && Pather.useTownPortalNear(35))) {
+				if (!Pather.makePortal()) {
+					throw new Error("Town.goToTown: Failed to make TP");
+				}
+
+				if (!Pather.usePortal(null, me.name)) {
+					// Qolbot: a portal in a spot the bot cannot reach from where it stands (live 14:36-14:37 on 2026-11-14: Darius in the Bloody Foothills, two
+					// attempts of Siege on Harrogath "Failed to take TP", 30 s each): step away and try a new one; next to Harrogath, walk in. UNTESTED live.
+					print("Town.goToTown: could not take my portal at " + me.x + "," + me.y + " (area " + me.area + "): stepping away for another");
+					Pather.moveTo(me.x + rand(-15, 15), me.y + rand(-15, 15));
+
+					if (!(Pather.makePortal() && Pather.usePortal(null, me.name))) {
+						if (me.area === 110) {
+							Pather.moveToExit(109, true);
+						}
+
+						if (!me.inTown) {
+							throw new Error("Town.goToTown: Failed to take TP");
+						}
+					}
+				}
 			}
 
-			if (!Pather.usePortal(null, me.name)) {
-				throw new Error("Town.goToTown: Failed to take TP");
-			}
+			this.teamFollows(fieldArea);
 		}
 
 		if (act === undefined) {
@@ -2291,6 +2997,67 @@ MainLoop:
 		return true;
 	},
 
+	// Qolbot: back out through a mate's portal: the caller's first (the bot whose trip this is), then the leader's, then any other's, each one
+	// by name. Pather.usePortal(area, null) took the first portal in view every time, and the game refuses the portal of a player who is not in my
+	// party (live 2026-11-15 14:51:12: Meir's portal to Tomb #5 came first; Darius, Sankt and Xena failed on it for 30 s and walked, while the
+	// portal of Barabas, who had called them, was open 20 yards away; the user: "prob not partied"). No mate's portal in view: the old any-mate try.
+	mateBack: function (area, caller) {
+		var i, p, name, info, order = [], owners = [];
+
+		// Tal Rasha's tombs (66-72) and Duriel's Lair: a mate's portal there is refused while The Summoner (quest 13) is open (Quester.act2_summoner)
+		if (area >= 66 && area <= 73 && !me.getQuest(13, 0)) {
+			print("Town: The Summoner is not done, so a mate's portal to " + Pather.getAreaName(area) + " would be refused");
+
+			return false;
+		}
+
+		if (caller) {
+			order.push(caller); // read before PartySync.barrier, which ends the trip
+		}
+
+		try {
+			info = FileTools.exists("data/bots.json") ? JSON.parse(FileTools.readText("data/bots.json")) : null;
+
+			if (info && info.leader) {
+				order.push(info.leader);
+			}
+		} catch (leaderError) {
+			print("Town: who leads is not known (" + leaderError + ")");
+		}
+
+		p = getUnit(2, "portal");
+
+		if (p) {
+			do {
+				name = p.getParent();
+
+				if (name && name !== me.name && p.objtype === area && owners.indexOf(name) === -1) {
+					owners.push(name);
+				}
+			} while (p.getNext());
+		}
+
+		if (!owners.length) {
+			return Pather.usePortal(area, null);
+		}
+
+		owners.sort(function (a, b) {
+			var ia = order.indexOf(a), ib = order.indexOf(b);
+
+			return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+		});
+
+		for (i = 0; i < owners.length; i += 1) {
+			print("Town: going back out by " + owners[i] + "'s portal" + (owners.length > 1 ? " (" + (i + 1) + " of " + owners.length + ": " + owners.join(", ") + ")" : ""));
+
+			if (Pather.usePortal(area, owners[i])) {
+				return true;
+			}
+		}
+
+		return false;
+	},
+
 	visitTown: function (is_chicken) {
 		if (me.inTown) {
 			this.doChores();
@@ -2303,9 +3070,20 @@ MainLoop:
 			preAct = me.act;
 
 		try { // not an essential function -> handle thrown errors
+			this.ownTrip = true; // this trip makes its own team call, below
 			this.goToTown();
 		} catch (e) {
 			return false;
+		} finally {
+			this.ownTrip = false;
+		}
+
+		// the party trip (bot-only runs): this bot is in town now and its portal is open in the field, so the mates can come through it. EVERY trip to
+		// town calls the team, whatever the reason (a heal, a repair, a full pack ...: the user, 2026-11-14: "if anyone goes to town for any reason they all
+		// take the portal to town"); a bot that is answering a call (currentId set) does not call again
+		if (typeof PartySync === "object" && !PartySync.currentId && (PartySync.wantCall || !is_chicken)) {
+			PartySync.wantCall = false;
+			PartySync.call(preArea, !!is_chicken); // the field area the trip goes back to; a town chicken trip (low life, mana, potions) is urgent
 		}
 
 		// if chicken...
@@ -2322,8 +3100,34 @@ MainLoop:
 
 		this.move("portalspot");
 
-		if (!Pather.usePortal(preArea, me.name)) { // this part is essential
-			throw new Error("Town.visitTown: Failed to go back from town");
+		var tripCaller = "";
+
+		if (typeof PartySync === "object" && PartySync.currentId) {
+			try { tripCaller = PartySync.makerOf(PartySync.currentId); } catch (makerError) { print("Town: who called the trip is not known (" + makerError + ")"); }
+
+			PartySync.barrier(); // a party trip (bot-only runs): wait in town until everybody is ready; the leader goes last
+
+			if (PartySync.stayInTown) { // the maker's mates did not go out: a follower stays in town and follows the leader from here, not alone through the portal
+				PartySync.stayInTown = false;
+
+				return true;
+			}
+		}
+
+		// my own portal, else any portal of the party that leads back where I left (a mate who came by the caller's portal has none of its own)
+		if (!Pather.usePortal(preArea, me.name) && !this.mateBack(preArea, tripCaller)) { // this part is essential
+			// Qolbot: no portal took me back (Nightmare, Tal Rasha's Tombs, live 2026-11-15 10:22-10:36: every bot's portal back into the tomb failed, four
+			// times, and the quest then looked for the Orifice in Lut Gholein): walk back by waypoint instead. UNTESTED in a game.
+			try {
+				print("Town: no portal took me back to " + Pather.getAreaName(preArea) + ": walking back");
+				Pather.journeyTo(preArea);
+			} catch (walkBackError) {
+				print("Town: the walk back failed: " + walkBackError);
+			}
+
+			if (me.area !== preArea) {
+				throw new Error("Town.visitTown: Failed to go back from town");
+			}
 		}
 
 		if (Config.PublicMode) {

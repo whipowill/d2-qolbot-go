@@ -69,7 +69,7 @@
    "id": 6,
    "title": "Sisters to the Slaughter",
    "script": "act1_sisters_to_the_slaughter",
-   "npcs": []
+   "npcs": ["warriv"]
   },
   {
    "act": 2,
@@ -159,7 +159,6 @@
    "id": 20,
    "title": "The Golden Bird",
    "script": "act3_golden_bird",
-   "play": false,
    "npcs": [
     "meshif",
     "alkor"

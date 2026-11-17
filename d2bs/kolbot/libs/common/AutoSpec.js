@@ -11,6 +11,7 @@
 include("common/Plan.js");
 include("common/Report.js");
 include("common/Pack.js");
+include("common/Qol.js");
 
 var AutoSpec = {
 	apply: function () {
@@ -119,6 +120,13 @@ var AutoSpec = {
 				Scripts.Questing = true;
 				print("AutoSpec: goal Quest: running Questing");
 			} else if (plan.goal === "Farm" && plan.farm && plan.farm.length) {
+				// in the order of the farm list (the Bots tab): Loader runs Scripts in its key order, and a key the config already declares keeps its old place
+				// (live 21:47, Catacombs, Durance and Chaos Sanctuary are not in _BaseConfigFile.js and ran after Baal; Nihlathak ran before Eldritch). Deleted
+				// and set again, each farm run goes to the end in list order. UNTESTED.
+				for (i = 0; i < plan.farm.length; i += 1) {
+					delete Scripts[plan.farm[i]];
+				}
+
 				for (i = 0; i < plan.farm.length; i += 1) {
 					Scripts[plan.farm[i]] = true;
 				}
@@ -127,6 +135,15 @@ var AutoSpec = {
 			} else {
 				Report.problem("AutoSpec", "My objective is " + (plan.goal || "unknown") + " but there is nothing for me to run: choose the farm runs (or Quest) on the Bots tab.");
 			}
+		}
+
+		// ForceSave (PlugY's /save) is the LAST script: a TCP/IP game that ends with quit() does not save (Saver.js), so what a run picked up is lost unless something saves
+		// after it. The farm runs above were deleted and set again to put them in the user's order, which put them AFTER ForceSave (declared in _DefaultConfig.js):
+		// live 2026-11-16, Meir: Mephisto's uniques and sets were picked up and placed in the cube, and none of them was in the save after the game, 24 runs. It saves at the
+		// START of each game then. Deleted and set again, it is the last key. UNTESTED in a game.
+		if (Scripts.ForceSave) {
+			delete Scripts.ForceSave;
+			Scripts.ForceSave = true;
 		}
 
 		// The item lists this bot loads (web page, Settings tab, Pickit): one set for followers, one for the leader bot.
@@ -139,6 +156,7 @@ var AutoSpec = {
 		Config.QuietProblems = plan.reportProblems === false; // Settings tab: "Bots report when they have a problem" off
 		Config.AutoTown = plan.autoTown !== false; // follow the leader between town and the field without being told
 		Config.UsesPlugy = plan.plugy !== false;
+		Config.UsesQuartermaster = !!plan.quartermaster; // the Quartermaster mod's ".deposit" chat command is sent before the stash is used (Quartermaster.js)
 		Config.DarkQuotes = plan.banter !== false;
 		Config.BanterBubble = !!plan.banterBubble;
 
@@ -156,6 +174,22 @@ var AutoSpec = {
 		Config.AutoEquip = !!plan.autoEquip;
 		Config.CainID.Enable = true; // free identifying at Cain once he is rescued (Town.cainID checks); never used while a protected item is unidentified in the bag
 		Config.MercWear = plan.mercWear || {}; // Automation tab: extra slots a mercenary can wear in this game
+		Config.MercChoice = plan.merc || ""; // the bot card: the merc to have (MercHire.js replaces one of another kind first thing in a game)
+		Config.MercCandidates = plan.mercCandidates || {}; // "act-difficulty" -> the kinds a hire list entry is rolled among (MercHire.rollKind)
+		Config.MercKinds = plan.mercKinds || []; // the mercs of THIS game (its Hireling.txt, or the 1.13d ones; Qolbot reads them, mercs.go)
+		Config.UsesQol = !!plan.qol; // "Using QOL?": Qol.js sends nothing and the two mercenary options are off without it
+		Config.MercQolEquip = Qol.mercEquip(plan.mercQolEquip); // QOL mod, qol.ini [mercenary] equip=1: mercs take more weapon kinds (Item.mercWeapons)
+		Config.MercDropOnHire = Qol.mercDropOnHire(plan.mercDropOnHire); // QOL mod, qol.ini [mercenary] drop_items=1: a replaced merc drops its gear
+		Config.Regroup = plan.regroup !== false; // Behavior > Party > Auto Regroup
+		Config.RegroupSeconds = plan.regroupSeconds || 30; // Behavior > Party: how long a teammate is lost before the leader fetches the team
+		Config.InventoryLayout = plan.inventoryLayout !== false; // Behavior: the cube, tomes and keys have fixed places in the pack (Layout.js)
+		Config.QuestWaypoints = plan.questWaypoints === true; // Behavior, Quests: collect every waypoint of an act before moving on (Quester.leaveAct)
+		Config.HuntClear = plan.hunt === "gold"; // a gold hunt clears every area it passes through on the way to its bosses (Pather.moveToExit)
+		if (plan.huntAreas && plan.huntAreas.length) { // a gold hunt: the places the manager chose (huntplaces.go), cleared in full by ClearAnyArea
+			Config.ClearAnyArea.AreaList = plan.huntAreas;
+			Config.HuntGoal = plan.huntGoal || 0; // Gold.js: during a hunt a bot above this gold gives its surplus to one below it
+			print("AutoSpec: gold hunt, clearing areas " + plan.huntAreas.join(", "));
+		}
 		Config.QuestClearAll = plan.questClearAll !== false; // Config, Quests tab: clear every area a quest passes through
 		Config.WatchKills = plan.watchKills === true; // qolbot.json "watchKills": the bot reports the bosses, uniques and champions it sees die (tools/PickThread.js)
 		// Bots never craft: no cubing recipes and no runeword making, whatever a template says (the multi-profile crafting system is inert unless a profile is listed in its Teams)

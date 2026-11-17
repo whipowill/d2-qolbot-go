@@ -25,6 +25,10 @@ Getting from the Bots page to a running quest:
 5. The followers follow the leader as usual (`Follower.js`). They do not play the quests; they pick up nothing while you are not playing
    (the leader does the looting), and they do the quest NPC visits when they are in town.
 
+## Who leads, and on which difficulty
+
+Quest mode asks for neither. Qolbot reads the bots' saves (`cmd/qolbot/dynleader.go`): the **difficulty** is the lowest one on which any bot still has a quest to do; the **leader** is the bot whose first open quest (in `QuestTable.json` order, the choose-a-reward quests not counted) comes earliest, ties going to the higher level and then the name. While the bots run, a bot that has fallen strictly behind the leader takes the lead (the team restarts with it hosting), and when everybody has finished a difficulty the team moves to the next. Only when you are not playing. The same text is on the About page, under Automations.
+
 ## Quick Travel with a Sorceress
 
 A Sorceress in the party can place portals for the team instead of everyone walking. The leader says `portal <place>` in chat (no name);
@@ -32,13 +36,13 @@ the Sorceress that every bot picks (the first one by name among those Qolbot sta
 a portal and takes it to town, and the leader takes it from there, then everybody follows. It needs a leader that is not a Sorceress
 itself (a Sorceress leader already teleports).
 
-- **The switch:** Settings, Behavior, **Teleport**: *Quick Travel: Bot parties including a Sorceress will make use of Teleport*. It is off
-  until you check it, and it is the one switch for both modes: unchecked, nobody asks for a portal. If a Sorceress ever gets hurt doing it,
+- **The switch:** Settings, Behavior, **Party**: *Quick Travel: Bot parties including a Sorceress will make use of Teleport*. It is on by
+  default, and it is the one switch for both modes: unchecked, nobody asks for a portal. If a Sorceress ever gets hurt doing it,
   uncheck it.
 - **Farm mode:** with the switch on, always.
 - **Quest mode:** with the switch on and **Full Clear** (Behavior, Quests) off. With Full Clear on every zone is cleared on foot.
 - **Where:** the Countess, Andariel, the Pit, the Ancient Tunnels (when the chest and the Dark Elder are not wanted), the Summoner (without
-  the Fire Eye), Nihlathak, Mephisto, Duriel, Diablo and Baal. Not Blood Raven (the Mausoleum script kills her first) or Radament.
+  the Fire Eye), Nihlathak, Mephisto, Duriel, Diablo and Baal. Radament too (a few steps from his chest). Not Blood Raven: the Mausoleum is a farm place, not a quest, and its portal (`mausoleum`) is opened at the Burial Grounds exit.
 - **Safe to fail:** if she does not answer within 150 seconds, cannot get there, or the portal cannot be taken, the bot walks as before and
   does not ask again that game. The Countess and Andariel (Farm) were tried in a game; the others are wired the same way but untried.
 
@@ -47,7 +51,7 @@ leader goes through her portal the followers take it too (a follower takes the l
 to where the leader is). And the leader's TownChicken thread (`Team.separated`, `Team.regroup`) watches the party in every Farm and Quest
 run: if a teammate has not been in the leader's area for a minute (time to repair or sell in town, or to find a waypoint or portal, is
 allowed), the leader goes to town, waits there (up to 90 seconds) for everybody to gather, and takes its portal back out; the followers
-follow it out. At most once every three minutes.
+follow it out. There is no limit on how often: if it happens a lot, the cause is what needs fixing, so every trip logs who was apart and a running count. Besides that, the leader does not change area (stairs, waypoint) before the team has caught up with it (`Team.gather`, up to 45 s).
 
 ## Reward items: every character takes and uses its own
 
@@ -99,8 +103,8 @@ Complete entries); and `is_town_only` for the town parts.
 | 1 | Search for Cain | talks to Akara if it has no Scroll of Inifuss; clears Stony Field, Underground Passage 1, Dark Wood; runs Tristram; talks to Cain |
 | 1 | Forgotten Tower | clears Black Marsh, runs Countess |
 | 1 | Tools of the Trade | clears Tamoe Highland and the Outer Cloister (only travels through them if the option above is unchecked), clears the Barracks; picks up the Horadric Malus from its chest; (Charsi's imbue is chosen by you) |
-| 1 | Sisters to the Slaughter | waypoint to Outer Cloister, then clears Barracks through Catacombs Level 4. **Killing Andariel completes it** |
-| 2 | Radament's Lair | clears Sewers 1 and 2, runs Radament, picks up and uses the Book of Skill, clears Sewers 3; talks to Atma |
+| 1 | Sisters to the Slaughter | waypoint to Outer Cloister, then clears Barracks through Catacombs Level 4. **Killing Andariel does not complete it by itself**: it stays reward-pending until the bot talks to Warriv, and the act 2 flag opens only then. Every bot visits Warriv in its town chores, so each one gets the credit (found 2026-11-12) |
+| 2 | Radament's Lair | clears Sewers 1 and 2 (with a Sorceress and Quick Travel: portal next to Radament instead), runs Radament, picks up and uses the Book of Skill, clears Sewers 3; talks to Atma |
 | 2 | Horadric Staff | fetches the Cube (Halls of the Dead), the Staff of Kings (Maggot Lair) and the Viper Amulet (Claw Viper Temple); talks to Drognan; assembles the Staff in the Cube |
 | 2 | Arcane Sanctuary | clears the Harem, Palace Cellar and Arcane Sanctuary; opens Horazon's Journal; takes the Canyon of the Magi waypoint |
 | 2 | Seven Tombs | runs the Tombs script (Duriel); uses the Horadric Staff on the keyhole; talks to Tyrael. **Killing Duriel completes it** |
@@ -122,8 +126,12 @@ Complete entries); and `is_town_only` for the town parts.
 (Duriel), The Guardian (Mephisto), Terror's End (Diablo) and Eve of Destruction (Baal). The Quester still runs the boss script or clears
 the boss's level for those, and the NPC visits afterwards only collect rewards.
 
-**In the table but with no function of their own: Tainted Sun and Summoner (act 2).** Their work happens inside Horadric Staff (the Viper
-Amulet) and Arcane Sanctuary (the Summoner's level and the journal), and the NPC visits hand out the rewards. See audit item 3.
+**In the table but with no function of its own: Tainted Sun (act 2).** Its work happens inside Horadric Staff (the Viper Amulet), and the
+NPC visits hand out the reward. See audit item 3.
+
+**Summoner (act 2) has its own function since 2026-11-15** (`act2_summoner`): a Sorceress's portal beside the Summoner (else the old walk),
+kill him, read Horazon's Journal, then talk to an NPC in town (Fara): the quest closes at that talk, not at the kill. While it is open, the game refuses a mate's portal into Tal
+Rasha's tombs, so Seven Tombs and the trip back out of town (`Town.mateBack`) walk instead for a bot without it.
 
 **Commented out of the table:** Golden Bird and Blackened Temple (act 3). The Jade Figurine and the Golden Bird are handled by the NPC
 item visits instead (below).

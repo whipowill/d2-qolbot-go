@@ -10,7 +10,7 @@ import (
 // "May not be ready": a bot that keeps chickening (leaving the game because its life ran low) or dying in a short time is out of its depth
 // in the place it is sent to. Nothing about the bot's level or gear is judged; the pattern is the evidence. When it happens the bot is
 // stopped (saved and exited like the Stop button does it) and the Activity list says why, instead of the bot going round the same loop
-// for hours. A leader that is stopped takes the team with it, because the run cannot go on without it.
+// for hours. It is a FULL shutdown: every bot stops, not only the one that hit the limit (the party is not ready for those monsters).
 //
 // Settings (Settings tab, Behavior; qolbot.json "chickenLimit" and "chickenWindowMinutes"): this many chickens or deaths within this many
 // minutes, default 3 within 30, limit 0 = never stop a bot for this. Qolbot applies a change at once (the bots do not read it).
@@ -123,7 +123,6 @@ func (m *Manager) noteSetback(profile, kind string) {
 	limit, window := m.readinessLimits()
 	now := time.Now()
 	var msg, character string
-	var leader bool
 	m.mu.Lock()
 	s := m.states[profile]
 	if s == nil {
@@ -135,7 +134,6 @@ func (m *Manager) noteSetback(profile, kind string) {
 	if limit > 0 && len(s.setbacks) >= limit && s.Status == "running" {
 		character = s.Character
 		msg = notReadyMessage(character, s.setbacks)
-		leader = m.roleOf(s) == "host"
 		s.setbacks = nil
 	}
 	m.mu.Unlock()
@@ -143,16 +141,18 @@ func (m *Manager) noteSetback(profile, kind string) {
 		return
 	}
 	m.logf(9, profile, "%s", msg)
-	m.addEvent(ActivityEvent{Time: now, Bot: profile, Kind: "notready", Name: "Stopped: may not be ready", Detail: msg})
-	m.stopForNotReady(profile, leader)
-}
-
-// stopForNotReady stops the bot, and everything else when it is the leader (the others have nothing to follow; the leader goes last).
-func (m *Manager) stopForNotReady(profile string, leader bool) {
-	if !leader {
-		m.stopProfile(profile)
+	if m.beginLevelUp() { // Quest mode: level first instead of a shutdown (levelup.go)
+		m.addEvent(ActivityEvent{Time: now, Bot: profile, Kind: "notready", Name: "Chickening: leveling first", Detail: msg})
 		return
 	}
+	if m.raiseFatal("chickens", profile, "Too many chickens", msg+" Everybody is stopped.") {
+		m.stopForNotReady()
+	}
+}
+
+// stopForNotReady is a full shutdown: when any one bot has chickened or died too often the party is not ready for these monsters, so every bot
+// stops (the leader last, after the others have saved and left), not only the one that hit the limit.
+func (m *Manager) stopForNotReady() {
 	m.mu.Lock()
 	var names []string
 	for n, st := range m.states {

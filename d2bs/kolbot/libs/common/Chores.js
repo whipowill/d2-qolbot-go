@@ -11,12 +11,27 @@ var Chores = {
 	// hand: a bare level-2 character (a 1-row belt, or none) carries spares in the inventory, and a big belt is only
 	// refilled when it is half empty, so the bot does not walk to the potion seller for nothing.
 	tune: function () {
-		var rows = Storage.BeltSize(), hp, mp;
+		var rows = Storage.BeltSize(), hp, mp, factor;
 
 		Config.MinColumn[0] = Config.MinColumn[1] = Math.max(1, Math.ceil(rows / 2));
+		if (me.diff > 0) {
+			Config.MinColumn[0] = rows; // Nightmare and Hell: the healing column is topped up whenever a potion is missing, not at half (2026-11-15 chickens)
+		}
+
+		Config.MinColumn[2] = Config.BeltColumn[2] === "hp" ? Config.MinColumn[0] : Config.MinColumn[2]; // the second healing column (the config's belt)
 		hp = rows <= 1 ? 4 : (rows === 2 ? 2 : 0); // spares in the inventory while the belt is tiny
 		mp = me.classid === 1 || me.classid === 2 || me.classid === 5 ? 1 : 0; // casters also want a spare mana potion
 		mp = rows <= 1 ? Math.max(mp, 2) : (rows === 2 ? Math.max(mp, 1) : 0);
+		// Spares are for LOW levels (the user, 2026-11-16: "the only players who should be filling their inventory with spares are low level char, so over time the allowed
+		// spares should drift to zero"): the full allowance up to character level 12, none from level 30, in between it shrinks in a straight line. A character with a belt
+		// of three rows or more has none anyway. UNTESTED in a game.
+		factor = me.charlvl <= 12 ? 1 : (me.charlvl >= 30 ? 0 : (30 - me.charlvl) / 18);
+		hp = Math.round(hp * factor);
+		mp = Math.round(mp * factor);
+		// NOT a Quartermaster exception any more (the user, 2026-11-16: ".deposit function only removes rejuv potions"): it was assumed on 2026-11-13 that .deposit takes the
+		// pack's potions away, so a Quartermaster bot kept no spares. It takes only rejuvenation potions, so healing and mana spares stay in the pack and are cleaned up by
+		// Town.clearInventory: the spares follow the belt alone.
+
 		Config.HPBuffer = hp;
 		Config.MPBuffer = mp;
 		Config.PotionGold = me.charlvl < 15 ? 100 : 1000; // low levels have little gold and potions are cheap
@@ -70,9 +85,10 @@ var Chores = {
 			["repair", function () { var r = Town.needRepair(); return !!(r && r.length); }],
 			["revive mercenary", function () { return Town.needMerc(); }],
 			["stash", function () { return Town.needStash(); }],
-			["town portal scrolls", function () { return me.gold >= 450 && Town.checkScrolls(518) < 13; }],
+			["town portal scrolls", function () { return Town.checkScrolls(518) < 13 && (me.gold >= 450 || (me.gold >= 100 && Town.checkScrolls(518) < 3 && !!me.findItem("tbk", 0, 3))); }],
 			["identify", function () { return !!Town.getUnids(); }],
 			["quest NPC", function () { return typeof Quester === "object" && Quester.questNpcPending(true); }],
+			["quest talk", function () { return typeof Quester === "object" && Quester.townQuestsOpen(); }], // a quest moved on since the last talk for it (no 4-minute wait: the hand-in right after a kill)
 			["potions", function () { return me.gold >= (Config.PotionGold || 1000) && Chores.needPotions(); }],
 			["spend points", function () { return me.getStat(5) > 0 || me.getStat(4) > 0; }],
 			["equip", function () {

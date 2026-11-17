@@ -38,7 +38,7 @@ func readinessManager(t *testing.T) *Manager {
 	return m
 }
 
-func TestAFollowerThatKeepsChickeningIsStopped(t *testing.T) {
+func TestAFollowerThatKeepsChickeningStopsEverybody(t *testing.T) {
 	m := readinessManager(t)
 	for i := 0; i < 2; i++ {
 		m.update("Aaa", func(s *State) { s.Zone, s.Difficulty = "Tal Rashas Tomb #1", "Hell" })
@@ -52,11 +52,11 @@ func TestAFollowerThatKeepsChickeningIsStopped(t *testing.T) {
 	if st := m.states["Aaa"].Status; st != "stopping" {
 		t.Fatalf("the third must stop it: %s", st)
 	}
-	if st := m.states["Zed"].Status; st != "running" {
-		t.Errorf("a follower's stop leaves the others alone: %s", st)
+	if st := m.states["Zed"].Status; st != "stopping" {
+		t.Errorf("the limit is a full shutdown, the others stop too: %s", st)
 	}
 	evs := m.recentEvents(10)
-	if len(evs) == 0 || evs[0].Kind != "notready" || evs[0].Bot != "Aaa" || !strings.Contains(evs[0].Detail, "Life Chicken (6/811)") {
+	if len(evs) == 0 || evs[0].Kind != "fatal" || evs[0].Bot != "Aaa" || !strings.Contains(evs[0].Detail, "Life Chicken (6/811)") {
 		t.Errorf("the Activity list must say why: %+v", evs)
 	}
 	if len(m.states["Aaa"].setbacks) != 0 {
@@ -64,7 +64,7 @@ func TestAFollowerThatKeepsChickeningIsStopped(t *testing.T) {
 	}
 }
 
-func TestALeaderThatKeepsDyingTakesTheTeamWithIt(t *testing.T) {
+func TestALeaderThatKeepsDyingStopsEverybody(t *testing.T) {
 	m := readinessManager(t)
 	for i := 0; i < 3; i++ {
 		m.noteSetback("Lead", "death")
@@ -112,16 +112,16 @@ func TestChickenLimitFromTheSettings(t *testing.T) {
 func TestEffectiveDefaults(t *testing.T) {
 	var c Config
 	e := c.Effective()
-	if !e.AutoTown || !e.Gamble || !e.Banter || !e.ReportProblems || !e.WatchKills || !e.AutoEquip || !e.AutoStat || !e.AutoSkill || !e.QuestClearAll || !e.SaveOnStop || !e.Plugy || !e.Headless {
-		t.Errorf("everything is on unless switched off: %+v", e)
+	if !e.AutoTown || !e.Gamble || !e.Banter || !e.ReportProblems || !e.WatchKills || !e.AutoEquip || !e.AutoStat || !e.AutoSkill || !e.TeleportTeam || !e.BanterBubble || !e.SaveOnStop || !e.Plugy || !e.Headless {
+		t.Errorf("everything is on unless switched off (Quick Travel and the banter bubble included): %+v", e)
 	}
-	if e.TeleportTeam {
-		t.Error("Quick Travel is off unless switched on")
+	if e.QuestClearAll || e.SaveOnChicken {
+		t.Error("Full Clear and the save before a chicken are off unless switched on")
 	}
 	no, yes := false, true
-	c = Config{AutoTown: &no, TeleportTeam: &yes, QuestClearAll: &no}
+	c = Config{AutoTown: &no, TeleportTeam: &no, QuestClearAll: &yes}
 	e = c.Effective()
-	if e.AutoTown || !e.TeleportTeam || e.QuestClearAll || !e.Gamble {
+	if e.AutoTown || e.TeleportTeam || !e.QuestClearAll || !e.Gamble {
 		t.Errorf("explicit values win, the rest keep their default: %+v", e)
 	}
 	five := 5
