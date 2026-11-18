@@ -994,9 +994,19 @@ T.test('order: only the leader writes one; n counts up; a follower writes nothin
 	const b = Team.order('town', {portal: 'Xena'});
 	T.ok(b.n > a.n, 'n counts up');
 	T.eq(Team.currentOrder().word, 'town', 'the newest');
-	Config.Leader = 'Barabas';
+	Config.Leader = 'Barabas'; __plan = {partySync: true}; // a follower of a bot-led team
 	T.eq(Team.order('out', {area: 77}), null, 'a follower gives no order');
 	T.eq(Team.currentOrder().word, 'town', 'unchanged');
+	humanLeads();
+	T.eq(Team.currentOrder(), null, 'a real player leads: a leftover order of an older game (empty game name) counts for nothing');
+});
+
+T.test('order: an order written before this game began (an older game with the same empty name) is ignored', function () {
+	World.files['data/order.json'] = JSON.stringify({game: 'qb-1', team: {n: 1, word: 'town', at: World.now - 3600000, leader: 'Barabas'}});
+	me.gamestarttime = getTickCount() - 60000; // this game began a minute ago
+	T.eq(Team.currentOrder(), null, 'an hour-old order is an older game\'s');
+	World.files['data/order.json'] = JSON.stringify({game: 'qb-1', team: {n: 2, word: 'town', at: World.now - 30000, leader: 'Barabas'}});
+	T.eq(Team.currentOrder().word, 'town', 'an order of this game counts');
 });
 
 T.test('order: an errand is the newest order only for the bot it is for; a newer team order replaces it for that bot too', function () {

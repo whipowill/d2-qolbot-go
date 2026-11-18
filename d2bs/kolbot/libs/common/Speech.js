@@ -278,6 +278,7 @@ var Speech = {
 			"No portal scrolls left. I leave to restock.",
 			"Out of scrolls. I must buy more before I go on."
 		]],
+		[/^I lost you: going to town to meet up\.$/, ["I have lost thee. To town, to find thee again.", "Thou art gone from my sight. I go to town to rejoin thee.", "I know not where thou art. To town I go, and meet thee there."]],
 		[/^I am badly hurt\. Going to town to heal\.$/, ["I am sorely wounded. To the healer!", "Blood everywhere. I must be healed.", "Badly hurt: I go to town to mend."]],
 		[/^Failed to use cow portal\.$/, ["The cow portal will not take me.", "I cannot enter the cow portal.", "The red portal to the cows refused me."]],
 		[/^(.+): Error: (.+)$/, ["$1 went awry: $2", "Trouble with $1: $2", "$1 failed me: $2"]],

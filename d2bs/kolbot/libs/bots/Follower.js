@@ -1878,6 +1878,31 @@ function Follower() {
 				}
 			}
 
+			// REAL PLAYER MODE: apart from you (another area, or out of sight) for the one timer (Settings > Behavior > Auto Regroup, 30 s) and every try to
+			// catch up has failed: take a town portal and meet up from there (the user, 2026-11-17: "if the bots are separated from the leader for X seconds
+			// they tele to town ... and they emit some kind of complaint"). A bot-led team has the leader's regroup instead.
+			if (!Team.syncOn() && leader && leader.area && !me.inTown && me.gameReady && !me.dead) {
+				if (leader.area !== me.area || (leader.x !== undefined && getDistance(me.x, me.y, leader.x, leader.y) > 60)) {
+					this.apartSince = this.apartSince || Date.now();
+
+					if (Date.now() - this.apartSince > Team.limits.sync && Date.now() - (this.lostAt || 0) > 30000) {
+						this.lostAt = Date.now();
+						this.apartSince = 0;
+						this.problem("I lost you: going to town to meet up.");
+
+						try {
+							Town.goToTown();
+						} catch (apartError) {
+							print("Follower: cannot get to town after losing the leader (" + apartError + ")");
+						}
+					}
+				} else {
+					this.apartSince = 0;
+				}
+			} else {
+				this.apartSince = 0;
+			}
+
 			// badly hurt: go to town and see the healer instead of staying in the field on the last few points of life
 			if (!me.dead && me.hp * 100 / me.hpmax < (Config.HealTripHP || 40) && Throttle.due("healtrip", 45000)) {
 				this.problem("I am badly hurt. Going to town to heal.");

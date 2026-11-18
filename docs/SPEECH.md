@@ -16,7 +16,7 @@ When a line is said:
 
 Each answer posts its keyword to the team, then says one of its phrasings when the setting allows. ‹n› is the place or waypoint.
 
-### portalOpen (keyword `portalopen`, task)
+### portalOpen (keyword `portalopen`, announce)
 
 - Behold, the portal stands open!
 - The gate is open, good friends. Make haste!
@@ -382,6 +382,12 @@ parts of the report line marked … or N. A line that no rule knows is said as i
 - My scrolls of portal are spent. I must go back to town and buy more.
 - No portal scrolls left. I leave to restock.
 - Out of scrolls. I must buy more before I go on.
+
+**I lost you: going to town to meet up.**
+
+- I have lost thee. To town, to find thee again.
+- Thou art gone from my sight. I go to town to rejoin thee.
+- I know not where thou art. To town I go, and meet thee there.
 
 **I am badly hurt. Going to town to heal.**
 

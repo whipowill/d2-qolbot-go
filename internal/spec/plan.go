@@ -208,7 +208,7 @@ type Plan struct {
 	TeamGoal        string              `json:"teamGoal,omitempty"`       // the team's objective (Quest, Farm), written for EVERY bot: "goal" is only the leader's (its presence means "I lead")
 	Farm            []string            `json:"farm,omitempty"`           // with goal Farm: the kolbot scripts to run, in order
 	Pickit          []string            `json:"pickit,omitempty"`         // the .nip lists this bot loads
-	NoPickup        bool                `json:"noPickup,omitempty"`       // pick nothing up (a follower while a leader bot farms)
+	NoPickup        bool                `json:"noPickup,omitempty"`       // pick nothing up (a follower: the leader bot, or you, picks up the keepers)
 	AutoTown        bool                `json:"autoTown"`                 // bots follow the leader between town and the field by themselves
 	AutoSaveMinutes int                 `json:"autoSaveMinutes"`          // the bot saves (PlugY /save) this often while following; 0 = never
 	Banter          bool                `json:"banter"`                   // bots speak their quotes

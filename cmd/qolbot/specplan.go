@@ -74,7 +74,7 @@ func (m *Manager) writeSpec(profile, character, force string) {
 			p.Pickit = append(p.Pickit, generatedNIP)
 		}
 		p.Pickit = append(p.Pickit, "GoldSell.nip")
-		p.NoPickup = m.cfg.NotPlaying // the leader picks up the keepers; a follower takes quest consumables and the gold items of GoldSell.nip (Pickit.sellItem), nothing else
+		p.NoPickup = true // with a bot leader it picks up the keepers, and with you playing you do (the user, 2026-11-17: "in real player mode, bots should only pick sale items not potentially keepers"); a follower takes quest consumables and the gold items of GoldSell.nip (Pickit.sellItem), nothing else
 	}
 	// The leader bot (the one that hosts because you are not playing) runs the goal; every other bot is a follower. Nobody picks a
 	// script by hand.

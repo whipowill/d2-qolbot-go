@@ -498,7 +498,11 @@ var Team = {
 
 	// The newest order for me (the team's, or an errand to me if that is newer), or null. Only orders of this game count.
 	currentOrder: function () {
-		var all = null, t, e;
+		var all = null, t, e, start;
+
+		if (!this.syncOn()) {
+			return null; // a real player leads: no bot gives orders, so any order in the file is left over from an older game (a TCP/IP game has an empty name, so "this game" matched it: live 17:36, the bots stood in town for good on a stale "town")
+		}
 
 		try {
 			if (FileTools.exists(this.orderFile)) {
@@ -514,6 +518,14 @@ var Team = {
 
 		t = all.team || null;
 		e = (all.errand && all.errand.to === me.name) ? all.errand : null;
+
+		// An order older than this game is an older game's, whatever its name (a TCP/IP game's name is empty, so "game" cannot tell games apart): the game began
+		// (getTickCount() - me.gamestarttime) ms ago. 15 s of slack for an order written just before this bot joined.
+		if (typeof getTickCount === "function" && typeof me.gamestarttime === "number" && me.gamestarttime > 0) {
+			start = Date.now() - (getTickCount() - me.gamestarttime) - 15000;
+			t = t && (!t.at || t.at >= start) ? t : null;
+			e = e && (!e.at || e.at >= start) ? e : null;
+		}
 
 		if (t && e) {
 			return e.n > t.n ? e : t;
