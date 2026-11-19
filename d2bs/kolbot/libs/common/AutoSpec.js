@@ -73,12 +73,14 @@ var AutoSpec = {
 			Config.AutoBuild.Enabled = false; // kolbot's older level-up spender does both
 		}
 
+		// Safe mode no longer limits what is picked up (the user, 2026-11-18: "safe mode should not block them from picking ANYTHING up. it would block them from equipping
+		// items, spending stat points, spending skill points"). Pickit.safeOnly stays false; the other limits (a follower's questOnly) are not safe mode's.
 		if (typeof Pickit === "object") {
-			Pickit.safeOnly = !!plan.safeMode; // safe mode: only consumables are picked up (see Pickit.safeKinds)
+			Pickit.safeOnly = false;
 		}
 
 		if (plan.safeMode) {
-			print("AutoSpec: SAFE MODE: AutoEquip, AutoStat and AutoSkill are off, and only potions, scrolls, keys and the like are picked up.");
+			print("AutoSpec: SAFE MODE: AutoEquip, AutoStat and AutoSkill are off (items are still picked up).");
 		}
 
 		// A follower of a leader bot picks nothing up but the quest consumables: the leader does the looting, the followers are support, but each

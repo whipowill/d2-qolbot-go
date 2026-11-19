@@ -5,6 +5,7 @@
 
 # --- Local helper scripts that hold git identity / remotes ---
 /reset.sh
+/push.sh
 
 # --- Copies of the player's character files kept before a point restore (audit.go) ---
 /backups/

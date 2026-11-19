@@ -214,7 +214,7 @@ type Plan struct {
 	Banter          bool                `json:"banter"`                   // bots speak their quotes
 	BanterBubble    bool                `json:"banterBubble"`             // ... with a leading "!" so they show over the bot's head
 	Protect         Protect             `json:"protect"`                  // gear auto-equip must never replace
-	SafeMode        bool                `json:"safeMode"`                 // Safe mode is on: AutoEquip, AutoStat and AutoSkill below are already false, and the bot picks up only consumables and quest items
+	SafeMode        bool                `json:"safeMode"`                 // Safe mode is on: AutoEquip, AutoStat and AutoSkill below are already false; it no longer limits what is picked up (2026-11-18)
 	AutoEquip       bool                `json:"autoEquip"`                // let the bot equip better gear (never touches the protected kinds); false in safe mode
 	AutoStat        bool                `json:"autoStat"`                 // let the bot spend its stat points; false in safe mode
 	WatchKills      bool                `json:"watchKills"`               // the bot reports the bosses, uniques and champions it sees die

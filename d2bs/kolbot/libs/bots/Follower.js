@@ -466,6 +466,14 @@ function Follower() {
 			var returnCall = Team.returnCall(leader.name); // the leader's call only
 
 			if (returnCall && returnCall.area !== me.area) {
+				// A place my quests do not open (Waypoints.gates, or its act): do not spend 40 s at a portal that cannot take me, say so (the Activity list, and "gated" to the
+				// leader, which then goes without me) and wait in town (2026-11-18: Meir and Vanity at Reform's portal to the Canyon of the Magi, the Summoner not killed)
+				if (returnCall.area && typeof Waypoints === "object" && Waypoints.canEnter && !Waypoints.canEnter(me.name, returnCall.area)) {
+					Team.portalRefused(returnCall.area, returnCall.owner || leader.name);
+
+					return false;
+				}
+
 				this.lastFollowAt = Date.now();
 				this.log("The leader sends the team out through " + (returnCall.owner || leader.name) + "'s portal."); // the log only (the user, 2026-11-16: "the chat output 'the leader sends the team out thru ___ portal' isn't necessary")
 
@@ -1854,6 +1862,11 @@ function Follower() {
 			}
 		}
 
+		// the apart timer must not run on through a town trip (this script is paused during a chicken or heal trip: the old stamp made the first pass back look like 30 s apart)
+		if (me.inTown) {
+			this.apartSince = 0;
+		}
+
 		if (!me.inTown)
 		{
 			if (!leaderUnit || !copyUnit(leaderUnit).x) {
@@ -1882,7 +1895,13 @@ function Follower() {
 			// catch up has failed: take a town portal and meet up from there (the user, 2026-11-17: "if the bots are separated from the leader for X seconds
 			// they tele to town ... and they emit some kind of complaint"). A bot-led team has the leader's regroup instead.
 			if (!Team.syncOn() && leader && leader.area && !me.inTown && me.gameReady && !me.dead) {
-				if (leader.area !== me.area || (leader.x !== undefined && getDistance(me.x, me.y, leader.x, leader.y) > 60)) {
+				var seen = this.getLeaderUnit(Config.Leader); // the real unit in view beats the party list, whose area/x/y can lag or read 0,0 beside you
+
+				if (!(seen && getDistance(me, seen) < 40) && (leader.area !== me.area || (leader.x && getDistance(me.x, me.y, leader.x, leader.y) > 60))) {
+					if (this.apartSince && Date.now() - this.apartSince > 3 * Team.limits.sync) {
+						this.apartSince = 0; // a stamp this old means the script was paused (a trip), not that I was apart all that time
+					}
+
 					this.apartSince = this.apartSince || Date.now();
 
 					if (Date.now() - this.apartSince > Team.limits.sync && Date.now() - (this.lostAt || 0) > 30000) {

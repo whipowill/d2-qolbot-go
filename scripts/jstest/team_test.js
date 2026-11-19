@@ -474,6 +474,17 @@ T.test('sendOutFirst: a mate that cannot enter the portal says so and the maker 
 	T.has(World.log, 'Sankt cannot get through my portal');
 });
 
+T.test('sendOutFirst: a mate that says "gated" is not waited for either, and no new portal is meant for it', function () {
+	World.addMate('Barabas', 75, 5010, 5000);
+	World.addMate('Sankt', 75, 5020, 5000);
+	World.at(2000, function () { World.party.Barabas.area = 76; });
+	World.at(3000, function () { const who = me.profile; me.profile = 'Sankt'; me.name = 'Sankt'; Team.post('gated'); me.profile = who; me.name = who; });
+	const t0 = World.now;
+	T.ok(Team.sendOutFirst(76, true));
+	T.ok(World.now - t0 < 6000, 'went out: ' + (World.now - t0));
+	T.has(World.log, 'Sankt is gated from where I go');
+});
+
 T.test('portalRefused: gated by the act quest it is a problem for the Activity list, not gated it asks for a new portal, said once per 20 s', function () {
 	globalThis.getBaseStat = function () { return 4; }; // every area is in act 5
 	World.acts = [1, 2, 3, 4];

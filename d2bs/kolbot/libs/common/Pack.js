@@ -73,17 +73,16 @@ var Pack = {
 			return false;
 		}
 
-		// Only keepers go to the stash. Anything else (an item the mercenary or I cannot use, junk) is left for the town chores
-		// that follow, which identify it and sell it. Items that are not plain gear (runes, gems, keys...) and protected kinds count as keepers.
+		// Only what the NORMAL FILTER keeps goes to the stash: the same test as the chores' stash step (Town.canStash / Town.wantStash: the pickit's verdict, cube recipes,
+		// runewords, and an unidentified item whose rule needs its stats and that the Equipment protection covers). The user, 2026-11-18, Meir: "what i didn't want was
+		// blindly stashing all items because the normal filtering process was being skipped". This step used to call every protected item a keeper without asking the
+		// pickit, so unidentified rares went to the stash (or the cube) unseen at every game start. Anything else stays for the town chores that follow
+		// (identify, sell, stash), and the cube's items are taken out there.
 		function keeper(it) {
 			try {
-				if (!Item.sellable(it) || !Item.isReplacable(it)) {
-					return true;
-				}
-
-				return !!it.getFlag(0x10) && Town.keepVerdict(it, Pickit.checkItem(it).result) > 0;
+				return !!(Town.canStash(it, true) && Town.wantStash(it));
 			} catch (e) {
-				return true; // cannot tell: stashing is the safe choice
+				return false; // cannot tell: the chores will
 			}
 		}
 

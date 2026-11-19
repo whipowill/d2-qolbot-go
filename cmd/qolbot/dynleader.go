@@ -325,3 +325,42 @@ func (m *Manager) leaderShownLocked() string {
 	}
 	return ""
 }
+
+// difficultyWatchLoop: the leader hosts its game in the difficulty that was set when it started. When the setting changes while it runs (the user picks another
+// difficulty and starts more bots, or changes the objective), the game is in the wrong one and every bot that joins it too: the leader leaves the game, and the
+// whole team starts again so that everybody ends up in a game of the new difficulty (the user, 2026-11-18: "i need qolbot to detect that and dc the leader so they
+// all end up on the new correct difficulty"). Only when bots lead (nobody plays): a game you host yourself is yours. Checked every 10 seconds.
+func (m *Manager) difficultyWatchLoop() {
+	for range time.Tick(10 * time.Second) {
+		m.mu.Lock()
+		want := m.difficultyNow()
+		leader := m.cfg.Player
+		var leaderS *State
+		var running []string
+		for n, s := range m.states {
+			if s.Wanted && (s.Status == "running" || s.Status == "starting") {
+				running = append(running, n)
+			}
+			if s.Character == leader && leader != "" {
+				leaderS = s
+			}
+		}
+		hosted := m.hostedDiff
+		skip := !m.cfg.NotPlaying || m.diffRestart || leaderS == nil || hosted == "" || hosted == want ||
+			leaderS.Status != "running" || !leaderS.Wanted || time.Since(leaderS.startedAt) < 45*time.Second
+		m.mu.Unlock()
+		if skip || len(running) < 1 {
+			continue
+		}
+		sort.Strings(running)
+		m.mu.Lock()
+		m.diffRestart = true
+		m.mu.Unlock()
+		m.logf(0, "", "difficulty: %s is hosting %s but %s is set: the leader leaves and the team starts again", leader, hosted, want)
+		m.addEvent(ActivityEvent{Time: time.Now(), Bot: leader, Kind: "restart", Name: "New Difficulty", Detail: hosted + " to " + want})
+		m.handOverWhy(leader, running, "the difficulty is now "+want)
+		m.mu.Lock()
+		m.diffRestart = false
+		m.mu.Unlock()
+	}
+}

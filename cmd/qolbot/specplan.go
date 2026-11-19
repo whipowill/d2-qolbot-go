@@ -131,7 +131,7 @@ func (m *Manager) writeSpec(profile, character, force string) {
 		m.logf(9, profile, "auto-spec: cannot write plan: %v", err)
 		return
 	}
-	m.logf(0, profile, "auto-spec: %s (%s): %s%s", p.Mode, p.Spec, p.Reason, map[bool]string{true: " [SAFE MODE: no auto-equip, no stat points, no skill points, consumables and quest items only]"}[p.SafeMode])
+	m.logf(0, profile, "auto-spec: %s (%s): %s%s", p.Mode, p.Spec, p.Reason, map[bool]string{true: " [SAFE MODE: no auto-equip, no stat points, no skill points]"}[p.SafeMode])
 }
 
 // cliSpec prints the detection for one character or all of them. It only reads save files.

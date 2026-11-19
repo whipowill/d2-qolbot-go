@@ -160,6 +160,8 @@ type Manager struct {
 	fatal         *fatalState          // a fatal event the user has not dismissed (fatal.go)
 	notice        *fatalState          // a notice (the yellow box of the Activity page) the user has not dismissed (fatal.go)
 	idleSaid      bool                 // dynamicLeaderLoop (its goroutine only): "nothing left to do" was logged for this difficulty
+	hostedDiff    string               // the difficulty the running leader bot was started to host (m.mu); difficultyWatchLoop compares it with the setting
+	diffRestart   bool                 // a restart for a changed difficulty is under way (difficultyWatchLoop only)
 	chickenLog    []chickenEntry       // every recent chicken with its time, also in data/chickens.json (chickens.go)
 	goldHuntEnded time.Time            // when the last gold hunt ended (no new one for goldHuntWait)
 	huntNoteAt    time.Time            // when "no place can be chosen" was last logged (not every 30 s)
@@ -275,6 +277,7 @@ func (m *Manager) run(profiles []string) {
 	go m.watchdog()
 	m.loadChickens()
 	go m.dynamicLeaderLoop()
+	go m.difficultyWatchLoop()
 	go m.levelUpLoop()
 	go m.grailLoop()
 	go m.questWatchLoop()
@@ -725,6 +728,9 @@ func (m *Manager) startProfile(name string) error {
 		return fmt.Errorf("bridge not connected yet (is Wine up? see logs/wine.log)")
 	}
 	s.Status, s.Wanted, s.Heartbeat, s.startedAt, s.rpcSeen = "starting", true, time.Now(), time.Now(), false
+	if m.cfg.NotPlaying && m.roleOf(s) == "host" {
+		m.hostedDiff = m.difficultyNow() // the game this leader hosts is made in this difficulty
+	}
 	hw := m.hwnd
 	m.mu.Unlock()
 	m.writeBotNames()

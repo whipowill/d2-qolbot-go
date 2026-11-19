@@ -172,7 +172,7 @@ var Waypoints = {
 	// From the user's memory of the game: act 2 from the Harem on is all behind quests (the Palace Cellar levels 52-54 with the Arcane Sanctuary, and the Canyon),
 	// in act 3 Durance of Hate and with it Mephisto's lair (100-102), in act 4 nothing, in act 5 the Worldstone Keep (128-132, after the Ancients: Rite of Passage,
 	// 39) and Nihlathak's temple (121-124, after Anya's rescue: Prison of Ice, 37). Those last two are guesses at WHICH quest.
-	gates: {52: 11, 53: 11, 54: 11, 74: 11, 46: 12, 100: 18, 101: 18, 102: 18, 121: 37, 122: 37, 123: 37, 124: 37, 128: 39, 129: 39, 130: 39, 131: 39, 132: 39},
+	gates: {52: 11, 53: 11, 54: 11, 74: 11, 46: 13, 100: 18, 101: 18, 102: 18, 121: 37, 122: 37, 123: 37, 124: 37, 128: 39, 129: 39, 130: 39, 131: 39, 132: 39},
 
 	// the ids of the quests this character has done
 	doneIds: function () {

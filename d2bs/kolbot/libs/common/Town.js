@@ -179,11 +179,35 @@ var Town = {
 		this.stash(true);
 		this.holdCube = false;
 
-		if (this.cubeWaiting()) { // the pack is sorted and has room now: the cube's items come out, are identified and sorted like any other; what still does not fit is stashed from the cube
+		// The pack is sorted and has room now: the cube's items come out, are identified and filtered like any other (the user, 2026-11-18: "empty her inventory in town then
+		// move items from cube into inventory and work from there so that all items get identified and sorted properly"). Round after round while the cube still holds
+		// items and a round took some out; the cube's own items are stashed only if the normal filter wants them (cubeToStash), never because the pack was full.
+		for (var round = 0; round < 6 && this.cubeWaiting(); round += 1) {
+			var before = this.cubeWaiting();
+
+			this.holdCube = true;
 			this.unloadCube();
 			this.identify();
 			this.clearInventory();
 			this.stash(true);
+			this.holdCube = false;
+
+			if (this.cubeWaiting() >= before) {
+				break; // nothing came out this round: no room even now
+			}
+		}
+
+		// What is still in the cube now has been through every round: the sellable has been sold and what the pickit wants has been stashed. What remains would stay in the
+		// cube for good (protected, or no room in the pack), so it goes to the stash (the user, 2026-11-18: "if the bot arrives at a place where an item is going to stay in
+		// the cube, it should just stash it").
+		if ((me.findItems(-1, -1, 6) || []).some(function (it) { return !Item.userOwned(it) && Town.canStash(it, true); })) {
+			this.cubeFinal = true;
+
+			try {
+				this.stash(true);
+			} finally {
+				this.cubeFinal = false;
+			}
 		}
 
 		if (typeof QuestItems === "object" && QuestItems.wantRoom) { // a quest item needs room and the pack is full of what must stay: charms go to the stash
@@ -2218,7 +2242,7 @@ MainLoop:
 
 		// Everything in the cube goes to the stash, identified or not (the user, 2026-11-16: "items go in the cube if the inventory is full, and those items in the cube
 		// cannot be IDed but they will all automatically go into the stash ... is the safest way to do it"; a full inventory is a yellow alert on the Activity page).
-		items = (me.findItems(-1, -1, 6) || []).filter(function (it) { return Town.canStash(it, true); });
+		items = (me.findItems(-1, -1, 6) || []).filter(function (it) { return Town.canStash(it, true) && (Town.cubeFinal ? !Item.userOwned(it) : Town.wantStash(it)); }); // before the last round only what the normal filter keeps; in the last one (cubeFinal) all that is left (the user, 2026-11-18)
 
 		if (!items.length) {
 			return true;

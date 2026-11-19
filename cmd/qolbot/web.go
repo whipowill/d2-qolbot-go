@@ -117,13 +117,13 @@ func (m *Manager) webMux() *http.ServeMux {
 	mux.HandleFunc("/api/settings", m.apiSettings)
 	mux.HandleFunc("/api/game", m.apiGame)
 	mux.HandleFunc("/api/config", m.apiConfig)
-	// POST /api/safemode?on=1|0: bots started afterwards are prohibited from AutoEquip, AutoStat and AutoSkill and pick up only consumables and quest items.
+	// POST /api/safemode?on=1|0: bots started afterwards are prohibited from AutoEquip, AutoStat and AutoSkill.
 	mux.HandleFunc("/api/safemode", post(func(r *http.Request) error {
 		on := r.URL.Query().Get("on") == "1"
 		m.mu.Lock()
 		m.cfg.SafeMode = on
 		m.mu.Unlock()
-		m.logf(0, "", "safe mode %v: bots started from now on %s", on, map[bool]string{true: "not auto-equip, spend no stat or skill points, and pick up only consumables and quest items", false: "follow the Automation tab"}[on])
+		m.logf(0, "", "safe mode %v: bots started from now on %s", on, map[bool]string{true: "not auto-equip, spend no stat or skill points", false: "follow the Automation tab"}[on])
 		return m.saveConfig()
 	}))
 	mux.HandleFunc("/api/rescan", post(func(r *http.Request) error {

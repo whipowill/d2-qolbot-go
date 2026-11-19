@@ -75,7 +75,17 @@ var Team = {
 
 		for (i = 0; i < names.length; i += 1) {
 			a = areas[names[i]];
-			out.push({name: names[i], area: a, inGame: a !== undefined && a !== 0, loading: a === 0, here: a === me.area});
+			// A mate whose quests do not open MY area (Waypoints.gates: the Canyon of the Magi needs The Summoner) is not waited for here: it cannot come, it waits in town
+			// (live 2026-11-18, Reform at the Canyon: "waiting for Meir, Vanity to catch up", a regroup in town, both stuck at the portal; the user: "a location that one bot is gated from")
+			var gatedHere = false;
+
+			try {
+				gatedHere = a !== undefined && a !== 0 && a !== me.area && typeof Waypoints === "object" && Waypoints.canEnter && !Waypoints.canEnter(names[i], me.area);
+			} catch (gateError) {
+				gatedHere = false;
+			}
+
+			out.push({name: names[i], area: a, inGame: a !== undefined && a !== 0 && !gatedHere, loading: a === 0, here: a === me.area, gated: gatedHere});
 		}
 
 		return out;
@@ -971,15 +981,25 @@ var Team = {
 
 	portalRefused: function (area, owner) {
 		var act = area ? getBaseStat("levels", area, "Act") + 1 : 0,
-			gated = act > 1 && typeof Pather === "object" && Pather.accessToAct && !Pather.accessToAct(act);
+			gated = act > 1 && typeof Pather === "object" && Pather.accessToAct && !Pather.accessToAct(act),
+			areaGated = !gated && area && typeof Waypoints === "object" && Waypoints.canEnter && !Waypoints.canEnter(me.name, area); // the area's own quest (Waypoints.gates)
 
 		if (Date.now() - this.refusedAt < 20000) {
-			return gated;
+			return gated || areaGated;
 		}
 
 		this.refusedAt = Date.now();
 
+		if (areaGated) { // the leader is told "gated": it does not wait for me and opens no portal for me (it could not take me either)
+			Report.problem("Team", "I cannot go to " + Pather.getAreaName(area) + ": its quest is not done for me (" + Waypoints.gates[area] + "), so the portal of " + (owner || "the leader") + " cannot take me. I wait in town.");
+			this.post("gated");
+
+			return true;
+		}
+
 		if (gated) {
+			this.post("gated");
+
 			Report.problem("Team", "I cannot go to " + Pather.getAreaName(area) + ": act " + act + " is not open for me (its quest is not done), so the portal of " + (owner || "the leader") + " cannot take me.");
 
 			return true;
@@ -1043,10 +1063,10 @@ var Team = {
 
 			if (orders) {
 				try {
-					this.take("sendout", null, ["cantreach"]).forEach(function (m) {
+					this.take("sendout", null, ["cantreach", "gated"]).forEach(function (m) {
 						if (m.at >= start - 5000 && !stuck[m.from]) {
 							stuck[m.from] = true;
-							print("Team: " + m.from + " cannot get through my portal: I go out now and open a new one for them.");
+							print("Team: " + m.from + (m.w === "gated" ? " is gated from where I go (its quest is not done): I go out without it." : " cannot get through my portal: I go out now and open a new one for them."));
 						}
 					});
 				} catch (takeError) {

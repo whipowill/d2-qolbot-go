@@ -69,7 +69,7 @@ var PlugY = {
 	// Darius's stash open on the bots' hidden display :2): the game runs at 640x480 there (me.screensize 0), its drawing area starts at 3,29 on that display, the
 	// button is centred at 162,431 on it: 159,402 in the game's own coordinates. The other size (800x600, me.screensize 1) is a guess from the user's screenshot (his UI
 	// is 800x600 drawn 1.44 times as big, centred: 142,499) and is logged. Verified live 2026-11-16 12:36:10 at 159,402: "a new page is page 1 and in view".
-	firstPage: function () {
+	firstPage: function (dx, dy) {
 		var x = 159, y = 402;
 
 		if (!this.enabled()) {
@@ -81,7 +81,9 @@ var PlugY = {
 			y = 499;
 		}
 
-		print("Stash: clicking the first page button at " + x + "," + y + " (screensize " + me.screensize + ").");
+		x += dx || 0;
+		y += dy || 0;
+		print("Stash: clicking the first page button at " + x + "," + y + " (screensize " + me.screensize + ", stash open " + !!getUIFlag(0x19) + ").");
 
 		try {
 			sendClick(x, y);
@@ -92,26 +94,66 @@ var PlugY = {
 		return true;
 	},
 
-	// A NEW STASH PAGE (the user, 2026-11-15: "/insertpage adds a page after the one you're looking at"; "you have to /insertpage then /swappage 1 then click back to
-	// page one"; 2026-11-16: "writing /page 1 won't move the current view to page 1, the only way to do it is to click the back button"). The stash opens on page 1.
-	// "/insertpage" puts an empty page after the one in view and shows it, "/swappage 1" swaps it with page 1 (the full page moves to page 2, the empty one is page 1),
-	// the view stays on the page that now holds the full one, and the click on the "first page" button shows page 1, the empty one. The newest page is always page 1, the
-	// one every stash visit opens on. The result is checked (page 1 in view must be empty) and logged.
+	// A NEW STASH PAGE (the user, 2026-11-15: "you have to /insertpage then /swappage 1 then click back to page one"; 2026-11-18: "i'm betting this procedure is correct ...
+	// but perhaps the click back to page one is failing"). "/insertpage" puts an empty page after the one in view, "/swappage 1" makes it page 1, and the click on the
+	// "first page" button brings page 1 into view. The sequence worked live 2026-11-16 and 2026-11-18 09:38, and failed at 09:56 and 11:46 with the click doing nothing
+	// (the page in view stayed full, a reopen of the stash too). So the CLICK is retried: each time with the stash window checked open first, at the measured spot and
+	// then a few pixels around it (a button hit slightly off, or a click that needs the pointer over it first), looking at the page in view after each. If page 1 is
+	// still not in view the stash is closed and opened again; as a last way one more page is added and used where it is, so the team is not stopped for a full stash.
 	newStashPage: function () {
 		if (!this.enabled()) {
 			return this.off("a new stash page");
 		}
 
+		var i, spots = [[0, 0], [0, 0], [3, 0], [-3, 0], [0, 3], [0, -3]],
+			inView = function () {
+				Storage.Reload();
+
+				return (me.findItems(-1, -1, 7) || []).length;
+			};
+
 		this.insertPage();
 		delay(1000);
+
+		if (inView()) {
+			print("Stash: after /insertpage the page in view still holds " + inView() + " item(s): the page may not have been added.");
+		}
+
 		this.swapPage(1);
 		delay(1000);
-		this.firstPage();
-		delay(1000);
-		Storage.Reload();
 
-		if ((me.findItems(-1, -1, 7) || []).length) {
-			print("Stash: after adding a page the page in view is not empty: the first page button did not work (screensize " + me.screensize + ").");
+		for (i = 0; i < spots.length && inView(); i += 1) {
+			if (!getUIFlag(0x19) && typeof Town === "object" && Town.openStash) {
+				print("Stash: the stash window is not open: opening it before the click.");
+				Town.openStash();
+				delay(500);
+			}
+
+			this.firstPage(spots[i][0], spots[i][1]);
+			delay(1000);
+		}
+
+		if (inView() && typeof Town === "object" && Town.openStash) {
+			print("Stash: page 1 is still not in view: closing the stash and opening it again (it opens on page 1).");
+			me.cancel();
+			me.cancel();
+			delay(800);
+			Town.openStash();
+			delay(1000);
+		}
+
+		if (inView()) {
+			print("Stash: page 1 cannot be brought into view (" + inView() + " item(s) in view, screensize " + me.screensize + "): adding a page and using it where it is.");
+			this.insertPage();
+			delay(1500);
+
+			if (!inView()) {
+				print("Stash: the new page is in view and empty: using it.");
+
+				return true;
+			}
+
+			print("Stash: no empty page in view even now (" + inView() + " item(s)).");
 
 			return false;
 		}

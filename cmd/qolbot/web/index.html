@@ -31,6 +31,9 @@ tr:hover .musrow,.musrow.musbig:hover{background:color-mix(in srgb,var(--accent)
 .seg button{border:none;border-radius:0;margin:0;background:var(--card);padding:3px 12px}
 .seg button.on{background:var(--accent);color:var(--accent-ink);font-weight:600}
 .seg button.on:hover:not(:disabled){background:var(--accent);filter:brightness(1.08)}
+:root{--crimson:#8c1d2f}@media (prefers-color-scheme:dark){:root{--crimson:#b02a40}}
+/* the Off side of the "Are you playing", "Safe Mode" and music "Follow" toggles is a deep crimson when it is the one chosen (the user, 2026-11-18) */
+#pn.on,#safeoff.on,#musfoff.on{background:var(--crimson);color:#fff}#pn.on:hover:not(:disabled),#safeoff.on:hover:not(:disabled),#musfoff.on:hover:not(:disabled){background:var(--crimson);filter:brightness(1.12)}
 h3{color:var(--strong);font-size:15px;font-weight:650;margin:22px 0 8px}h3:first-child{margin-top:0}
 p{margin:8px 0}a{color:var(--accent)}code{background:var(--hover);padding:1px 5px;border-radius:4px;font-size:12.5px}
 .dim{color:var(--dim)}.stgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px;align-items:start}@media (max-width:760px){.stgrid{grid-template-columns:minmax(0,1fr)}}
